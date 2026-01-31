@@ -19,7 +19,8 @@ class ActivityController(
     private val betService: BetService,
     private val questionService: QuestionService,
     private val ticketService: TicketService,
-    private val settlementService: SettlementService
+    private val settlementService: SettlementService,
+    private val bettingSuspensionService: com.predata.backend.service.BettingSuspensionService
 ) {
 
     /**
@@ -41,6 +42,18 @@ class ActivityController(
      */
     @PostMapping("/bet")
     fun bet(@RequestBody request: BetRequest): ResponseEntity<ActivityResponse> {
+        // 1. 베팅 일시 중지 체크
+        val suspensionStatus = bettingSuspensionService.isBettingSuspendedByQuestionId(request.questionId)
+        if (suspensionStatus.suspended) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(
+                ActivityResponse(
+                    success = false,
+                    message = "⚠️ 골 직후 베팅이 일시 중지되었습니다. ${suspensionStatus.remainingSeconds}초 후 재개됩니다."
+                )
+            )
+        }
+        
+        // 2. 베팅 실행
         val response = betService.bet(request)
         
         return if (response.success) {

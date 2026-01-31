@@ -93,6 +93,11 @@ export default function MarketplaceHome() {
               <h1 className="text-2xl font-black">Predata</h1>
             </div>
             <div className="flex items-center gap-3">
+              <Link href="/admin/questions">
+                <button className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition font-semibold text-sm">
+                  관리자
+                </button>
+              </Link>
               <Link href="/data-center">
                 <button className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition font-semibold text-sm">
                   데이터 센터
