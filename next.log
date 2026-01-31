@@ -1,0 +1,70 @@
+
+> predata@0.1.0 dev
+> next dev
+
+▲ Next.js 16.1.6 (Turbopack)
+- Local:         http://localhost:3000
+- Network:       http://192.168.219.100:3000
+
+✓ Starting...
+✓ Ready in 754ms
+ GET / 200 in 1148ms (compile: 1050ms, render: 98ms)
+ GET / 200 in 37ms (compile: 8ms, render: 30ms)
+✓ Compiled in 136ms
+ GET / 200 in 81ms (compile: 42ms, render: 39ms)
+✓ Compiled in 164ms
+✓ Compiled in 43ms
+✓ Compiled in 85ms
+✓ Compiled in 37ms
+✓ Compiled in 39ms
+✓ Compiled in 77ms
+✓ Compiled in 67ms
+✓ Compiled in 50ms
+ GET / 200 in 93ms (compile: 48ms, render: 45ms)
+✓ Compiled in 32ms
+✓ Compiled in 147ms
+✓ Compiled in 87ms
+✓ Compiled in 37ms
+✓ Compiled in 38ms
+✓ Compiled in 59ms
+✓ Compiled in 124ms
+✓ Compiled in 51ms
+⚠ Fast Refresh had to perform a full reload due to a runtime error.
+⚠ Fast Refresh had to perform a full reload due to a runtime error.
+ GET / 200 in 98ms (compile: 39ms, render: 59ms)
+✓ Compiled in 153ms
+✓ Compiled in 66ms
+✓ Compiled in 34ms
+✓ Compiled in 25ms
+✓ Compiled in 115ms
+✓ Compiled in 73ms
+✓ Compiled in 42ms
+✓ Compiled in 127ms
+✓ Compiled in 83ms
+✓ Compiled in 51ms
+✓ Compiled in 92ms
+✓ Compiled in 66ms
+✓ Compiled in 26ms
+✓ Compiled in 157ms
+✓ Compiled in 151ms
+⚠ Fast Refresh had to perform a full reload due to a runtime error.
+ GET / 200 in 103ms (compile: 74ms, render: 29ms)
+ GET / 200 in 49ms (compile: 6ms, render: 43ms)
+ GET /data-center 200 in 1364ms (compile: 1301ms, render: 63ms)
+✓ Compiled in 38ms
+✓ Compiled in 139ms
+ GET /data-center 200 in 133ms (compile: 56ms, render: 77ms)
+ GET /data-center 200 in 128ms (compile: 68ms, render: 60ms)
+ GET /data-center 200 in 128ms (compile: 84ms, render: 45ms)
+ GET /data-center 200 in 64ms (compile: 33ms, render: 31ms)
+ GET /data-center 200 in 24ms (compile: 9ms, render: 15ms)
+ GET /data-center 200 in 33ms (compile: 2ms, render: 31ms)
+ GET /data-center 200 in 46ms (compile: 4ms, render: 42ms)
+ GET /data-center 200 in 43ms (compile: 9ms, render: 34ms)
+ GET /data-center 200 in 36ms (compile: 9ms, render: 27ms)
+ GET /data-center 200 in 28ms (compile: 10ms, render: 18ms)
+ GET /data-center 200 in 71ms (compile: 3ms, render: 68ms)
+✓ Compiled in 185ms
+ GET / 200 in 148ms (compile: 62ms, render: 86ms)
+ GET /premium-data 200 in 355ms (compile: 326ms, render: 29ms)
+ GET /data-center 200 in 49ms (compile: 14ms, render: 35ms)
