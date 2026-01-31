@@ -16,7 +16,8 @@ class SettlementService(
     private val activityRepository: ActivityRepository,
     private val memberRepository: MemberRepository,
     private val tierService: TierService,
-    private val rewardService: RewardService
+    private val rewardService: RewardService,
+    private val blockchainService: BlockchainService
 ) {
 
     /**
@@ -75,6 +76,9 @@ class SettlementService(
 
         // 7. 티케터 보상 분배 (베팅 수수료 기반)
         val rewardResult = rewardService.distributeRewards(questionId)
+
+        // 8. 온체인에 정산 결과 기록 (비동기)
+        blockchainService.settleQuestionOnChain(questionId, finalResult)
 
         return SettlementResult(
             questionId = questionId,

@@ -5,6 +5,7 @@ import { TrendingUp, Ticket, ChevronDown, Info, Vote as VoteIcon, DollarSign, Lo
 import LoginModal from '@/components/LoginModal';
 import AdminPanel from '@/components/AdminPanel';
 import MyBets from '@/components/MyBets';
+import { safeLocalStorage } from '@/lib/safeLocalStorage';
 
 const BACKEND_URL = 'http://localhost:8080/api';
 
@@ -206,8 +207,8 @@ export default function PolymarketStyleHome() {
   };
 
   useEffect(() => {
-    // 로그인 상태 확인
-    const savedUser = localStorage.getItem('predataUser');
+    // 로그인 상태 확인 (클라이언트에서만 실행)
+    const savedUser = safeLocalStorage.getItem('predataUser');
     if (savedUser) {
       setCurrentUser(JSON.parse(savedUser));
     }
@@ -234,13 +235,13 @@ export default function PolymarketStyleHome() {
   // 로그인 성공 핸들러
   const handleLoginSuccess = (memberId: number, memberData: MemberData) => {
     setCurrentUser(memberData);
-    localStorage.setItem('predataUser', JSON.stringify(memberData));
+    safeLocalStorage.setItem('predataUser', JSON.stringify(memberData));
   };
 
   // 로그아웃
   const handleLogout = () => {
     setCurrentUser(null);
-    localStorage.removeItem('predataUser');
+    safeLocalStorage.removeItem('predataUser');
   };
 
   // 정산 완료 후 새로고침

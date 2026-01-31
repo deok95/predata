@@ -15,6 +15,9 @@ data class Member(
     @Column(nullable = false, unique = true)
     val email: String,
 
+    @Column(name = "wallet_address", unique = true, length = 42)
+    var walletAddress: String? = null, // 지갑 주소 (0x...)
+
     @Column(name = "country_code", nullable = false, length = 2)
     val countryCode: String,
 

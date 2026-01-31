@@ -14,7 +14,8 @@ import org.springframework.transaction.annotation.Transactional
 class BetService(
     private val activityRepository: ActivityRepository,
     private val questionRepository: QuestionRepository,
-    private val memberRepository: MemberRepository
+    private val memberRepository: MemberRepository,
+    private val bettingBatchService: BettingBatchService
 ) {
 
     /**
@@ -94,6 +95,18 @@ class BetService(
         )
 
         val savedActivity = activityRepository.save(activity)
+
+        // 7. 온체인 큐에 추가 (비동기)
+        if (member.walletAddress != null) {
+            bettingBatchService.enqueueBet(
+                PendingBet(
+                    questionId = request.questionId,
+                    userAddress = member.walletAddress!!,
+                    choice = request.choice.name,
+                    amount = request.amount
+                )
+            )
+        }
 
         return ActivityResponse(
             success = true,

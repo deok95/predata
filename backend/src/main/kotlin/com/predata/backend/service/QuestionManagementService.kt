@@ -11,7 +11,8 @@ import java.time.format.DateTimeFormatter
 
 @Service
 class QuestionManagementService(
-    private val questionRepository: QuestionRepository
+    private val questionRepository: QuestionRepository,
+    private val blockchainService: BlockchainService
 ) {
 
     /**
@@ -40,6 +41,9 @@ class QuestionManagementService(
         )
 
         val savedQuestion = questionRepository.save(question)
+
+        // 3. 온체인에 질문 생성 (비동기)
+        blockchainService.createQuestionOnChain(savedQuestion)
 
         return QuestionCreationResponse(
             success = true,

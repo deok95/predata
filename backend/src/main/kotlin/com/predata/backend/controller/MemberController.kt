@@ -30,6 +30,21 @@ class MemberController(
     }
 
     /**
+     * 지갑 주소로 회원 조회
+     * GET /api/members/by-wallet?address=0x1234...
+     */
+    @GetMapping("/by-wallet")
+    fun getMemberByWallet(@RequestParam address: String): ResponseEntity<MemberResponse> {
+        val member = memberRepository.findByWalletAddress(address)
+        
+        return if (member.isPresent) {
+            ResponseEntity.ok(MemberResponse.from(member.get()))
+        } else {
+            ResponseEntity.notFound().build()
+        }
+    }
+
+    /**
      * 회원 생성 (회원가입)
      * POST /api/members
      */
@@ -43,6 +58,7 @@ class MemberController(
         // 새 회원 생성
         val member = Member(
             email = request.email,
+            walletAddress = request.walletAddress,
             countryCode = request.countryCode,
             jobCategory = request.jobCategory,
             ageGroup = request.ageGroup,
@@ -75,6 +91,7 @@ class MemberController(
  */
 data class CreateMemberRequest(
     val email: String,
+    val walletAddress: String? = null,
     val countryCode: String,
     val jobCategory: String,
     val ageGroup: Int
@@ -86,6 +103,7 @@ data class CreateMemberRequest(
 data class MemberResponse(
     val memberId: Long,
     val email: String,
+    val walletAddress: String?,
     val countryCode: String,
     val jobCategory: String,
     val ageGroup: Int,
@@ -98,6 +116,7 @@ data class MemberResponse(
             return MemberResponse(
                 memberId = member.id ?: 0,
                 email = member.email,
+                walletAddress = member.walletAddress,
                 countryCode = member.countryCode,
                 jobCategory = member.jobCategory ?: "",
                 ageGroup = member.ageGroup ?: 0,

@@ -33,6 +33,10 @@ dependencies {
     // MariaDB
     runtimeOnly("org.mariadb.jdbc:mariadb-java-client")
     
+    // Web3j (블록체인 통합)
+    implementation("org.web3j:core:4.9.8")
+    implementation("org.web3j:contracts:4.9.8")
+    
     // Test
     testImplementation("org.springframework.boot:spring-boot-starter-test")
     testImplementation("org.jetbrains.kotlin:kotlin-test-junit5")
