@@ -2,8 +2,7 @@
 
 import React, { useState } from 'react';
 import { Shield, CheckCircle, Loader2 } from 'lucide-react';
-
-const BACKEND_URL = 'http://localhost:8080/api';
+import { settlementApi, ApiError } from '@/lib/api';
 
 interface AdminPanelProps {
   questionId: number;
@@ -28,34 +27,30 @@ export default function AdminPanel({ questionId, questionTitle, onClose, onSettl
     setError(null);
 
     try {
-      const response = await fetch(`${BACKEND_URL}/questions/${questionId}/settle`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          finalResult: selectedResult,
-        }),
+      const response = await settlementApi.settle(questionId, {
+        finalResult: selectedResult
       });
 
-      if (response.ok) {
-        const result = await response.json();
+      if (response.success && response.data) {
         setSuccess(true);
         alert(
           `✅ 정산 완료!\n\n` +
-          `총 베팅: ${result.totalBets}건\n` +
-          `승자: ${result.totalWinners}명\n` +
-          `총 배당금: ${result.totalPayout.toLocaleString()}P`
+          `총 베팅: ${response.data.totalBets}건\n` +
+          `승자: ${response.data.totalWinners}명\n` +
+          `총 배당금: ${response.data.totalPayout.toLocaleString()}P`
         );
         onSettled();
         setTimeout(() => onClose(), 2000);
       } else {
-        const errorData = await response.json();
-        setError(errorData.error || '정산에 실패했습니다.');
+        setError(response.message || '정산에 실패했습니다.');
       }
     } catch (err) {
       console.error('Settlement error:', err);
-      setError('서버와 통신 중 오류가 발생했습니다.');
+      if (err instanceof ApiError) {
+        setError(err.message);
+      } else {
+        setError('서버와 통신 중 오류가 발생했습니다.');
+      }
     } finally {
       setLoading(false);
     }

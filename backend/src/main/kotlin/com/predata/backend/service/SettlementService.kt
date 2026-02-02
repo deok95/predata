@@ -9,6 +9,7 @@ import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import java.math.BigDecimal
 import java.math.RoundingMode
+import java.time.LocalDateTime
 
 @Service
 class SettlementService(
@@ -20,64 +21,107 @@ class SettlementService(
     private val blockchainService: BlockchainService
 ) {
 
+    companion object {
+        private const val DISPUTE_HOURS = 24L
+    }
+
     /**
-     * 질문 결과 확정 및 정산
-     * @param questionId 질문 ID
-     * @param finalResult 최종 결과 (YES or NO)
+     * 1단계: 정산 시작 (PENDING_SETTLEMENT)
+     * 결과와 근거를 기록하고 이의 제기 기간을 시작한다.
+     * 배당 분배는 아직 하지 않는다.
      */
     @Transactional
-    fun settleQuestion(questionId: Long, finalResult: FinalResult): SettlementResult {
-        // 1. 질문 조회
-        val question = questionRepository.findById(questionId)
-            .orElseThrow { IllegalArgumentException("질문을 찾을 수 없습니다.") }
+    fun initiateSettlement(questionId: Long, finalResult: FinalResult, sourceUrl: String?): SettlementResult {
+        val question = questionRepository.findByIdWithLock(questionId)
+            ?: throw IllegalArgumentException("질문을 찾을 수 없습니다.")
 
-        // 2. 이미 정산된 질문인지 확인
         if (question.status == "SETTLED") {
             throw IllegalStateException("이미 정산된 질문입니다.")
         }
+        if (question.status == "PENDING_SETTLEMENT") {
+            throw IllegalStateException("이미 정산 대기 중인 질문입니다.")
+        }
+        if (question.status != "OPEN" && question.status != "CLOSED") {
+            throw IllegalStateException("정산 가능한 상태가 아닙니다. (현재: ${question.status})")
+        }
 
-        // 3. 질문 상태 업데이트
-        question.status = "SETTLED"
+        question.status = "PENDING_SETTLEMENT"
         question.finalResult = finalResult
+        question.sourceUrl = sourceUrl
+        question.disputeDeadline = LocalDateTime.now().plusHours(DISPUTE_HOURS)
         questionRepository.save(question)
 
-        // 4. 베팅 내역 조회 (투표는 제외)
         val bets = activityRepository.findByQuestionIdAndActivityType(
-            questionId, 
-            com.predata.backend.domain.ActivityType.BET
+            questionId, com.predata.backend.domain.ActivityType.BET
+        )
+
+        return SettlementResult(
+            questionId = questionId,
+            finalResult = finalResult.name,
+            totalBets = bets.size,
+            totalWinners = 0,
+            totalPayout = 0,
+            voterRewards = 0,
+            message = "정산이 시작되었습니다. ${DISPUTE_HOURS}시간 이의 제기 기간 후 확정됩니다."
+        )
+    }
+
+    /**
+     * 2단계: 정산 확정 (SETTLED)
+     * 이의 제기 기간이 지난 후 배당금 분배를 실행한다.
+     * 관리자가 강제 확정할 경우 skipDeadlineCheck = true
+     */
+    @Transactional
+    fun finalizeSettlement(questionId: Long, skipDeadlineCheck: Boolean = false): SettlementResult {
+        val question = questionRepository.findByIdWithLock(questionId)
+            ?: throw IllegalArgumentException("질문을 찾을 수 없습니다.")
+
+        if (question.status != "PENDING_SETTLEMENT") {
+            throw IllegalStateException("정산 대기 상태의 질문만 확정할 수 있습니다. (현재: ${question.status})")
+        }
+
+        if (!skipDeadlineCheck && question.disputeDeadline != null && LocalDateTime.now().isBefore(question.disputeDeadline)) {
+            throw IllegalStateException("이의 제기 기간이 아직 종료되지 않았습니다. (기한: ${question.disputeDeadline})")
+        }
+
+        val finalResult = question.finalResult
+
+        // 상태 확정
+        question.status = "SETTLED"
+        questionRepository.save(question)
+
+        // 베팅 내역 조회
+        val bets = activityRepository.findByQuestionIdAndActivityType(
+            questionId, com.predata.backend.domain.ActivityType.BET
         )
 
         val winningChoice = if (finalResult == FinalResult.YES) Choice.YES else Choice.NO
         var totalWinners = 0
         var totalPayout = 0L
 
-        // 5. 승자에게 배당금 지급
+        // 승자에게 배당금 지급
         bets.filter { it.choice == winningChoice }.forEach { bet ->
             val member = memberRepository.findById(bet.memberId).orElse(null)
             if (member != null) {
-                // 배당금 계산
                 val payout = calculatePayout(
                     betAmount = bet.amount,
                     totalPool = question.totalBetPool,
                     winningPool = if (finalResult == FinalResult.YES) question.yesBetPool else question.noBetPool
                 )
-
-                // 포인트 지급
                 member.pointBalance += payout
                 memberRepository.save(member)
-
                 totalWinners++
                 totalPayout += payout
             }
         }
 
-        // 6. 티어 자동 업데이트 (정확도 기반)
+        // 티어 자동 업데이트
         tierService.updateTiersAfterSettlement(questionId, finalResult)
 
-        // 7. 티케터 보상 분배 (베팅 수수료 기반)
+        // 보상 분배
         val rewardResult = rewardService.distributeRewards(questionId)
 
-        // 8. 온체인에 정산 결과 기록 (비동기)
+        // 온체인 기록
         blockchainService.settleQuestionOnChain(questionId, finalResult)
 
         return SettlementResult(
@@ -87,23 +131,64 @@ class SettlementService(
             totalWinners = totalWinners,
             totalPayout = totalPayout,
             voterRewards = rewardResult.totalRewardPool,
-            message = "정산이 완료되었습니다. (보상: ${rewardResult.totalRewardPool}P 분배)"
+            message = "정산이 확정되었습니다. (보상: ${rewardResult.totalRewardPool}P 분배)"
+        )
+    }
+
+    /**
+     * 정산 취소 (PENDING_SETTLEMENT → OPEN)
+     * 이의 제기로 인해 정산을 취소하고 질문을 다시 열린 상태로 되돌린다.
+     */
+    @Transactional
+    fun cancelPendingSettlement(questionId: Long): SettlementResult {
+        val question = questionRepository.findByIdWithLock(questionId)
+            ?: throw IllegalArgumentException("질문을 찾을 수 없습니다.")
+
+        if (question.status != "PENDING_SETTLEMENT") {
+            throw IllegalStateException("정산 대기 상태의 질문만 취소할 수 있습니다. (현재: ${question.status})")
+        }
+
+        // 만료일 체크: 이미 만료된 질문은 CLOSED로 전환
+        val newStatus = if (question.expiredAt.isBefore(LocalDateTime.now())) "CLOSED" else "OPEN"
+
+        question.status = newStatus
+        question.finalResult = FinalResult.PENDING
+        question.sourceUrl = null
+        question.disputeDeadline = null
+        questionRepository.save(question)
+
+        return SettlementResult(
+            questionId = questionId,
+            finalResult = "CANCELLED",
+            totalBets = 0,
+            totalWinners = 0,
+            totalPayout = 0,
+            voterRewards = 0,
+            message = if (newStatus == "CLOSED")
+                "정산이 취소되었습니다. 질문이 만료되어 CLOSED 상태로 전환되었습니다."
+            else
+                "정산이 취소되었습니다. 질문이 다시 OPEN 상태로 전환되었습니다."
         )
     }
 
     /**
      * 배당금 계산
-     * AMM 방식: (베팅 금액 / 승리 풀) * 전체 풀 * 0.99 (수수료 1%)
+     * AMM 방식: (베팅 금액 / 실질 승리풀) * 실질 전체풀 * 0.99 (수수료 1%)
+     * 초기 유동성(하우스 머니)을 제외한 실제 베팅 금액만으로 계산
      */
     private fun calculatePayout(
         betAmount: Long,
         totalPool: Long,
         winningPool: Long
     ): Long {
-        if (winningPool == 0L) return betAmount // 패자가 없으면 원금 반환
+        val initialLiquidity = QuestionManagementService.INITIAL_LIQUIDITY
+        val effectiveTotalPool = maxOf(0L, totalPool - initialLiquidity * 2)
+        val effectiveWinningPool = maxOf(0L, winningPool - initialLiquidity)
 
-        val payoutRatio = BigDecimal(totalPool)
-            .divide(BigDecimal(winningPool), 10, RoundingMode.HALF_UP)
+        if (effectiveWinningPool == 0L) return betAmount // 실질 승리풀이 없으면 원금 반환
+
+        val payoutRatio = BigDecimal(effectiveTotalPool)
+            .divide(BigDecimal(effectiveWinningPool), 10, RoundingMode.HALF_UP)
             .multiply(BigDecimal("0.99")) // 수수료 1%
 
         return BigDecimal(betAmount)

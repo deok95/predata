@@ -39,6 +39,9 @@ data class Activity(
     @Column(name = "latency_ms")
     val latencyMs: Int? = null, // 무지성 투표 방지
 
+    @Column(name = "ip_address", length = 45)
+    val ipAddress: String? = null, // IP 추적
+
     @Column(name = "created_at", nullable = false, updatable = false)
     val createdAt: LocalDateTime = LocalDateTime.now()
 )

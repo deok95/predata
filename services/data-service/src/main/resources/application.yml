@@ -1,0 +1,21 @@
+spring:
+  application:
+    name: data-service
+  redis:
+    host: localhost
+    port: 6379
+
+server:
+  port: 8085
+
+services:
+  member:
+    url: http://localhost:8081
+  question:
+    url: http://localhost:8082
+  betting:
+    url: http://localhost:8083
+
+logging:
+  level:
+    com.predata.data: DEBUG

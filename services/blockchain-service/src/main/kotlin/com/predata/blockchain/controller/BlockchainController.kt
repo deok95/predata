@@ -1,0 +1,43 @@
+package com.predata.blockchain.controller
+
+import com.predata.blockchain.dto.BlockchainStatusResponse
+import com.predata.blockchain.dto.QuestionOnChain
+import com.predata.blockchain.service.BlockchainService
+import org.springframework.http.ResponseEntity
+import org.springframework.web.bind.annotation.*
+
+/**
+ * 블록체인 관련 API
+ */
+@RestController
+@RequestMapping("/api/blockchain")
+@CrossOrigin(origins = ["http://localhost:3000"])
+class BlockchainController(
+    private val blockchainService: BlockchainService
+) {
+
+    /**
+     * 블록체인 상태 조회
+     * GET /api/blockchain/status
+     */
+    @GetMapping("/status")
+    fun getBlockchainStatus(): ResponseEntity<BlockchainStatusResponse> {
+        val status = blockchainService.getBlockchainStatus()
+        return ResponseEntity.ok(status)
+    }
+
+    /**
+     * 온체인 질문 데이터 조회
+     * GET /api/blockchain/question/{questionId}
+     */
+    @GetMapping("/question/{questionId}")
+    fun getQuestionFromChain(@PathVariable questionId: Long): ResponseEntity<QuestionOnChain> {
+        val onChainData = blockchainService.getQuestionFromChain(questionId)
+        
+        return if (onChainData != null) {
+            ResponseEntity.ok(onChainData)
+        } else {
+            ResponseEntity.notFound().build()
+        }
+    }
+}

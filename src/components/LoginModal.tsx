@@ -1,323 +1,488 @@
 'use client';
 
-import React, { useState } from 'react';
-import { Mail, User, MapPin, Briefcase, Calendar, Wallet } from 'lucide-react';
-import { useAccount, useConnect, useDisconnect } from 'wagmi';
-import { ConnectButton } from '@rainbow-me/rainbowkit';
+import { useState, useRef } from 'react';
+import { Wallet, MousePointer2, Sun, Moon, ArrowLeft, Loader2, Mail, ShieldCheck } from 'lucide-react';
+import { useConnect, useAccount, useDisconnect } from 'wagmi';
+import PredataLogo from '@/components/ui/PredataLogo';
+import { useTheme } from '@/hooks/useTheme';
+import { useAuth } from '@/hooks/useAuth';
+import { authApi } from '@/lib/api';
 
-const BACKEND_URL = 'http://localhost:8080/api';
+type Step = 'main' | 'register-form' | 'email-login' | 'email-verify' | 'email-register-form';
 
-interface LoginModalProps {
-  onLoginSuccess: (memberId: number, memberData: any) => void;
-}
+const COUNTRIES = [
+  { code: 'KR', label: '한국' },
+  { code: 'US', label: '미국' },
+  { code: 'JP', label: '일본' },
+  { code: 'CN', label: '중국' },
+  { code: 'GB', label: '영국' },
+  { code: 'DE', label: '독일' },
+  { code: 'FR', label: '프랑스' },
+  { code: 'SG', label: '싱가포르' },
+];
 
-interface MemberData {
-  email: string;
-  countryCode: string;
-  jobCategory: string;
-  ageGroup: number;
-  walletAddress?: string;
-}
+const JOB_CATEGORIES = [
+  'IT/개발', '금융', '교육', '의료', '법률', '미디어', '공무원', '자영업', '학생', '기타',
+];
 
-export default function LoginModal({ onLoginSuccess }: LoginModalProps) {
-  const [step, setStep] = useState<'choice' | 'email' | 'wallet' | 'register'>('choice');
-  const [email, setEmail] = useState('');
-  const [memberData, setMemberData] = useState<MemberData>({
-    email: '',
-    countryCode: 'KR',
-    jobCategory: 'IT',
-    ageGroup: 30
-  });
+const AGE_GROUPS = [
+  { value: '10', label: '10대' },
+  { value: '20', label: '20대' },
+  { value: '30', label: '30대' },
+  { value: '40', label: '40대' },
+  { value: '50', label: '50+' },
+];
+
+export default function LoginModal() {
+  const { isDark, toggleTheme } = useTheme();
+  const { loginAsGuest, loginWithWallet, loginById, register } = useAuth();
+  const { connectors, connectAsync } = useConnect();
+  const { isConnected } = useAccount();
+  const { disconnectAsync } = useDisconnect();
+
+  const [step, setStep] = useState<Step>('main');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [walletAddress, setWalletAddress] = useState('');
+  const [email, setEmail] = useState('');
+  const [verificationCode, setVerificationCode] = useState('');
+  const [demoCode, setDemoCode] = useState('');
+  const codeInputRef = useRef<HTMLInputElement>(null);
 
-  const { address, isConnected } = useAccount();
+  const [form, setForm] = useState({
+    countryCode: 'KR',
+    jobCategory: '',
+    ageGroup: '',
+  });
 
-  // 이메일로 회원 조회
-  const handleEmailSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const metaMaskConnector = connectors.find(
+    (c) => c.name === 'MetaMask' || c.id === 'metaMask' || c.id === 'io.metamask'
+  ) || connectors[0];
+
+  const connectWallet = async (): Promise<string | null> => {
+    if (isConnected) {
+      await disconnectAsync();
+    }
+    const result = await connectAsync({ connector: metaMaskConnector });
+    return result.accounts[0] || null;
+  };
+
+  // 로그인: 메타마스크 연결 → 기존 회원 조회
+  const handleLogin = async () => {
     setError('');
     setLoading(true);
-
     try {
-      const response = await fetch(`${BACKEND_URL}/members/by-email?email=${encodeURIComponent(email)}`);
-      
-      if (response.ok) {
-        const member = await response.json();
-        onLoginSuccess(member.memberId, member);
-      } else if (response.status === 404) {
-        setMemberData({ ...memberData, email });
-        setStep('register');
-      } else {
-        setError('로그인 중 오류가 발생했습니다.');
+      const addr = await connectWallet();
+      if (!addr) { setError('지갑 주소를 가져올 수 없습니다.'); return; }
+
+      const member = await loginWithWallet(addr);
+      if (!member) {
+        setError('등록되지 않은 지갑입니다. 회원가입을 먼저 해주세요.');
+        await disconnectAsync();
       }
-    } catch (err) {
-      setError('서버와 연결할 수 없습니다.');
+    } catch (err: any) {
+      setError(err?.message?.includes('rejected')
+        ? '지갑 연결이 취소되었습니다.'
+        : '지갑 연결에 실패했습니다. 메타마스크를 확인해주세요.');
     } finally {
       setLoading(false);
     }
   };
 
-  // 지갑 주소로 회원 조회
-  const handleWalletLogin = async () => {
-    if (!address) {
-      setError('지갑이 연결되지 않았습니다.');
+  // 회원가입 1단계: 메타마스크 연결 → 정보 입력 폼으로
+  const handleSignUpConnect = async () => {
+    setError('');
+    setLoading(true);
+    try {
+      const addr = await connectWallet();
+      if (!addr) { setError('지갑 주소를 가져올 수 없습니다.'); return; }
+      setWalletAddress(addr);
+      setStep('register-form');
+    } catch (err: any) {
+      setError(err?.message?.includes('rejected')
+        ? '지갑 연결이 취소되었습니다.'
+        : '메타마스크가 설치되어 있는지 확인해주세요.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // 회원가입 2단계: 폼 제출 (MetaMask)
+  const handleRegister = async () => {
+    if (!form.jobCategory || !form.ageGroup) {
+      setError('모든 항목을 입력해주세요.');
       return;
     }
-
     setError('');
     setLoading(true);
-
     try {
-      // 지갑 주소로 회원 조회 (백엔드에 엔드포인트 추가 필요)
-      const response = await fetch(`${BACKEND_URL}/members/by-wallet?address=${address}`);
-      
-      if (response.ok) {
-        const member = await response.json();
-        onLoginSuccess(member.memberId, member);
-      } else if (response.status === 404) {
-        // 신규 회원 - 페르소나 입력으로 이동
-        setMemberData({ ...memberData, walletAddress: address });
-        setStep('register');
-      } else {
-        setError('로그인 중 오류가 발생했습니다.');
-      }
-    } catch (err) {
-      setError('서버와 연결할 수 없습니다.');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // 회원 등록
-  const handleRegister = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setError('');
-    setLoading(true);
-
-    try {
-      const response = await fetch(`${BACKEND_URL}/members`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          email: memberData.email || `${address}@wallet.predata`,
-          walletAddress: memberData.walletAddress,
-          countryCode: memberData.countryCode,
-          jobCategory: memberData.jobCategory,
-          ageGroup: memberData.ageGroup
-        })
+      const memberEmail = `${walletAddress.slice(0, 8)}@predata.wallet`;
+      const member = await register({
+        email: memberEmail,
+        walletAddress,
+        countryCode: form.countryCode,
+        jobCategory: form.jobCategory,
+        ageGroup: form.ageGroup,
       });
-
-      if (response.ok) {
-        const newMember = await response.json();
-        onLoginSuccess(newMember.memberId, newMember);
-      } else {
-        const errorData = await response.json();
-        setError(errorData.message || '회원가입에 실패했습니다.');
+      if (!member) {
+        setError('회원가입에 실패했습니다. 이미 등록된 지갑일 수 있습니다.');
       }
-    } catch (err) {
-      setError('서버와 연결할 수 없습니다.');
+    } catch {
+      setError('서버 오류가 발생했습니다.');
     } finally {
       setLoading(false);
     }
   };
+
+  // 이메일: 인증 코드 발송
+  const handleSendCode = async () => {
+    if (!email.trim() || !email.includes('@')) {
+      setError('유효한 이메일을 입력해주세요.');
+      return;
+    }
+    setError('');
+    setLoading(true);
+    try {
+      const result = await authApi.sendCode(email.trim());
+      if (result.success) {
+        setDemoCode(result.code || '');
+        setVerificationCode('');
+        setStep('email-verify');
+        setTimeout(() => codeInputRef.current?.focus(), 100);
+      } else {
+        setError(result.message || '코드 발송에 실패했습니다.');
+      }
+    } catch {
+      setError('서버 오류가 발생했습니다.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // 이메일: 인증 코드 검증
+  const handleVerifyCode = async () => {
+    if (verificationCode.length !== 6) {
+      setError('6자리 인증 코드를 입력해주세요.');
+      return;
+    }
+    setError('');
+    setLoading(true);
+    try {
+      const result = await authApi.verifyCode(email.trim(), verificationCode);
+      if (result.success && result.verified) {
+        if (!result.isNewUser && result.memberId) {
+          // 기존 회원 → 로그인
+          await loginById(result.memberId);
+          return;
+        }
+        // 신규 → 회원가입 폼
+        setStep('email-register-form');
+      } else {
+        setError(result.message || '인증에 실패했습니다.');
+      }
+    } catch (err: any) {
+      setError(err?.data?.message || err?.message || '인증에 실패했습니다.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // 이메일 회원가입: 인증 완료 후 프로필
+  const handleEmailRegister = async () => {
+    if (!form.jobCategory || !form.ageGroup) {
+      setError('모든 항목을 입력해주세요.');
+      return;
+    }
+    setError('');
+    setLoading(true);
+    try {
+      const member = await register({
+        email: email.trim(),
+        countryCode: form.countryCode,
+        jobCategory: form.jobCategory,
+        ageGroup: form.ageGroup,
+      });
+      if (!member) {
+        setError('회원가입에 실패했습니다. 이미 등록된 이메일일 수 있습니다.');
+      }
+    } catch {
+      setError('서버 오류가 발생했습니다.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const goBack = async () => {
+    if (step === 'email-verify') {
+      setStep('email-login');
+      setVerificationCode('');
+      setDemoCode('');
+    } else {
+      setStep('main');
+      setEmail('');
+      setWalletAddress('');
+    }
+    setError('');
+    try { await disconnectAsync(); } catch { /* ignore */ }
+  };
+
+  // 프로필 입력 폼 공통 렌더
+  const renderProfileForm = (onSubmit: () => void, backStep: Step | (() => void)) => (
+    <>
+      <button onClick={typeof backStep === 'function' ? backStep : () => { setStep(backStep); setError(''); }} className="flex items-center gap-1 text-sm text-slate-400 hover:text-indigo-500 transition mb-6">
+        <ArrowLeft size={16} /> 뒤로
+      </button>
+
+      <h2 className={`text-2xl font-black mb-2 ${isDark ? 'text-white' : 'text-slate-900'}`}>
+        {walletAddress ? '프로필 설정' : '회원가입'}
+      </h2>
+      <p className="text-slate-500 text-sm mb-4">
+        {walletAddress ? '지갑 연결 완료! 정보를 입력해주세요.' : '처음이시군요! 정보를 입력해주세요.'}
+      </p>
+
+      {walletAddress ? (
+        <div className={`flex items-center justify-center gap-2 py-3 px-4 rounded-xl mb-6 text-sm font-mono ${isDark ? 'bg-slate-800 text-indigo-400' : 'bg-indigo-50 text-indigo-600'}`}>
+          <Wallet size={14} />
+          {walletAddress.slice(0, 6)}...{walletAddress.slice(-4)}
+        </div>
+      ) : (
+        <div className={`flex items-center justify-center gap-2 py-2 px-4 rounded-xl mb-6 text-sm ${isDark ? 'bg-slate-800 text-indigo-400' : 'bg-indigo-50 text-indigo-600'}`}>
+          <Mail size={14} />
+          {email}
+        </div>
+      )}
+
+      <div className="space-y-4 text-left">
+        <div>
+          <label className="text-xs font-bold text-slate-400 uppercase mb-1.5 block">국가</label>
+          <select
+            value={form.countryCode}
+            onChange={(e) => setForm(f => ({ ...f, countryCode: e.target.value }))}
+            className={`w-full p-3.5 rounded-xl border text-sm font-medium transition ${isDark ? 'bg-slate-800 border-slate-700 text-white' : 'bg-slate-50 border-slate-200 text-slate-900'}`}
+          >
+            {COUNTRIES.map(c => (
+              <option key={c.code} value={c.code}>{c.label}</option>
+            ))}
+          </select>
+        </div>
+
+        <div>
+          <label className="text-xs font-bold text-slate-400 uppercase mb-1.5 block">연령대</label>
+          <div className="grid grid-cols-5 gap-2">
+            {AGE_GROUPS.map(a => (
+              <button
+                key={a.value}
+                type="button"
+                onClick={() => setForm(f => ({ ...f, ageGroup: a.value }))}
+                className={`py-3 rounded-xl text-xs font-bold transition-all ${
+                  form.ageGroup === a.value
+                    ? 'bg-indigo-600 text-white'
+                    : isDark ? 'bg-slate-800 text-slate-400 hover:bg-slate-700' : 'bg-slate-100 text-slate-500 hover:bg-slate-200'
+                }`}
+              >
+                {a.label}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div>
+          <label className="text-xs font-bold text-slate-400 uppercase mb-1.5 block">직업군</label>
+          <select
+            value={form.jobCategory}
+            onChange={(e) => setForm(f => ({ ...f, jobCategory: e.target.value }))}
+            className={`w-full p-3.5 rounded-xl border text-sm font-medium transition ${isDark ? 'bg-slate-800 border-slate-700 text-white' : 'bg-slate-50 border-slate-200 text-slate-900'}`}
+          >
+            <option value="">선택해주세요</option>
+            {JOB_CATEGORIES.map(j => (
+              <option key={j} value={j}>{j}</option>
+            ))}
+          </select>
+        </div>
+      </div>
+
+      {error && (
+        <p className="mt-4 text-sm text-rose-500 font-medium">{error}</p>
+      )}
+
+      <button
+        onClick={onSubmit}
+        disabled={loading || !form.jobCategory || !form.ageGroup}
+        className="w-full mt-6 py-4 rounded-2xl font-bold text-lg bg-indigo-600 text-white hover:bg-indigo-700 transition-all active:scale-95 disabled:opacity-50 flex items-center justify-center space-x-2"
+      >
+        {loading ? <Loader2 size={20} className="animate-spin" /> : null}
+        <span>{loading ? '가입 중...' : '가입 완료'}</span>
+      </button>
+    </>
+  );
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-gray-900 p-8 rounded-2xl shadow-2xl w-full max-w-md border border-gray-700">
-        <h2 className="text-3xl font-bold text-white mb-6 text-center">
-          🔮 Predata
-        </h2>
+    <div className={`min-h-screen flex flex-col items-center justify-center p-6 transition-all duration-500 ${isDark ? 'bg-slate-950' : 'bg-slate-50'}`}>
+      <div className="mb-12 scale-125">
+        <PredataLogo />
+      </div>
 
-        {/* 로그인 방식 선택 */}
-        {step === 'choice' && (
-          <div className="space-y-4">
-            <p className="text-gray-400 text-center mb-6">
-              로그인 방식을 선택하세요
+      <div className={`max-w-md w-full p-10 rounded-[2.5rem] border text-center shadow-2xl transition-all ${isDark ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-100'}`}>
+
+        {step === 'main' && (
+          <>
+            <h1 className={`text-3xl font-black mb-4 ${isDark ? 'text-white' : 'text-slate-900'}`}>
+              데이터로 예측하는<br />현명한 미래
+            </h1>
+            <p className="text-slate-500 mb-10 text-sm leading-relaxed">
+              PRE(D)ATA는 지능형 오라클과 AI를 활용한<br />차세대 탈중앙화 예측 플랫폼입니다.
             </p>
 
-            <button
-              onClick={() => setStep('wallet')}
-              className="w-full flex items-center justify-center gap-2 px-6 py-4 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-xl hover:from-blue-700 hover:to-purple-700 transition font-semibold"
-            >
-              <Wallet size={20} />
-              지갑으로 로그인 (Web3)
-            </button>
+            <div className="space-y-3">
+              <button
+                onClick={() => { setStep('email-login'); setError(''); }}
+                disabled={loading}
+                className="w-full py-4 rounded-2xl font-bold text-lg flex items-center justify-center space-x-3 bg-indigo-600 text-white hover:bg-indigo-700 transition-all active:scale-95 disabled:opacity-50"
+              >
+                <Mail size={20} />
+                <span>이메일로 시작하기</span>
+              </button>
 
-            <button
-              onClick={() => setStep('email')}
-              className="w-full flex items-center justify-center gap-2 px-6 py-4 bg-gray-700 text-white rounded-xl hover:bg-gray-600 transition font-semibold"
-            >
-              <Mail size={20} />
-              이메일로 로그인
-            </button>
+              <button
+                onClick={handleLogin}
+                disabled={loading}
+                className={`w-full py-4 rounded-2xl font-bold text-lg flex items-center justify-center space-x-3 border-2 transition-all active:scale-95 disabled:opacity-50 ${isDark ? 'border-slate-700 text-white hover:bg-slate-800' : 'border-slate-200 text-slate-900 hover:bg-slate-50'}`}
+              >
+                {loading ? <Loader2 size={20} className="animate-spin" /> : <Wallet size={20} />}
+                <span>MetaMask 로그인</span>
+              </button>
 
-            <p className="text-xs text-gray-500 text-center mt-4">
-              💡 Web3 지갑 로그인 시 온체인에 베팅이 기록됩니다
-            </p>
-          </div>
-        )}
-
-        {/* 지갑 연결 */}
-        {step === 'wallet' && (
-          <div className="space-y-4">
-            <button
-              onClick={() => setStep('choice')}
-              className="text-gray-400 hover:text-white mb-4"
-            >
-              ← 뒤로
-            </button>
-
-            <div className="text-center space-y-4">
-              <p className="text-gray-400 mb-4">
-                지갑을 연결하세요
-              </p>
-
-              <ConnectButton />
-
-              {isConnected && address && (
-                <div className="mt-6">
-                  <p className="text-sm text-gray-400 mb-2">
-                    연결된 지갑: {address.slice(0, 6)}...{address.slice(-4)}
-                  </p>
-                  <button
-                    onClick={handleWalletLogin}
-                    disabled={loading}
-                    className="w-full px-6 py-3 bg-gradient-to-r from-green-600 to-blue-600 text-white rounded-xl hover:from-green-700 hover:to-blue-700 transition font-semibold disabled:opacity-50"
-                  >
-                    {loading ? '로그인 중...' : '계속하기'}
-                  </button>
-                </div>
-              )}
+              <button
+                onClick={loginAsGuest}
+                className="w-full pt-4 text-sm text-slate-400 hover:text-indigo-500 transition-colors flex items-center justify-center space-x-1"
+              >
+                <MousePointer2 size={14} />
+                <span>게스트로 둘러보기</span>
+              </button>
             </div>
 
             {error && (
-              <p className="text-red-400 text-sm text-center">{error}</p>
+              <p className="mt-4 text-sm text-rose-500 font-medium">{error}</p>
             )}
-          </div>
+          </>
         )}
 
-        {/* 이메일 로그인 */}
-        {step === 'email' && (
-          <form onSubmit={handleEmailSubmit} className="space-y-4">
-            <button
-              type="button"
-              onClick={() => setStep('choice')}
-              className="text-gray-400 hover:text-white mb-4"
-            >
-              ← 뒤로
+        {step === 'register-form' && renderProfileForm(handleRegister, 'main')}
+
+        {step === 'email-login' && (
+          <>
+            <button onClick={goBack} className="flex items-center gap-1 text-sm text-slate-400 hover:text-indigo-500 transition mb-6">
+              <ArrowLeft size={16} /> 뒤로
             </button>
 
-            <div className="relative">
-              <Mail className="absolute left-3 top-3 text-gray-400" size={20} />
+            <h2 className={`text-2xl font-black mb-2 ${isDark ? 'text-white' : 'text-slate-900'}`}>
+              이메일 로그인
+            </h2>
+            <p className="text-slate-500 text-sm mb-6">
+              이메일을 입력하면 인증 코드가 발송됩니다.<br />신규 회원이면 자동으로 가입 화면으로 이동합니다.
+            </p>
+
+            <div className="mb-4">
               <input
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                placeholder="이메일 주소"
-                required
-                className="w-full pl-10 pr-4 py-3 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                onKeyDown={(e) => e.key === 'Enter' && handleSendCode()}
+                placeholder="example@email.com"
+                className={`w-full p-4 rounded-2xl border text-sm font-medium transition ${isDark ? 'bg-slate-800 border-slate-700 text-white placeholder:text-slate-500 focus:border-indigo-500' : 'bg-slate-50 border-slate-200 text-slate-900 placeholder:text-slate-400 focus:border-indigo-500'}`}
+                autoFocus
               />
             </div>
 
-            <button
-              type="submit"
-              disabled={loading}
-              className="w-full px-6 py-3 bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-xl hover:from-purple-700 hover:to-pink-700 transition font-semibold disabled:opacity-50"
-            >
-              {loading ? '확인 중...' : '계속하기'}
-            </button>
-
             {error && (
-              <p className="text-red-400 text-sm text-center">{error}</p>
+              <p className="mb-4 text-sm text-rose-500 font-medium">{error}</p>
             )}
-          </form>
+
+            <button
+              onClick={handleSendCode}
+              disabled={loading || !email.trim()}
+              className="w-full py-4 rounded-2xl font-bold text-lg bg-indigo-600 text-white hover:bg-indigo-700 transition-all active:scale-95 disabled:opacity-50 flex items-center justify-center space-x-2"
+            >
+              {loading ? <Loader2 size={20} className="animate-spin" /> : <Mail size={20} />}
+              <span>{loading ? '발송 중...' : '인증 코드 받기'}</span>
+            </button>
+          </>
         )}
 
-        {/* 페르소나 입력 */}
-        {step === 'register' && (
-          <form onSubmit={handleRegister} className="space-y-4">
-            <p className="text-gray-400 text-center mb-4">
-              페르소나 정보를 입력하세요
+        {step === 'email-verify' && (
+          <>
+            <button onClick={goBack} className="flex items-center gap-1 text-sm text-slate-400 hover:text-indigo-500 transition mb-6">
+              <ArrowLeft size={16} /> 뒤로
+            </button>
+
+            <div className="flex justify-center mb-4">
+              <div className={`w-14 h-14 rounded-2xl flex items-center justify-center ${isDark ? 'bg-indigo-500/20' : 'bg-indigo-50'}`}>
+                <ShieldCheck size={28} className="text-indigo-500" />
+              </div>
+            </div>
+
+            <h2 className={`text-2xl font-black mb-2 ${isDark ? 'text-white' : 'text-slate-900'}`}>
+              인증 코드 입력
+            </h2>
+            <p className="text-slate-500 text-sm mb-6">
+              <span className="text-indigo-500 font-medium">{email}</span>으로<br />
+              발송된 6자리 코드를 입력해주세요.
             </p>
 
-            {memberData.walletAddress && (
-              <div className="bg-blue-900 bg-opacity-30 p-3 rounded-lg mb-4">
-                <p className="text-xs text-blue-300">
-                  🔗 지갑: {memberData.walletAddress.slice(0, 6)}...{memberData.walletAddress.slice(-4)}
-                </p>
+            {demoCode && (
+              <div className={`mb-4 py-2 px-4 rounded-xl text-xs ${isDark ? 'bg-amber-500/10 text-amber-400' : 'bg-amber-50 text-amber-600'}`}>
+                데모 모드 — 인증 코드: <span className="font-mono font-bold">{demoCode}</span>
               </div>
             )}
 
-            {!memberData.walletAddress && (
-              <div className="relative">
-                <Mail className="absolute left-3 top-3 text-gray-400" size={20} />
-                <input
-                  type="email"
-                  value={memberData.email}
-                  disabled
-                  className="w-full pl-10 pr-4 py-3 bg-gray-800 border border-gray-700 rounded-lg text-white"
-                />
-              </div>
-            )}
-
-            <div className="relative">
-              <MapPin className="absolute left-3 top-3 text-gray-400" size={20} />
-              <select
-                value={memberData.countryCode}
-                onChange={(e) => setMemberData({ ...memberData, countryCode: e.target.value })}
-                className="w-full pl-10 pr-4 py-3 bg-gray-800 border border-gray-700 rounded-lg text-white"
-              >
-                <option value="KR">🇰🇷 한국</option>
-                <option value="US">🇺🇸 미국</option>
-                <option value="JP">🇯🇵 일본</option>
-                <option value="CN">🇨🇳 중국</option>
-              </select>
+            <div className="mb-4">
+              <input
+                ref={codeInputRef}
+                type="text"
+                inputMode="numeric"
+                maxLength={6}
+                value={verificationCode}
+                onChange={(e) => setVerificationCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                onKeyDown={(e) => e.key === 'Enter' && verificationCode.length === 6 && handleVerifyCode()}
+                placeholder="000000"
+                className={`w-full p-4 rounded-2xl border text-center text-2xl font-mono font-bold tracking-[0.5em] transition ${isDark ? 'bg-slate-800 border-slate-700 text-white placeholder:text-slate-600 focus:border-indigo-500' : 'bg-slate-50 border-slate-200 text-slate-900 placeholder:text-slate-300 focus:border-indigo-500'}`}
+                autoFocus
+              />
             </div>
-
-            <div className="relative">
-              <Briefcase className="absolute left-3 top-3 text-gray-400" size={20} />
-              <select
-                value={memberData.jobCategory}
-                onChange={(e) => setMemberData({ ...memberData, jobCategory: e.target.value })}
-                className="w-full pl-10 pr-4 py-3 bg-gray-800 border border-gray-700 rounded-lg text-white"
-              >
-                <option value="IT">💻 IT/개발</option>
-                <option value="FINANCE">💰 금융</option>
-                <option value="ART">🎨 예술/디자인</option>
-                <option value="EDUCATION">📚 교육</option>
-                <option value="OTHER">🔧 기타</option>
-              </select>
-            </div>
-
-            <div className="relative">
-              <Calendar className="absolute left-3 top-3 text-gray-400" size={20} />
-              <select
-                value={memberData.ageGroup}
-                onChange={(e) => setMemberData({ ...memberData, ageGroup: parseInt(e.target.value) })}
-                className="w-full pl-10 pr-4 py-3 bg-gray-800 border border-gray-700 rounded-lg text-white"
-              >
-                <option value={20}>20대</option>
-                <option value={30}>30대</option>
-                <option value={40}>40대</option>
-                <option value={50}>50대 이상</option>
-              </select>
-            </div>
-
-            <button
-              type="submit"
-              disabled={loading}
-              className="w-full px-6 py-3 bg-gradient-to-r from-green-600 to-blue-600 text-white rounded-xl hover:from-green-700 hover:to-blue-700 transition font-semibold disabled:opacity-50"
-            >
-              {loading ? '가입 중...' : '가입 완료'}
-            </button>
 
             {error && (
-              <p className="text-red-400 text-sm text-center">{error}</p>
+              <p className="mb-4 text-sm text-rose-500 font-medium">{error}</p>
             )}
-          </form>
+
+            <button
+              onClick={handleVerifyCode}
+              disabled={loading || verificationCode.length !== 6}
+              className="w-full py-4 rounded-2xl font-bold text-lg bg-indigo-600 text-white hover:bg-indigo-700 transition-all active:scale-95 disabled:opacity-50 flex items-center justify-center space-x-2"
+            >
+              {loading ? <Loader2 size={20} className="animate-spin" /> : <ShieldCheck size={20} />}
+              <span>{loading ? '확인 중...' : '인증 확인'}</span>
+            </button>
+
+            <button
+              onClick={handleSendCode}
+              disabled={loading}
+              className="w-full mt-3 text-sm text-slate-400 hover:text-indigo-500 transition-colors"
+            >
+              인증 코드 재발송
+            </button>
+          </>
         )}
+
+        {step === 'email-register-form' && renderProfileForm(handleEmailRegister, () => { setStep('email-login'); setError(''); })}
+
+        <div className={`mt-8 pt-8 border-t flex justify-center ${isDark ? 'border-slate-800' : 'border-slate-100'}`}>
+          <button onClick={toggleTheme} className="text-slate-400 hover:text-indigo-500 transition-colors">
+            {isDark ? <Sun size={20} /> : <Moon size={20} />}
+          </button>
+        </div>
       </div>
+
+      <p className="mt-8 text-xs text-slate-400">&copy; 2025 PRE(D)ATA. All rights reserved.</p>
     </div>
   );
 }

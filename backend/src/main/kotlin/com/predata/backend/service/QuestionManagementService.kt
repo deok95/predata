@@ -5,6 +5,7 @@ import com.predata.backend.domain.Question
 import com.predata.backend.repository.QuestionRepository
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
+import jakarta.validation.constraints.NotBlank
 import java.math.BigDecimal
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
@@ -14,6 +15,10 @@ class QuestionManagementService(
     private val questionRepository: QuestionRepository,
     private val blockchainService: BlockchainService
 ) {
+
+    companion object {
+        const val INITIAL_LIQUIDITY = 500L
+    }
 
     /**
      * 새 질문 생성
@@ -32,9 +37,9 @@ class QuestionManagementService(
             category = request.category,
             categoryWeight = BigDecimal(request.categoryWeight ?: 1.0),
             status = "OPEN",
-            totalBetPool = 0,
-            yesBetPool = 0,
-            noBetPool = 0,
+            totalBetPool = INITIAL_LIQUIDITY * 2,
+            yesBetPool = INITIAL_LIQUIDITY,
+            noBetPool = INITIAL_LIQUIDITY,
             finalResult = FinalResult.PENDING,
             expiredAt = expiredAt,
             createdAt = LocalDateTime.now()
@@ -63,21 +68,19 @@ class QuestionManagementService(
         val question = questionRepository.findById(questionId)
             .orElseThrow { IllegalArgumentException("질문을 찾을 수 없습니다.") }
 
-        // 이미 정산된 질문은 수정 불가
-        if (question.status == "SETTLED") {
-            throw IllegalStateException("이미 정산된 질문은 수정할 수 없습니다.")
+        // 정산된 또는 정산 대기 중인 질문은 수정 불가
+        if (question.status == "SETTLED" || question.status == "PENDING_SETTLEMENT") {
+            throw IllegalStateException("정산된 또는 정산 대기 중인 질문은 수정할 수 없습니다.")
         }
 
         // 수정 가능한 필드만 업데이트
-        request.title?.let { question.title }
-        request.category?.let { question.category }
-        request.expiredAt?.let { 
+        request.title?.let { question.title = it }
+        request.category?.let { question.category = it }
+        request.expiredAt?.let {
             val newExpiredAt = LocalDateTime.parse(it, DateTimeFormatter.ISO_DATE_TIME)
             if (newExpiredAt.isBefore(LocalDateTime.now())) {
                 throw IllegalArgumentException("마감일은 현재 시간 이후여야 합니다.")
             }
-            // Note: Question이 data class라 불변이므로 실제로는 새 객체 생성 필요
-            // 여기서는 간단히 처리
         }
 
         val saved = questionRepository.save(question)
@@ -100,8 +103,13 @@ class QuestionManagementService(
         val question = questionRepository.findById(questionId)
             .orElseThrow { IllegalArgumentException("질문을 찾을 수 없습니다.") }
 
-        // 베팅이 있는 질문은 삭제 불가
-        if (question.totalBetPool > 0) {
+        // 정산된 또는 정산 대기 중인 질문은 삭제 불가
+        if (question.status == "SETTLED" || question.status == "PENDING_SETTLEMENT") {
+            throw IllegalStateException("정산된 또는 정산 대기 중인 질문은 삭제할 수 없습니다.")
+        }
+
+        // 실제 베팅이 있는 질문은 삭제 불가 (초기 유동성만 있는 경우 삭제 가능)
+        if (question.totalBetPool > INITIAL_LIQUIDITY * 2) {
             throw IllegalStateException("베팅이 있는 질문은 삭제할 수 없습니다.")
         }
 
@@ -137,9 +145,15 @@ class QuestionManagementService(
 // ===== DTOs =====
 
 data class CreateQuestionRequest(
+    @field:NotBlank(message = "제목은 필수입니다.")
     val title: String,
+
+    @field:NotBlank(message = "카테고리는 필수입니다.")
     val category: String,
+
+    @field:NotBlank(message = "마감일은 필수입니다.")
     val expiredAt: String, // ISO 8601 형식
+
     val categoryWeight: Double? = 1.0
 )
 

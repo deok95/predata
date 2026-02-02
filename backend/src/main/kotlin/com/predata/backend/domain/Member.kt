@@ -45,6 +45,22 @@ data class Member(
     @Column(name = "point_balance")
     var pointBalance: Long = 0,
 
+    // === 어뷰징 방지 ===
+    @Column(name = "is_banned")
+    var isBanned: Boolean = false,
+
+    @Column(name = "ban_reason", length = 255)
+    var banReason: String? = null,
+
+    @Column(name = "banned_at")
+    var bannedAt: LocalDateTime? = null,
+
+    @Column(name = "signup_ip", length = 45)
+    var signupIp: String? = null,
+
+    @Column(name = "last_ip", length = 45)
+    var lastIp: String? = null,
+
     @Column(name = "created_at", nullable = false, updatable = false)
     val createdAt: LocalDateTime = LocalDateTime.now()
 )

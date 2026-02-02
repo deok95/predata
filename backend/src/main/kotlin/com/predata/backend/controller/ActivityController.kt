@@ -1,35 +1,46 @@
 package com.predata.backend.controller
 
 import com.predata.backend.dto.*
+import com.predata.backend.domain.ActivityType
 import com.predata.backend.service.VoteService
 import com.predata.backend.service.BetService
 import com.predata.backend.service.QuestionService
 import com.predata.backend.service.TicketService
 import com.predata.backend.service.SettlementService
 import com.predata.backend.domain.FinalResult
+import com.predata.backend.repository.ActivityRepository
+import com.predata.backend.repository.MemberRepository
+import jakarta.servlet.http.HttpServletRequest
+import jakarta.validation.Valid
 import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.*
 
 @RestController
 @RequestMapping("/api")
-@CrossOrigin(origins = ["http://localhost:3000"]) // Next.js 프론트엔드
+@CrossOrigin(origins = ["http://localhost:3000", "http://localhost:3001"])
 class ActivityController(
     private val voteService: VoteService,
     private val betService: BetService,
     private val questionService: QuestionService,
     private val ticketService: TicketService,
     private val settlementService: SettlementService,
-    private val bettingSuspensionService: com.predata.backend.service.BettingSuspensionService
+    private val bettingSuspensionService: com.predata.backend.service.BettingSuspensionService,
+    private val memberRepository: MemberRepository,
+    private val activityRepository: ActivityRepository
 ) {
 
     /**
      * 투표 실행
      */
     @PostMapping("/vote")
-    fun vote(@RequestBody request: VoteRequest): ResponseEntity<ActivityResponse> {
-        val response = voteService.vote(request)
-        
+    fun vote(@Valid @RequestBody request: VoteRequest, httpRequest: HttpServletRequest): ResponseEntity<ActivityResponse> {
+        val clientIp = extractClientIp(httpRequest)
+        val response = voteService.vote(request, clientIp)
+
+        // IP 업데이트
+        if (response.success) updateMemberIp(request.memberId, clientIp)
+
         return if (response.success) {
             ResponseEntity.ok(response)
         } else {
@@ -41,7 +52,9 @@ class ActivityController(
      * 베팅 실행
      */
     @PostMapping("/bet")
-    fun bet(@RequestBody request: BetRequest): ResponseEntity<ActivityResponse> {
+    fun bet(@Valid @RequestBody request: BetRequest, httpRequest: HttpServletRequest): ResponseEntity<ActivityResponse> {
+        val clientIp = extractClientIp(httpRequest)
+
         // 1. 베팅 일시 중지 체크
         val suspensionStatus = bettingSuspensionService.isBettingSuspendedByQuestionId(request.questionId)
         if (suspensionStatus.suspended) {
@@ -52,15 +65,35 @@ class ActivityController(
                 )
             )
         }
-        
+
         // 2. 베팅 실행
-        val response = betService.bet(request)
-        
+        val response = betService.bet(request, clientIp)
+
+        // IP 업데이트
+        if (response.success) updateMemberIp(request.memberId, clientIp)
+
         return if (response.success) {
             ResponseEntity.ok(response)
         } else {
             ResponseEntity.status(HttpStatus.BAD_REQUEST).body(response)
         }
+    }
+
+    private fun updateMemberIp(memberId: Long, ip: String) {
+        try {
+            memberRepository.findById(memberId).ifPresent { member ->
+                member.lastIp = ip
+                memberRepository.save(member)
+            }
+        } catch (_: Exception) { /* IP 업데이트 실패는 무시 */ }
+    }
+
+    private fun extractClientIp(request: HttpServletRequest): String {
+        val forwarded = request.getHeader("X-Forwarded-For")
+        if (!forwarded.isNullOrBlank()) return forwarded.split(",").first().trim()
+        val realIp = request.getHeader("X-Real-IP")
+        if (!realIp.isNullOrBlank()) return realIp.trim()
+        return request.remoteAddr ?: "unknown"
     }
 
     /**
@@ -111,6 +144,36 @@ class ActivityController(
     }
 
     /**
+     * 회원의 투표/베팅 내역 조회
+     * GET /api/activities/member/{memberId}?type=VOTE
+     */
+    @GetMapping("/activities/member/{memberId}")
+    fun getActivitiesByMember(
+        @PathVariable memberId: Long,
+        @RequestParam(required = false) type: String?
+    ): ResponseEntity<List<Map<String, Any?>>> {
+        val activities = if (type != null) {
+            val activityType = ActivityType.valueOf(type.uppercase())
+            activityRepository.findByMemberIdAndActivityType(memberId, activityType)
+        } else {
+            activityRepository.findByMemberId(memberId)
+        }
+
+        val result = activities.map { a ->
+            mapOf(
+                "id" to a.id,
+                "questionId" to a.questionId,
+                "activityType" to a.activityType.name,
+                "choice" to a.choice.name,
+                "amount" to a.amount,
+                "createdAt" to a.createdAt.toString()
+            )
+        }
+
+        return ResponseEntity.ok(result)
+    }
+
+    /**
      * 배당률 계산 (실시간)
      * GET /api/questions/{id}/odds
      */
@@ -157,7 +220,7 @@ class ActivityController(
     }
 
     /**
-     * 질문 결과 확정 및 정산
+     * 정산 시작 (PENDING_SETTLEMENT)
      * POST /api/questions/{id}/settle
      */
     @PostMapping("/questions/{id}/settle")
@@ -165,15 +228,32 @@ class ActivityController(
         @PathVariable id: Long,
         @RequestBody request: SettleQuestionRequest
     ): ResponseEntity<Any> {
-        return try {
-            val finalResult = FinalResult.valueOf(request.finalResult)
-            val result = settlementService.settleQuestion(id, finalResult)
-            ResponseEntity.ok(result)
-        } catch (e: IllegalArgumentException) {
-            ResponseEntity.badRequest().body(mapOf("error" to (e.message ?: "잘못된 요청입니다.")))
-        } catch (e: IllegalStateException) {
-            ResponseEntity.status(HttpStatus.CONFLICT).body(mapOf("error" to (e.message ?: "이미 정산되었습니다.")))
-        }
+        val finalResult = FinalResult.valueOf(request.finalResult)
+        val result = settlementService.initiateSettlement(id, finalResult, request.sourceUrl)
+        return ResponseEntity.ok(result)
+    }
+
+    /**
+     * 정산 확정 (SETTLED) — 배당금 분배 실행
+     * POST /api/questions/{id}/settle/finalize
+     */
+    @PostMapping("/questions/{id}/settle/finalize")
+    fun finalizeSettlement(
+        @PathVariable id: Long,
+        @RequestBody(required = false) request: FinalizeSettlementRequest?
+    ): ResponseEntity<Any> {
+        val result = settlementService.finalizeSettlement(id, request?.force ?: false)
+        return ResponseEntity.ok(result)
+    }
+
+    /**
+     * 정산 취소 (OPEN으로 복귀)
+     * POST /api/questions/{id}/settle/cancel
+     */
+    @PostMapping("/questions/{id}/settle/cancel")
+    fun cancelSettlement(@PathVariable id: Long): ResponseEntity<Any> {
+        val result = settlementService.cancelPendingSettlement(id)
+        return ResponseEntity.ok(result)
     }
 
     /**
@@ -223,6 +303,11 @@ class ActivityController(
     )
 
     data class SettleQuestionRequest(
-        val finalResult: String // "YES" or "NO"
+        val finalResult: String, // "YES" or "NO"
+        val sourceUrl: String? = null // 정산 근거 링크
+    )
+
+    data class FinalizeSettlementRequest(
+        val force: Boolean = false // true면 이의 제기 기간 무시하고 즉시 확정
     )
 }

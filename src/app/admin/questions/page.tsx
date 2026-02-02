@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Plus, Trash2, Edit, CheckCircle, Clock, TrendingUp } from 'lucide-react';
+import { Plus, Trash2, Edit, CheckCircle, Clock, TrendingUp, Gavel, X, AlertTriangle } from 'lucide-react';
 import LiveMatchesDashboard from '@/components/LiveMatchesDashboard';
 
 const BACKEND_URL = 'http://localhost:8080/api';
@@ -21,6 +21,11 @@ export default function AdminQuestionManagement() {
   const [questions, setQuestions] = useState<QuestionAdminView[]>([]);
   const [loading, setLoading] = useState(false);
   const [showCreateForm, setShowCreateForm] = useState(false);
+
+  // 정산 모달
+  const [settleTarget, setSettleTarget] = useState<QuestionAdminView | null>(null);
+  const [settleFinalResult, setSettleFinalResult] = useState<'YES' | 'NO'>('YES');
+  const [settleSourceUrl, setSettleSourceUrl] = useState('');
 
   // 폼 데이터
   const [title, setTitle] = useState('');
@@ -102,6 +107,75 @@ export default function AdminQuestionManagement() {
     } catch (error) {
       console.error('Failed to delete question:', error);
       alert('❌ 질문 삭제 중 오류가 발생했습니다.');
+    }
+  };
+
+  const handleSettle = async () => {
+    if (!settleTarget) return;
+    setLoading(true);
+    try {
+      const response = await fetch(`${BACKEND_URL}/questions/${settleTarget.id}/settle`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          finalResult: settleFinalResult,
+          sourceUrl: settleSourceUrl || null,
+        }),
+      });
+      const data = await response.json();
+      if (response.ok) {
+        alert(`정산 시작: ${data.message}`);
+        setSettleTarget(null);
+        setSettleSourceUrl('');
+        fetchQuestions();
+      } else {
+        alert(`정산 실패: ${data.message || '오류 발생'}`);
+      }
+    } catch (error) {
+      console.error('Settlement failed:', error);
+      alert('정산 중 오류가 발생했습니다.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleFinalize = async (id: number) => {
+    if (!confirm('정산을 확정하시겠습니까? 배당금이 분배됩니다.')) return;
+    try {
+      const response = await fetch(`${BACKEND_URL}/questions/${id}/settle/finalize`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ force: true }),
+      });
+      const data = await response.json();
+      if (response.ok) {
+        alert(`정산 확정: ${data.message}`);
+        fetchQuestions();
+      } else {
+        alert(`확정 실패: ${data.message || '오류 발생'}`);
+      }
+    } catch (error) {
+      console.error('Finalize failed:', error);
+      alert('확정 중 오류가 발생했습니다.');
+    }
+  };
+
+  const handleCancelSettle = async (id: number) => {
+    if (!confirm('정산을 취소하시겠습니까? 질문이 OPEN 상태로 돌아갑니다.')) return;
+    try {
+      const response = await fetch(`${BACKEND_URL}/questions/${id}/settle/cancel`, {
+        method: 'POST',
+      });
+      const data = await response.json();
+      if (response.ok) {
+        alert(`정산 취소: ${data.message}`);
+        fetchQuestions();
+      } else {
+        alert(`취소 실패: ${data.message || '오류 발생'}`);
+      }
+    } catch (error) {
+      console.error('Cancel failed:', error);
+      alert('취소 중 오류가 발생했습니다.');
     }
   };
 
@@ -193,7 +267,7 @@ export default function AdminQuestionManagement() {
         )}
 
         {/* 통계 */}
-        <div className="grid grid-cols-3 gap-4 mb-8">
+        <div className="grid grid-cols-4 gap-4 mb-8">
           <div className="bg-white rounded-xl shadow-lg p-6">
             <p className="text-sm text-slate-600 mb-1">총 질문</p>
             <p className="text-3xl font-black text-blue-600">{questions.length}</p>
@@ -202,6 +276,12 @@ export default function AdminQuestionManagement() {
             <p className="text-sm text-slate-600 mb-1">진행 중</p>
             <p className="text-3xl font-black text-green-600">
               {questions.filter(q => q.status === 'OPEN').length}
+            </p>
+          </div>
+          <div className="bg-white rounded-xl shadow-lg p-6">
+            <p className="text-sm text-slate-600 mb-1">정산 대기</p>
+            <p className="text-3xl font-black text-amber-600">
+              {questions.filter(q => q.status === 'PENDING_SETTLEMENT').length}
             </p>
           </div>
           <div className="bg-white rounded-xl shadow-lg p-6">
@@ -239,10 +319,11 @@ export default function AdminQuestionManagement() {
                   <td className="p-4">
                     <span className={`px-2 py-1 rounded text-xs font-bold ${
                       question.status === 'OPEN' ? 'bg-green-100 text-green-700' :
+                      question.status === 'PENDING_SETTLEMENT' ? 'bg-amber-100 text-amber-700' :
                       question.status === 'SETTLED' ? 'bg-purple-100 text-purple-700' :
                       'bg-slate-100 text-slate-700'
                     }`}>
-                      {question.status}
+                      {question.status === 'PENDING_SETTLEMENT' ? '정산 대기' : question.status}
                     </span>
                   </td>
                   <td className="p-4 text-sm">${question.totalBetPool.toLocaleString()}</td>
@@ -258,14 +339,40 @@ export default function AdminQuestionManagement() {
                       >
                         <TrendingUp size={16} />
                       </button>
-                      <button
-                        onClick={() => handleDelete(question.id)}
-                        className="p-2 text-red-600 hover:bg-red-50 rounded transition"
-                        title="삭제"
-                        disabled={question.totalBetPool > 0}
-                      >
-                        <Trash2 size={16} />
-                      </button>
+                      {question.status === 'OPEN' && (
+                        <button
+                          onClick={() => { setSettleTarget(question); setSettleFinalResult('YES'); setSettleSourceUrl(''); }}
+                          className="p-2 text-amber-600 hover:bg-amber-50 rounded transition"
+                          title="정산 시작"
+                        >
+                          <Gavel size={16} />
+                        </button>
+                      )}
+                      {question.status === 'PENDING_SETTLEMENT' && (
+                        <>
+                          <button
+                            onClick={() => handleFinalize(question.id)}
+                            className="px-2 py-1 text-xs font-bold text-green-700 bg-green-100 hover:bg-green-200 rounded transition"
+                          >
+                            확정
+                          </button>
+                          <button
+                            onClick={() => handleCancelSettle(question.id)}
+                            className="px-2 py-1 text-xs font-bold text-red-700 bg-red-100 hover:bg-red-200 rounded transition"
+                          >
+                            취소
+                          </button>
+                        </>
+                      )}
+                      {question.status !== 'SETTLED' && question.status !== 'PENDING_SETTLEMENT' && (
+                        <button
+                          onClick={() => handleDelete(question.id)}
+                          className="p-2 text-red-600 hover:bg-red-50 rounded transition"
+                          title="삭제"
+                        >
+                          <Trash2 size={16} />
+                        </button>
+                      )}
                     </div>
                   </td>
                 </tr>
@@ -274,6 +381,87 @@ export default function AdminQuestionManagement() {
           </table>
         </div>
       </div>
+
+      {/* 정산 모달 */}
+      {settleTarget && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-2xl shadow-2xl p-8 max-w-lg w-full mx-4">
+            <div className="flex items-center justify-between mb-6">
+              <h3 className="text-xl font-black text-slate-800">정산 시작</h3>
+              <button onClick={() => setSettleTarget(null)} className="text-slate-400 hover:text-slate-600">
+                <X size={20} />
+              </button>
+            </div>
+
+            <p className="text-sm text-slate-600 mb-4 font-medium">
+              &quot;{settleTarget.title}&quot;
+            </p>
+
+            <div className="mb-4">
+              <label className="block text-sm font-semibold text-slate-700 mb-2">최종 결과</label>
+              <div className="grid grid-cols-2 gap-3">
+                <button
+                  onClick={() => setSettleFinalResult('YES')}
+                  className={`py-3 rounded-xl font-bold text-sm transition-all border-2 ${
+                    settleFinalResult === 'YES'
+                      ? 'bg-emerald-500 text-white border-emerald-600'
+                      : 'bg-emerald-50 text-emerald-600 border-emerald-200 hover:bg-emerald-100'
+                  }`}
+                >
+                  YES
+                </button>
+                <button
+                  onClick={() => setSettleFinalResult('NO')}
+                  className={`py-3 rounded-xl font-bold text-sm transition-all border-2 ${
+                    settleFinalResult === 'NO'
+                      ? 'bg-rose-500 text-white border-rose-600'
+                      : 'bg-rose-50 text-rose-600 border-rose-200 hover:bg-rose-100'
+                  }`}
+                >
+                  NO
+                </button>
+              </div>
+            </div>
+
+            <div className="mb-6">
+              <label className="block text-sm font-semibold text-slate-700 mb-2">정산 근거 URL (선택)</label>
+              <input
+                type="url"
+                value={settleSourceUrl}
+                onChange={(e) => setSettleSourceUrl(e.target.value)}
+                placeholder="https://news.example.com/article/..."
+                className="w-full p-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-amber-500 text-sm"
+              />
+              <p className="text-xs text-slate-400 mt-1">결과 판정의 근거가 되는 뉴스/기사 링크를 입력하세요</p>
+            </div>
+
+            <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 mb-6">
+              <div className="flex items-start gap-2">
+                <AlertTriangle size={16} className="text-amber-600 mt-0.5 flex-shrink-0" />
+                <p className="text-xs text-amber-700">
+                  정산을 시작하면 24시간 이의 제기 기간이 시작됩니다. 이 기간 동안 배당금은 분배되지 않으며, &quot;확정&quot; 버튼을 눌러야 최종 정산됩니다.
+                </p>
+              </div>
+            </div>
+
+            <div className="flex gap-3">
+              <button
+                onClick={() => setSettleTarget(null)}
+                className="flex-1 py-3 bg-slate-200 text-slate-800 rounded-lg hover:bg-slate-300 transition font-semibold"
+              >
+                취소
+              </button>
+              <button
+                onClick={handleSettle}
+                disabled={loading}
+                className="flex-1 py-3 bg-amber-600 text-white rounded-lg hover:bg-amber-700 transition font-bold disabled:opacity-50"
+              >
+                {loading ? '처리 중...' : '정산 시작'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

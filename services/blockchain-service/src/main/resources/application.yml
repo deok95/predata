@@ -1,0 +1,17 @@
+spring:
+  application:
+    name: blockchain-service
+  redis:
+    host: localhost
+    port: 6379
+
+server:
+  port: 8087
+
+blockchain:
+  enabled: true
+  mode: mock
+
+logging:
+  level:
+    com.predata.blockchain: DEBUG

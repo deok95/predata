@@ -3,8 +3,21 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Web3Provider } from "@/lib/Web3Provider";
+import { AuthProvider } from "@/hooks/useAuth";
+import { ThemeProvider } from "@/hooks/useTheme";
+import ErrorBoundary from "@/components/ErrorBoundary";
 import '@/lib/localStorage-polyfill'; // localStorage polyfill
+
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      retry: 1,
+      refetchOnWindowFocus: false,
+    },
+  },
+});
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -33,9 +46,17 @@ export default function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
-        <Web3Provider>
-          {children}
-        </Web3Provider>
+        <ErrorBoundary>
+          <QueryClientProvider client={queryClient}>
+            <ThemeProvider>
+              <Web3Provider>
+                <AuthProvider>
+                  {children}
+                </AuthProvider>
+              </Web3Provider>
+            </ThemeProvider>
+          </QueryClientProvider>
+        </ErrorBoundary>
       </body>
     </html>
   );

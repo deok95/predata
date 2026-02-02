@@ -9,6 +9,7 @@ import com.predata.backend.repository.MemberRepository
 import com.predata.backend.repository.QuestionRepository
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
+import java.time.LocalDateTime
 
 @Service
 class BetService(
@@ -25,13 +26,20 @@ class BetService(
      * - 판돈 업데이트 (비관적 락)
      */
     @Transactional
-    fun bet(request: BetRequest): ActivityResponse {
-        // 1. 멤버 조회 및 포인트 확인
+    fun bet(request: BetRequest, clientIp: String? = null): ActivityResponse {
+        // 1. 멤버 조회 및 밴/포인트 확인
         val member = memberRepository.findById(request.memberId)
             .orElse(null) ?: return ActivityResponse(
                 success = false,
                 message = "회원을 찾을 수 없습니다."
             )
+
+        if (member.isBanned) {
+            return ActivityResponse(
+                success = false,
+                message = "계정이 정지되었습니다. 사유: ${member.banReason ?: "이용약관 위반"}"
+            )
+        }
 
         if (member.pointBalance < request.amount) {
             return ActivityResponse(
@@ -51,6 +59,13 @@ class BetService(
             return ActivityResponse(
                 success = false,
                 message = "베팅이 종료되었습니다."
+            )
+        }
+
+        if (question.expiredAt.isBefore(LocalDateTime.now())) {
+            return ActivityResponse(
+                success = false,
+                message = "베팅 기간이 만료되었습니다."
             )
         }
 
@@ -84,14 +99,15 @@ class BetService(
         question.totalBetPool += request.amount
         questionRepository.save(question)
 
-        // 6. 베팅 기록 저장
+        // 6. 베팅 기록 저장 (IP 포함)
         val activity = Activity(
             memberId = request.memberId,
             questionId = request.questionId,
             activityType = ActivityType.BET,
             choice = request.choice,
             amount = request.amount,
-            latencyMs = request.latencyMs
+            latencyMs = request.latencyMs,
+            ipAddress = clientIp
         )
 
         val savedActivity = activityRepository.save(activity)

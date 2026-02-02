@@ -2,8 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { CheckCircle, XCircle, DollarSign, TrendingUp, TrendingDown } from 'lucide-react';
-
-const BACKEND_URL = 'http://localhost:8080/api';
+import { settlementApi, ApiError } from '@/lib/api';
 
 interface SettlementHistoryItem {
   questionId: number;
@@ -32,11 +31,15 @@ export default function MyBets({ memberId, onClose }: MyBetsProps) {
   const fetchHistory = async () => {
     setLoading(true);
     try {
-      const response = await fetch(`${BACKEND_URL}/settlements/history/${memberId}`);
-      const data = await response.json();
-      setHistory(data);
+      const response = await settlementApi.getHistory(memberId);
+      if (response.success && response.data) {
+        setHistory(response.data);
+      }
     } catch (error) {
       console.error('Failed to fetch settlement history:', error);
+      if (error instanceof ApiError) {
+        console.error('API Error:', error.message);
+      }
     } finally {
       setLoading(false);
     }

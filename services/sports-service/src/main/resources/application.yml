@@ -1,0 +1,31 @@
+spring:
+  application:
+    name: sports-service
+  datasource:
+    url: jdbc:mariadb://localhost:3306/predata_sports
+    username: root
+    password: ${DB_PASSWORD:your-password-here}
+    driver-class-name: org.mariadb.jdbc.Driver
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: true
+  redis:
+    host: localhost
+    port: 6379
+
+server:
+  port: 8086
+
+services:
+  question:
+    url: http://localhost:8082
+
+sports:
+  api:
+    key: ${SPORTS_API_KEY:}
+    enabled: false
+
+logging:
+  level:
+    com.predata.sports: DEBUG

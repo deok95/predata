@@ -34,6 +34,8 @@ class QuestionService(
                 noBetPool = question.noBetPool,
                 yesPercentage = yesPercentage,
                 noPercentage = noPercentage,
+                sourceUrl = question.sourceUrl,
+                disputeDeadline = question.disputeDeadline?.format(formatter),
                 expiredAt = question.expiredAt.format(formatter),
                 createdAt = question.createdAt.format(formatter)
             )
@@ -62,6 +64,8 @@ class QuestionService(
             noBetPool = question.noBetPool,
             yesPercentage = yesPercentage,
             noPercentage = noPercentage,
+            sourceUrl = question.sourceUrl,
+            disputeDeadline = question.disputeDeadline?.format(formatter),
             expiredAt = question.expiredAt.format(formatter),
             createdAt = question.createdAt.format(formatter)
         )
@@ -88,6 +92,8 @@ class QuestionService(
                 noBetPool = question.noBetPool,
                 yesPercentage = yesPercentage,
                 noPercentage = noPercentage,
+                sourceUrl = question.sourceUrl,
+                disputeDeadline = question.disputeDeadline?.format(formatter),
                 expiredAt = question.expiredAt.format(formatter),
                 createdAt = question.createdAt.format(formatter)
             )

@@ -13,10 +13,10 @@ data class Question(
     val id: Long? = null,
 
     @Column(nullable = false, columnDefinition = "TEXT")
-    val title: String,
+    var title: String,
 
     @Column(length = 50)
-    val category: String? = null,
+    var category: String? = null,
 
     @Column(name = "category_weight", precision = 3, scale = 2)
     val categoryWeight: BigDecimal = BigDecimal("1.00"),
@@ -36,6 +36,12 @@ data class Question(
     @Enumerated(EnumType.STRING)
     @Column(name = "final_result")
     var finalResult: FinalResult = FinalResult.PENDING,
+
+    @Column(name = "source_url", columnDefinition = "TEXT")
+    var sourceUrl: String? = null,
+
+    @Column(name = "dispute_deadline")
+    var disputeDeadline: LocalDateTime? = null,
 
     @Column(name = "expired_at", nullable = false)
     val expiredAt: LocalDateTime,

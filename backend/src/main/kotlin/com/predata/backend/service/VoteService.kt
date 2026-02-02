@@ -14,17 +14,28 @@ import org.springframework.transaction.annotation.Transactional
 class VoteService(
     private val activityRepository: ActivityRepository,
     private val questionRepository: QuestionRepository,
+    private val memberRepository: com.predata.backend.repository.MemberRepository,
     private val ticketService: TicketService
 ) {
 
     /**
      * 투표 실행
+     * - 밴 유저 차단
      * - 5-Lock 티켓 차감
      * - 중복 투표 방지
      * - 무지성 투표 방지 (latency 체크)
      */
     @Transactional
-    fun vote(request: VoteRequest): ActivityResponse {
+    fun vote(request: VoteRequest, clientIp: String? = null): ActivityResponse {
+        // 0. 밴 체크
+        val member = memberRepository.findById(request.memberId).orElse(null)
+        if (member != null && member.isBanned) {
+            return ActivityResponse(
+                success = false,
+                message = "계정이 정지되었습니다. 사유: ${member.banReason ?: "이용약관 위반"}"
+            )
+        }
+
         // 1. 질문 존재 여부 확인
         val question = questionRepository.findById(request.questionId)
             .orElse(null) ?: return ActivityResponse(
@@ -62,14 +73,15 @@ class VoteService(
             )
         }
 
-        // 4. 투표 기록 저장
+        // 4. 투표 기록 저장 (IP 포함)
         val activity = Activity(
             memberId = request.memberId,
             questionId = request.questionId,
             activityType = ActivityType.VOTE,
             choice = request.choice,
             amount = 0,
-            latencyMs = request.latencyMs
+            latencyMs = request.latencyMs,
+            ipAddress = clientIp
         )
 
         val savedActivity = activityRepository.save(activity)
