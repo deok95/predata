@@ -45,6 +45,13 @@ data class Member(
     @Column(name = "point_balance")
     var pointBalance: Long = 0,
 
+    // === 레퍼럴 시스템 ===
+    @Column(name = "referral_code", unique = true, length = 10)
+    var referralCode: String? = null,
+
+    @Column(name = "referred_by")
+    var referredBy: Long? = null,
+
     // === 어뷰징 방지 ===
     @Column(name = "is_banned")
     var isBanned: Boolean = false,

@@ -41,15 +41,15 @@ export default function UserProfile({ user }: UserProfileProps) {
         )}
         <div className="flex items-center justify-between">
           <span className="text-sm text-slate-400">포인트 잔액</span>
-          <span className="text-lg font-black text-indigo-600">{user.pointBalance.toLocaleString()} P</span>
+          <span className="text-lg font-black text-indigo-600">{(user.pointBalance ?? 0).toLocaleString()} P</span>
         </div>
         <div className="flex items-center justify-between">
           <span className="text-sm text-slate-400">정확도</span>
-          <span className="text-sm font-bold">{(user.accuracyScore * 100).toFixed(1)}%</span>
+          <span className="text-sm font-bold">{((user.accuracyScore ?? 0) * 100).toFixed(1)}%</span>
         </div>
         <div className="flex items-center justify-between">
           <span className="text-sm text-slate-400">총 예측</span>
-          <span className="text-sm font-bold">{user.totalPredictions}회</span>
+          <span className="text-sm font-bold">{user.totalPredictions ?? 0}회</span>
         </div>
       </div>
     </div>

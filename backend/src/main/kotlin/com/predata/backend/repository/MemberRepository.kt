@@ -9,6 +9,7 @@ import java.util.*
 interface MemberRepository : JpaRepository<Member, Long> {
     fun findByEmail(email: String): Optional<Member>
     fun findByWalletAddress(walletAddress: String): Optional<Member>
+    fun findByReferralCode(referralCode: String): Optional<Member>
     fun existsByEmail(email: String): Boolean
     fun findByIsBannedTrue(): List<Member>
     fun findBySignupIp(ip: String): List<Member>

@@ -189,6 +189,28 @@ class AnalyticsService(
             else -> Math.max(0.0, 70.0 - (gapPercentage - 20.0)) // 0-70점
         }
     }
+
+    /**
+     * 글로벌 통계 조회
+     */
+    @Transactional(readOnly = true)
+    fun getGlobalStats(): Map<String, Any> {
+        val totalQuestions = questionRepository.count()
+        val totalMembers = memberRepository.count()
+        val totalActivities = activityRepository.count()
+
+        // 총 베팅 풀 계산
+        val questions = questionRepository.findAll()
+        val totalBetPool = questions.sumOf { it.totalBetPool }
+
+        return mapOf(
+            "totalPredictions" to totalActivities,
+            "totalValueLocked" to totalBetPool,
+            "totalRewards" to (totalBetPool * 0.95).toLong(), // 예시: TVL의 95%가 보상
+            "activeUsers" to totalMembers,
+            "totalQuestions" to totalQuestions
+        )
+    }
 }
 
 // ===== DTOs =====

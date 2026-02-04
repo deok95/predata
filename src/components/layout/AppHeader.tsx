@@ -50,14 +50,14 @@ export default function AppHeader() {
 
   // Faucet 상태 조회
   useEffect(() => {
-    if (!user || isGuest) return;
+    if (!user || isGuest || !user.id) return;
     faucetApi.getStatus(user.id).then(status => {
       setFaucetClaimed(status.claimed);
     }).catch(() => {});
   }, [user, isGuest]);
 
   const handleFaucetClaim = async () => {
-    if (!user || faucetClaimed || faucetLoading) return;
+    if (!user || !user.id || faucetClaimed || faucetLoading) return;
     setFaucetLoading(true);
     try {
       const result = await faucetApi.claim(user.id);

@@ -50,4 +50,14 @@ class AnalyticsController(
         val dashboard = analyticsService.getQualityDashboard(questionId)
         return ResponseEntity.ok(dashboard)
     }
+
+    /**
+     * 글로벌 통계
+     * GET /api/analytics/global/stats
+     */
+    @GetMapping("/global/stats")
+    fun getGlobalStats(): ResponseEntity<Map<String, Any>> {
+        val stats = analyticsService.getGlobalStats()
+        return ResponseEntity.ok(stats)
+    }
 }

@@ -330,6 +330,19 @@ export const rewardApi = {
     apiRequest<ApiResponse<RewardSummary>>(`/api/rewards/${memberId}`),
 };
 
+// ===== Leaderboard API =====
+export const leaderboardApi = {
+  getTop: async (limit: number = 50): Promise<ApiResponse<any[]>> => {
+    const raw = await apiRequest<any[]>(`/api/leaderboard/top?limit=${limit}`);
+    return { success: true, data: Array.isArray(raw) ? raw : [] };
+  },
+
+  getMemberRank: async (memberId: number): Promise<ApiResponse<any>> => {
+    const raw = await apiRequest<any>(`/api/leaderboard/member/${memberId}`);
+    return { success: true, data: raw };
+  },
+};
+
 // Export all APIs
 export const api = {
   auth: authApi,
@@ -344,6 +357,7 @@ export const api = {
   global: globalApi,
   tier: tierApi,
   reward: rewardApi,
+  leaderboard: leaderboardApi,
 };
 
 export default api;
