@@ -263,16 +263,32 @@ export const faucetApi = {
 
 // ===== Auth API =====
 export const authApi = {
+  // Step 1: 이메일로 인증 코드 발송
   sendCode: (email: string) =>
-    apiRequest<SendCodeResponse>('/api/auth/send-code', {
+    apiRequest<{ success: boolean; message: string; expiresInSeconds: number }>('/api/auth/send-code', {
       method: 'POST',
       body: JSON.stringify({ email }),
     }),
 
+  // Step 2: 인증 코드 검증
   verifyCode: (email: string, code: string) =>
-    apiRequest<VerifyCodeResponse>('/api/auth/verify-code', {
+    apiRequest<{ success: boolean; message: string }>('/api/auth/verify-code', {
       method: 'POST',
       body: JSON.stringify({ email, code }),
+    }),
+
+  // Step 3: 비밀번호 설정 및 회원 생성
+  completeSignup: (email: string, code: string, password: string, passwordConfirm: string) =>
+    apiRequest<{ success: boolean; message: string; token?: string; memberId?: number }>('/api/auth/complete-signup', {
+      method: 'POST',
+      body: JSON.stringify({ email, code, password, passwordConfirm }),
+    }),
+
+  // 로그인
+  login: (email: string, password: string) =>
+    apiRequest<{ success: boolean; message: string; token?: string; memberId?: number }>('/api/auth/login', {
+      method: 'POST',
+      body: JSON.stringify({ email, password }),
     }),
 };
 

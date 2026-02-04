@@ -15,6 +15,9 @@ data class Member(
     @Column(nullable = false, unique = true)
     val email: String,
 
+    @Column(name = "password_hash")
+    var passwordHash: String? = null,
+
     @Column(name = "wallet_address", unique = true, length = 42)
     var walletAddress: String? = null, // 지갑 주소 (0x...)
 

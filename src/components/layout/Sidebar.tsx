@@ -33,6 +33,17 @@ export default function Sidebar({ user, onLogout }: SidebarProps) {
     return pathname.startsWith(path);
   };
 
+  // ADMIN 권한 체크
+  const isAdmin = user && user.role === 'ADMIN';
+
+  // 권한에 따라 메뉴 필터링
+  const visibleNavItems = navItems.filter(item => {
+    if (item.id === '/data-center') {
+      return isAdmin; // 데이터 센터는 ADMIN만
+    }
+    return true; // 나머지 메뉴는 모두 표시
+  });
+
   return (
     <aside className={`fixed lg:relative z-50 w-20 lg:w-72 h-screen border-r flex flex-col items-center lg:items-stretch transition-all duration-300 ${isDark ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-100'}`}>
       <div className="p-8">
@@ -45,7 +56,7 @@ export default function Sidebar({ user, onLogout }: SidebarProps) {
       </div>
 
       <nav className="flex-1 px-4 space-y-2 mt-4">
-        {navItems.map((item) => (
+        {visibleNavItems.map((item) => (
           <Link
             key={item.id}
             href={item.id}

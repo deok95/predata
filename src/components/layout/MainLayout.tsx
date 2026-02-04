@@ -24,22 +24,22 @@ export default function MainLayout({ children }: { children: React.ReactNode }) 
     );
   }
 
-  if (!isAuthenticated) {
-    return <LoginModal />;
-  }
-
   return (
     <ToastProvider>
       <RegisterModalProvider>
-        <div className={`min-h-screen flex font-sans transition-colors duration-300 ${isDark ? 'bg-slate-950 text-slate-50' : 'bg-[#FDFDFD] text-slate-900'}`}>
-          <Sidebar user={user} onLogout={logout} />
-          <main className="flex-1 flex flex-col min-w-0 h-screen overflow-hidden">
-            <AppHeader />
-            <div className="flex-1 overflow-y-auto p-8 custom-scrollbar">
-              {children}
-            </div>
-          </main>
-        </div>
+        {!isAuthenticated ? (
+          <LoginModal />
+        ) : (
+          <div className={`min-h-screen flex font-sans transition-colors duration-300 ${isDark ? 'bg-slate-950 text-slate-50' : 'bg-[#FDFDFD] text-slate-900'}`}>
+            <Sidebar user={user} onLogout={logout} />
+            <main className="flex-1 flex flex-col min-w-0 h-screen overflow-hidden">
+              <AppHeader />
+              <div className="flex-1 overflow-y-auto p-8 custom-scrollbar">
+                {children}
+              </div>
+            </main>
+          </div>
+        )}
       </RegisterModalProvider>
     </ToastProvider>
   );

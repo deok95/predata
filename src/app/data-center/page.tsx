@@ -1,10 +1,12 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { Database, TrendingUp, AlertCircle, CheckCircle, Filter, Users, Briefcase } from 'lucide-react';
 import MainLayout from '@/components/layout/MainLayout';
 import { useTheme } from '@/hooks/useTheme';
+import { useAuth } from '@/hooks/useAuth';
 import { analyticsApi } from '@/lib/api';
 import { mockQualityDashboard } from '@/lib/mockData';
 import type { QualityDashboard } from '@/types/api';
@@ -18,10 +20,19 @@ const COLORS = {
 
 function DataCenterContent() {
   const { isDark } = useTheme();
+  const { user } = useAuth();
+  const router = useRouter();
   const [dashboardData, setDashboardData] = useState<QualityDashboard | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [questionId] = useState(1);
+
+  // 권한 체크: ADMIN만 접근 가능
+  useEffect(() => {
+    if (user && user.role !== 'ADMIN') {
+      router.push('/');
+    }
+  }, [user, router]);
 
   useEffect(() => {
     const fetchDashboard = async () => {

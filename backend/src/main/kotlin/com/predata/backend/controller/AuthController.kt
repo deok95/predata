@@ -1,5 +1,9 @@
 package com.predata.backend.controller
 
+import com.predata.backend.dto.SendCodeRequest
+import com.predata.backend.dto.VerifyCodeRequest
+import com.predata.backend.dto.CompleteSignupRequest
+import com.predata.backend.dto.LoginRequest
 import com.predata.backend.service.AuthService
 import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.*
@@ -12,11 +16,11 @@ class AuthController(
 ) {
 
     /**
-     * 인증 코드 발송
+     * Step 1: 이메일로 인증 코드 발송
      * POST /api/auth/send-code
      */
     @PostMapping("/send-code")
-    fun sendVerificationCode(@RequestBody request: SendCodeRequest): ResponseEntity<Any> {
+    fun sendCode(@RequestBody request: SendCodeRequest): ResponseEntity<Any> {
         if (request.email.isBlank() || !request.email.contains("@")) {
             return ResponseEntity.badRequest().body(
                 mapOf("success" to false, "message" to "유효한 이메일을 입력해주세요.")
@@ -27,7 +31,7 @@ class AuthController(
     }
 
     /**
-     * 인증 코드 검증
+     * Step 2: 인증 코드 검증 (회원 생성 안 함)
      * POST /api/auth/verify-code
      */
     @PostMapping("/verify-code")
@@ -38,19 +42,58 @@ class AuthController(
             )
         }
         val result = authService.verifyCode(request.email, request.code)
-        return if (result.success) {
+        return if (result["success"] == true) {
             ResponseEntity.ok(result)
         } else {
             ResponseEntity.badRequest().body(result)
         }
     }
 
-    data class SendCodeRequest(
-        val email: String
-    )
+    /**
+     * Step 3: 비밀번호 설정 및 회원 생성
+     * POST /api/auth/complete-signup
+     */
+    @PostMapping("/complete-signup")
+    fun completeSignup(@RequestBody request: CompleteSignupRequest): ResponseEntity<Any> {
+        if (request.email.isBlank() || request.code.isBlank()) {
+            return ResponseEntity.badRequest().body(
+                mapOf("success" to false, "message" to "이메일과 인증 코드를 입력해주세요.")
+            )
+        }
+        if (request.password.isBlank() || request.password.length < 6) {
+            return ResponseEntity.badRequest().body(
+                mapOf("success" to false, "message" to "비밀번호는 6자 이상이어야 합니다.")
+            )
+        }
+        if (request.password != request.passwordConfirm) {
+            return ResponseEntity.badRequest().body(
+                mapOf("success" to false, "message" to "비밀번호가 일치하지 않습니다.")
+            )
+        }
+        val result = authService.completeSignup(request.email, request.code, request.password)
+        return if (result["success"] == true) {
+            ResponseEntity.ok(result)
+        } else {
+            ResponseEntity.badRequest().body(result)
+        }
+    }
 
-    data class VerifyCodeRequest(
-        val email: String,
-        val code: String
-    )
+    /**
+     * 로그인
+     * POST /api/auth/login
+     */
+    @PostMapping("/login")
+    fun login(@RequestBody request: LoginRequest): ResponseEntity<Any> {
+        if (request.email.isBlank() || request.password.isBlank()) {
+            return ResponseEntity.badRequest().body(
+                mapOf("success" to false, "message" to "이메일과 비밀번호를 입력해주세요.")
+            )
+        }
+        val result = authService.login(request.email, request.password)
+        return if (result["success"] == true) {
+            ResponseEntity.ok(result)
+        } else {
+            ResponseEntity.badRequest().body(result)
+        }
+    }
 }

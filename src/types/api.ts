@@ -20,6 +20,7 @@ export interface Member {
   pointBalance: number;
   totalPredictions: number;
   correctPredictions: number;
+  role?: 'USER' | 'ADMIN';
   createdAt: string;
 }
 

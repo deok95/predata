@@ -37,6 +37,9 @@ jwt:
   secret: ${JWT_SECRET:your-secret-key-must-be-at-least-256-bits-long-for-HS256-algorithm-to-work-properly}
   expiration-ms: ${JWT_EXPIRATION:86400000}  # 24 hours in milliseconds
 
+auth:
+  demo-mode: ${AUTH_DEMO_MODE:true}  # true: 이메일 발송 안함(로그만), false: 실제 이메일 발송
+
 logging:
   level:
     com.predata.backend: DEBUG

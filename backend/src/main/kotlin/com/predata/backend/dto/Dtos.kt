@@ -72,3 +72,30 @@ data class TicketStatusResponse(
     val remainingCount: Int,
     val resetDate: String
 )
+
+// === 인증 요청 DTO ===
+
+// Step 1: 이메일로 인증 코드 발송
+data class SendCodeRequest(
+    val email: String
+)
+
+// Step 2: 인증 코드 검증만 (회원 생성 안 함)
+data class VerifyCodeRequest(
+    val email: String,
+    val code: String
+)
+
+// Step 3: 비밀번호 설정 및 회원 생성
+data class CompleteSignupRequest(
+    val email: String,
+    val code: String,
+    val password: String,
+    val passwordConfirm: String
+)
+
+// 로그인 요청
+data class LoginRequest(
+    val email: String,
+    val password: String
+)
