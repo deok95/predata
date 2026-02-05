@@ -4,15 +4,7 @@ import jakarta.persistence.*
 import java.time.LocalDateTime
 
 @Entity
-@Table(
-    name = "activities",
-    uniqueConstraints = [
-        UniqueConstraint(
-            name = "uk_member_question_type",
-            columnNames = ["member_id", "question_id", "activity_type"]
-        )
-    ]
-)
+@Table(name = "activities")
 data class Activity(
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -42,12 +34,15 @@ data class Activity(
     @Column(name = "ip_address", length = 45)
     val ipAddress: String? = null, // IP 추적
 
+    @Column(name = "parent_bet_id")
+    val parentBetId: Long? = null, // BET_SELL일 때 원본 베팅 ID 추적
+
     @Column(name = "created_at", nullable = false, updatable = false)
     val createdAt: LocalDateTime = LocalDateTime.now()
 )
 
 enum class ActivityType {
-    VOTE, BET
+    VOTE, BET, BET_SELL
 }
 
 enum class Choice {

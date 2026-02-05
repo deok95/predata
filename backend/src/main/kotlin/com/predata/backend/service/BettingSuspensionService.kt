@@ -1,6 +1,7 @@
 package com.predata.backend.service
 
 import com.predata.backend.domain.SportsMatch
+import com.predata.backend.domain.QuestionStatus
 import com.predata.backend.repository.QuestionRepository
 import com.predata.backend.repository.SportsMatchRepository
 import org.springframework.stereotype.Service
@@ -34,7 +35,7 @@ class BettingSuspensionService(
             // 연결된 질문도 베팅 중지 상태로 업데이트
             if (match.questionId != null) {
                 val question = questionRepository.findById(match.questionId!!).orElse(null)
-                if (question != null && question.status == "OPEN") {
+                if (question != null && question.status == QuestionStatus.VOTING) {
                     // 질문 상태는 OPEN 유지하되, 프론트엔드에서 체크할 수 있도록 함
                     questionRepository.save(question)
                 }

@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { LayoutDashboard, Globe, BarChart3, User, LogOut, UserPlus } from 'lucide-react';
+import { LayoutDashboard, Globe, BarChart3, User, LogOut, UserPlus, Vote } from 'lucide-react';
 import { usePathname } from 'next/navigation';
 import Link from 'next/link';
 import PredataLogo from '@/components/ui/PredataLogo';
@@ -17,6 +17,7 @@ interface SidebarProps {
 
 const navItems = [
   { id: '/', icon: LayoutDashboard, label: '메인 광장' },
+  { id: '/vote', icon: Vote, label: '투표' },
   { id: '/marketplace', icon: Globe, label: '마켓 탐색' },
   { id: '/data-center', icon: BarChart3, label: '데이터 인사이트' },
   { id: '/my-page', icon: User, label: '마이페이지' },

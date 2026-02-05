@@ -28,5 +28,15 @@ interface ActivityRepository : JpaRepository<Activity, Long> {
         activityType: ActivityType
     ): List<Activity>
 
+    fun findByMemberIdAndQuestionId(
+        memberId: Long,
+        questionId: Long
+    ): List<Activity>
+
     fun findByIpAddress(ipAddress: String): List<Activity>
+
+    fun findByParentBetIdAndActivityType(
+        parentBetId: Long,
+        activityType: ActivityType
+    ): Activity?
 }

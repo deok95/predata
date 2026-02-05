@@ -175,6 +175,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, [user, persistUser]);
 
+  // 자동 잔액 갱신: 10초마다 백엔드에서 최신 사용자 데이터 가져오기
+  useEffect(() => {
+    if (!user || checkIsGuest(user)) return;
+
+    const interval = setInterval(() => {
+      refreshUser();
+    }, 10000); // 10초마다 갱신
+
+    return () => clearInterval(interval);
+  }, [user, refreshUser]);
+
   return (
     <AuthContext.Provider value={{
       user,

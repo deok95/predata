@@ -22,6 +22,7 @@ import org.springframework.web.bind.annotation.*
 class ActivityController(
     private val voteService: VoteService,
     private val betService: BetService,
+    private val betSellService: com.predata.backend.service.BetSellService,
     private val questionService: QuestionService,
     private val ticketService: TicketService,
     private val settlementService: SettlementService,
@@ -79,6 +80,41 @@ class ActivityController(
         }
     }
 
+    /**
+     * 베팅 판매 (포지션 청산)
+     * POST /api/bets/{betId}/sell
+     */
+    @PostMapping("/bets/{betId}/sell")
+    fun sellBet(
+        @PathVariable betId: Long,
+        @Valid @RequestBody request: SellBetRequest,
+        httpRequest: HttpServletRequest
+    ): ResponseEntity<SellBetResponse> {
+        val clientIp = extractClientIp(httpRequest)
+
+        // Path와 Body의 betId 일치 확인
+        if (betId != request.betId) {
+            return ResponseEntity.badRequest().body(
+                SellBetResponse(
+                    success = false,
+                    message = "경로의 betId와 요청의 betId가 일치하지 않습니다."
+                )
+            )
+        }
+
+        val response = betSellService.sellBet(request, clientIp)
+
+        if (response.success) {
+            updateMemberIp(request.memberId, clientIp)
+        }
+
+        return if (response.success) {
+            ResponseEntity.ok(response)
+        } else {
+            ResponseEntity.status(HttpStatus.BAD_REQUEST).body(response)
+        }
+    }
+
     private fun updateMemberIp(memberId: Long, ip: String) {
         try {
             memberRepository.findById(memberId).ifPresent { member ->
@@ -124,7 +160,8 @@ class ActivityController(
      */
     @GetMapping("/questions/status/{status}")
     fun getQuestionsByStatus(@PathVariable status: String): ResponseEntity<List<QuestionResponse>> {
-        val questions = questionService.getQuestionsByStatus(status)
+        val questionStatus = com.predata.backend.domain.QuestionStatus.valueOf(status.uppercase())
+        val questions = questionService.getQuestionsByStatus(questionStatus)
         return ResponseEntity.ok(questions)
     }
 
@@ -166,6 +203,74 @@ class ActivityController(
                 "activityType" to a.activityType.name,
                 "choice" to a.choice.name,
                 "amount" to a.amount,
+                "createdAt" to a.createdAt.toString()
+            )
+        }
+
+        return ResponseEntity.ok(result)
+    }
+
+    /**
+     * 특정 질문의 모든 활동 조회
+     * GET /api/activities/question/{questionId}
+     */
+    @GetMapping("/activities/question/{questionId}")
+    fun getActivitiesByQuestion(
+        @PathVariable questionId: Long,
+        @RequestParam(required = false) type: String?
+    ): ResponseEntity<List<Map<String, Any?>>> {
+        val activities = if (type != null) {
+            val activityType = ActivityType.valueOf(type.uppercase())
+            activityRepository.findByQuestionIdAndActivityType(questionId, activityType)
+        } else {
+            activityRepository.findByQuestionId(questionId)
+        }
+
+        val result = activities.map { a ->
+            mapOf(
+                "id" to a.id,
+                "memberId" to a.memberId,
+                "questionId" to a.questionId,
+                "activityType" to a.activityType.name,
+                "choice" to a.choice.name,
+                "amount" to a.amount,
+                "latencyMs" to a.latencyMs,
+                "parentBetId" to a.parentBetId,
+                "createdAt" to a.createdAt.toString()
+            )
+        }
+
+        return ResponseEntity.ok(result)
+    }
+
+    /**
+     * 특정 회원의 특정 질문에 대한 활동 조회
+     * GET /api/activities/member/{memberId}/question/{questionId}
+     */
+    @GetMapping("/activities/member/{memberId}/question/{questionId}")
+    fun getActivitiesByMemberAndQuestion(
+        @PathVariable memberId: Long,
+        @PathVariable questionId: Long,
+        @RequestParam(required = false) type: String?
+    ): ResponseEntity<List<Map<String, Any?>>> {
+        val activities = activityRepository.findByMemberIdAndQuestionId(memberId, questionId)
+
+        val filtered = if (type != null) {
+            val activityType = ActivityType.valueOf(type.uppercase())
+            activities.filter { it.activityType == activityType }
+        } else {
+            activities
+        }
+
+        val result = filtered.map { a ->
+            mapOf(
+                "id" to a.id,
+                "questionId" to a.questionId,
+                "activityType" to a.activityType.name,
+                "choice" to a.choice.name,
+                "amount" to a.amount,
+                "latencyMs" to a.latencyMs,
+                "parentBetId" to a.parentBetId,
                 "createdAt" to a.createdAt.toString()
             )
         }

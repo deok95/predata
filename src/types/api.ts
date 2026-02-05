@@ -37,14 +37,20 @@ export interface Question {
   id: number;
   title: string;
   category?: string;
-  status: 'OPEN' | 'CLOSED' | 'PENDING_SETTLEMENT' | 'SETTLED';
+  status: 'VOTING' | 'BREAK' | 'BETTING' | 'SETTLED';
+  type: 'VERIFIABLE' | 'OPINION';
   totalBetPool: number;
   yesBetPool: number;
   noBetPool: number;
-  finalResult?: 'YES' | 'NO';
+  yesPercentage: number;
+  noPercentage: number;
+  finalResult?: 'YES' | 'NO' | 'PENDING';
   sourceUrl?: string;
   disputeDeadline?: string;
-  expiresAt?: string;
+  votingEndAt: string;
+  bettingStartAt: string;
+  bettingEndAt: string;
+  expiredAt: string;
   createdAt: string;
 }
 
@@ -59,11 +65,12 @@ export interface Activity {
   id: number;
   memberId: number;
   questionId: number;
-  activityType: 'VOTE' | 'BET';
+  activityType: 'VOTE' | 'BET' | 'BET_SELL';
   choice: 'YES' | 'NO';
   amount: number;
   latencyMs?: number;
   createdAt: string;
+  parentBetId?: number;
 }
 
 export interface VoteRequest {
@@ -78,6 +85,23 @@ export interface BetRequest {
   questionId: number;
   choice: 'YES' | 'NO';
   amount: number;
+}
+
+export interface SellBetRequest {
+  memberId: number;
+  betId: number;
+}
+
+export interface SellBetResponse {
+  success: boolean;
+  message?: string;
+  originalBetAmount?: number;
+  refundAmount?: number;
+  profit?: number;
+  newPoolYes?: number;
+  newPoolNo?: number;
+  newPoolTotal?: number;
+  sellActivityId?: number;
 }
 
 // Settlement Types

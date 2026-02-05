@@ -2,6 +2,7 @@ package com.predata.backend.service
 
 import com.predata.backend.domain.FinalResult
 import com.predata.backend.domain.Question
+import com.predata.backend.domain.QuestionStatus
 import com.predata.backend.domain.SportsMatch
 import com.predata.backend.repository.QuestionRepository
 import com.predata.backend.repository.SportsMatchRepository
@@ -78,15 +79,21 @@ class QuestionAutoGenerationService(
         // 마감 시간: 경기 종료 시간 (실시간 베팅 허용)
         // EPL 경기는 보통 90분 + 추가시간 = 약 2시간
         val expiredAt = match.matchDate.plusHours(2)
-        
+        val votingEndAt = match.matchDate.minusHours(1)
+        val bettingStartAt = votingEndAt.plusMinutes(5)
+        val bettingEndAt = expiredAt
+
         return Question(
             title = title,
             category = "SPORTS",
             categoryWeight = BigDecimal("1.00"),
-            status = "OPEN",
+            status = QuestionStatus.VOTING,
             totalBetPool = 0,
             yesBetPool = 0,
             noBetPool = 0,
+            votingEndAt = votingEndAt,
+            bettingStartAt = bettingStartAt,
+            bettingEndAt = bettingEndAt,
             finalResult = FinalResult.PENDING,
             expiredAt = expiredAt,
             createdAt = LocalDateTime.now()
@@ -165,10 +172,10 @@ class QuestionAutoGenerationService(
             
             try {
                 val question = questionRepository.findById(match.questionId!!).orElse(null)
-                if (question == null || question.status == "SETTLED") {
+                if (question == null || question.status == QuestionStatus.SETTLED) {
                     continue
                 }
-                
+
                 // 2. 경기 결과에 따라 질문 정산
                 val finalResult = when (match.result) {
                     "HOME_WIN" -> FinalResult.YES  // YES = 홈팀 승리
@@ -176,9 +183,9 @@ class QuestionAutoGenerationService(
                     "DRAW" -> FinalResult.NO       // 무승부는 NO로 처리 (홈팀이 이기지 못함)
                     else -> continue
                 }
-                
+
                 question.finalResult = finalResult
-                question.status = "SETTLED"
+                question.status = QuestionStatus.SETTLED
                 questionRepository.save(question)
                 
                 println("[AutoGen] ✅ 정산 완료: ${question.title} -> $finalResult")

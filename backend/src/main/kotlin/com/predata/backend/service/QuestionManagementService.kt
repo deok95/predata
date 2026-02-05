@@ -2,6 +2,8 @@ package com.predata.backend.service
 
 import com.predata.backend.domain.FinalResult
 import com.predata.backend.domain.Question
+import com.predata.backend.domain.QuestionStatus
+import com.predata.backend.domain.QuestionType
 import com.predata.backend.repository.QuestionRepository
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
@@ -32,11 +34,18 @@ class QuestionManagementService(
         }
 
         // 2. 질문 생성
+        val votingEndAt = expiredAt.minusDays(1) // 마감 1일 전까지 투표
+        val bettingStartAt = votingEndAt.plusMinutes(5) // 투표 마감 후 5분 뒤 베팅 시작
+
         val question = Question(
             title = request.title,
             category = request.category,
             categoryWeight = BigDecimal(request.categoryWeight ?: 1.0),
-            status = "OPEN",
+            status = QuestionStatus.VOTING,
+            type = QuestionType.VERIFIABLE,
+            votingEndAt = votingEndAt,
+            bettingStartAt = bettingStartAt,
+            bettingEndAt = expiredAt,
             totalBetPool = INITIAL_LIQUIDITY * 2,
             yesBetPool = INITIAL_LIQUIDITY,
             noBetPool = INITIAL_LIQUIDITY,
@@ -68,9 +77,9 @@ class QuestionManagementService(
         val question = questionRepository.findById(questionId)
             .orElseThrow { IllegalArgumentException("질문을 찾을 수 없습니다.") }
 
-        // 정산된 또는 정산 대기 중인 질문은 수정 불가
-        if (question.status == "SETTLED" || question.status == "PENDING_SETTLEMENT") {
-            throw IllegalStateException("정산된 또는 정산 대기 중인 질문은 수정할 수 없습니다.")
+        // 정산된 질문은 수정 불가
+        if (question.status == QuestionStatus.SETTLED) {
+            throw IllegalStateException("정산된 질문은 수정할 수 없습니다.")
         }
 
         // 수정 가능한 필드만 업데이트
@@ -103,9 +112,9 @@ class QuestionManagementService(
         val question = questionRepository.findById(questionId)
             .orElseThrow { IllegalArgumentException("질문을 찾을 수 없습니다.") }
 
-        // 정산된 또는 정산 대기 중인 질문은 삭제 불가
-        if (question.status == "SETTLED" || question.status == "PENDING_SETTLEMENT") {
-            throw IllegalStateException("정산된 또는 정산 대기 중인 질문은 삭제할 수 없습니다.")
+        // 정산된 질문은 삭제 불가
+        if (question.status == QuestionStatus.SETTLED) {
+            throw IllegalStateException("정산된 질문은 삭제할 수 없습니다.")
         }
 
         // 실제 베팅이 있는 질문은 삭제 불가 (초기 유동성만 있는 경우 삭제 가능)
@@ -113,7 +122,7 @@ class QuestionManagementService(
             throw IllegalStateException("베팅이 있는 질문은 삭제할 수 없습니다.")
         }
 
-        question.status = "CLOSED"
+        question.status = QuestionStatus.SETTLED
         questionRepository.save(question)
 
         return DeleteQuestionResponse(
@@ -132,13 +141,58 @@ class QuestionManagementService(
                 id = question.id ?: 0,
                 title = question.title,
                 category = question.category ?: "",
-                status = question.status,
+                status = question.status.name,
                 totalBetPool = question.totalBetPool,
                 totalVotes = 0, // TODO: 투표 수 계산
                 expiredAt = question.expiredAt.toString(),
                 createdAt = question.createdAt.toString()
             )
         }
+    }
+
+    /**
+     * Duration 기반 질문 생성 (어드민용)
+     * votingDuration, bettingDuration으로 자동 시간 계산
+     */
+    @Transactional
+    fun createQuestionWithDuration(request: com.predata.backend.dto.AdminCreateQuestionRequest): QuestionCreationResponse {
+        val now = LocalDateTime.now()
+
+        // 자동 시간 계산
+        val votingEndAt = now.plusSeconds(request.votingDuration)
+        val bettingStartAt = votingEndAt.plusMinutes(5) // 5분 휴식
+        val bettingEndAt = bettingStartAt.plusSeconds(request.bettingDuration)
+
+        val question = Question(
+            title = request.title,
+            category = request.category,
+            categoryWeight = BigDecimal.ONE,
+            status = QuestionStatus.VOTING,
+            type = request.type,
+            votingEndAt = votingEndAt,
+            bettingStartAt = bettingStartAt,
+            bettingEndAt = bettingEndAt,
+            totalBetPool = INITIAL_LIQUIDITY * 2,
+            yesBetPool = INITIAL_LIQUIDITY,
+            noBetPool = INITIAL_LIQUIDITY,
+            finalResult = FinalResult.PENDING,
+            expiredAt = bettingEndAt,
+            createdAt = now
+        )
+
+        val savedQuestion = questionRepository.save(question)
+
+        // 온체인에 질문 생성 (비동기)
+        blockchainService.createQuestionOnChain(savedQuestion)
+
+        return QuestionCreationResponse(
+            success = true,
+            questionId = savedQuestion.id ?: 0,
+            title = savedQuestion.title,
+            category = savedQuestion.category ?: "",
+            expiredAt = savedQuestion.expiredAt.toString(),
+            message = "질문이 생성되었습니다."
+        )
     }
 }
 

@@ -101,15 +101,15 @@ function QuestionDetailContent() {
             </span>
           )}
           <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase ${
-            question.status === 'OPEN'
+            question.status === 'VOTING' || question.status === 'BETTING'
               ? 'bg-emerald-500/10 text-emerald-500'
-              : question.status === 'PENDING_SETTLEMENT'
+              : question.status === 'BREAK'
                 ? 'bg-amber-500/10 text-amber-500'
                 : question.status === 'SETTLED'
                   ? 'bg-indigo-500/10 text-indigo-500'
                   : 'bg-slate-500/10 text-slate-500'
           }`}>
-            {question.status === 'OPEN' ? 'LIVE' : question.status === 'PENDING_SETTLEMENT' ? '정산 검증 중' : question.status === 'SETTLED' ? 'SETTLED' : question.status}
+            {question.status === 'VOTING' ? '투표 진행 중' : question.status === 'BETTING' ? '베팅 진행 중' : question.status === 'BREAK' ? '휴식' : question.status === 'SETTLED' ? '정산 완료' : question.status}
           </span>
         </div>
         <h1 className={`text-2xl font-black mb-3 ${isDark ? 'text-white' : 'text-slate-900'}`}>{question.title}</h1>
@@ -124,7 +124,7 @@ function QuestionDetailContent() {
         </div>
       </div>
 
-      {question.status === 'PENDING_SETTLEMENT' && question.finalResult && (
+      {question.status === 'SETTLED' && question.finalResult && question.disputeDeadline && new Date(question.disputeDeadline) > new Date() && (
         <div className={`mb-6 p-5 rounded-2xl ${isDark ? 'bg-amber-950/20 border border-amber-900/30' : 'bg-amber-50 border border-amber-100'}`}>
           <div className="flex items-center gap-3 mb-2">
             <AlertTriangle className="text-amber-500" size={24} />
@@ -132,11 +132,9 @@ function QuestionDetailContent() {
               <div className="font-black text-amber-500">정산 검증 중 (이의 제기 가능)</div>
               <div className="text-sm text-slate-400">
                 예상 결과: <span className={`font-black ${question.finalResult === 'YES' ? 'text-emerald-500' : 'text-rose-500'}`}>{question.finalResult}</span>
-                {question.disputeDeadline && (
-                  <span className="ml-2">
-                    · 확정 기한: {new Date(question.disputeDeadline).toLocaleString('ko-KR')}
-                  </span>
-                )}
+                <span className="ml-2">
+                  · 확정 기한: {new Date(question.disputeDeadline).toLocaleString('ko-KR')}
+                </span>
               </div>
             </div>
           </div>
@@ -155,7 +153,7 @@ function QuestionDetailContent() {
         </div>
       )}
 
-      {question.status === 'SETTLED' && question.finalResult && (
+      {question.status === 'SETTLED' && question.finalResult && (!question.disputeDeadline || new Date(question.disputeDeadline) <= new Date()) && (
         <div className={`mb-6 p-5 rounded-2xl ${isDark ? 'bg-emerald-950/20 border border-emerald-900/30' : 'bg-emerald-50 border border-emerald-100'}`}>
           <div className="flex items-center gap-3">
             <CheckCircle className="text-emerald-500" size={24} />

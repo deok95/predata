@@ -26,7 +26,7 @@ function DashboardContent() {
     }).finally(() => setLoading(false));
   }, []);
 
-  const featured = questions.find(q => q.status === 'OPEN') || questions[0] || null;
+  const featured = questions.find(q => q.status === 'VOTING' || q.status === 'BETTING') || questions[0] || null;
 
   if (loading) {
     return (

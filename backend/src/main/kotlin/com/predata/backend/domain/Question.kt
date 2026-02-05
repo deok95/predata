@@ -21,8 +21,22 @@ data class Question(
     @Column(name = "category_weight", precision = 3, scale = 2)
     val categoryWeight: BigDecimal = BigDecimal("1.00"),
 
-    @Column(length = 20)
-    var status: String = "OPEN", // OPEN, CLOSED, SETTLED
+    @Enumerated(EnumType.STRING)
+    @Column(length = 20, nullable = false)
+    var status: QuestionStatus = QuestionStatus.VOTING,
+
+    @Enumerated(EnumType.STRING)
+    @Column(length = 20, nullable = false)
+    var type: QuestionType = QuestionType.VERIFIABLE,
+
+    @Column(name = "voting_end_at", nullable = false)
+    var votingEndAt: LocalDateTime,
+
+    @Column(name = "betting_start_at", nullable = false)
+    var bettingStartAt: LocalDateTime,
+
+    @Column(name = "betting_end_at", nullable = false)
+    var bettingEndAt: LocalDateTime,
 
     @Column(name = "total_bet_pool")
     var totalBetPool: Long = 0,
@@ -49,6 +63,18 @@ data class Question(
     @Column(name = "created_at", nullable = false, updatable = false)
     val createdAt: LocalDateTime = LocalDateTime.now()
 )
+
+enum class QuestionStatus {
+    VOTING,   // 투표 진행 중
+    BREAK,    // 투표 마감 후 대기 기간
+    BETTING,  // 베팅 진행 중
+    SETTLED   // 정산 완료
+}
+
+enum class QuestionType {
+    VERIFIABLE,  // 검증 가능한 질문 (스포츠 결과 등)
+    OPINION      // 의견 기반 질문
+}
 
 enum class FinalResult {
     YES, NO, PENDING

@@ -41,6 +41,30 @@ data class BetRequest(
     val latencyMs: Int? = null
 )
 
+// 베팅 판매 요청
+data class SellBetRequest(
+    @field:NotNull(message = "회원 ID는 필수입니다.")
+    @field:Min(value = 1, message = "유효하지 않은 회원 ID입니다.")
+    val memberId: Long,
+
+    @field:NotNull(message = "베팅 ID는 필수입니다.")
+    @field:Min(value = 1, message = "유효하지 않은 베팅 ID입니다.")
+    val betId: Long
+)
+
+// 베팅 판매 응답
+data class SellBetResponse(
+    val success: Boolean,
+    val message: String? = null,
+    val originalBetAmount: Long? = null,
+    val refundAmount: Long? = null,
+    val profit: Long? = null,  // refundAmount - originalBetAmount
+    val newPoolYes: Long? = null,
+    val newPoolNo: Long? = null,
+    val newPoolTotal: Long? = null,
+    val sellActivityId: Long? = null
+)
+
 // 활동 응답
 data class ActivityResponse(
     val success: Boolean,
@@ -55,6 +79,7 @@ data class QuestionResponse(
     val title: String,
     val category: String?,
     val status: String,
+    val type: String,
     val finalResult: String?,
     val totalBetPool: Long,
     val yesBetPool: Long,
@@ -63,6 +88,9 @@ data class QuestionResponse(
     val noPercentage: Double,
     val sourceUrl: String?,
     val disputeDeadline: String?,
+    val votingEndAt: String,
+    val bettingStartAt: String,
+    val bettingEndAt: String,
     val expiredAt: String,
     val createdAt: String
 )
@@ -98,4 +126,28 @@ data class CompleteSignupRequest(
 data class LoginRequest(
     val email: String,
     val password: String
+)
+
+// === 어드민 질문 생성 DTO ===
+
+data class AdminCreateQuestionRequest(
+    @field:NotNull(message = "질문 제목은 필수입니다.")
+    val title: String,
+
+    @field:NotNull(message = "질문 타입은 필수입니다.")
+    val type: com.predata.backend.domain.QuestionType,
+
+    val category: String? = null,
+
+    @field:Min(value = 60, message = "투표 기간은 최소 60초입니다.")
+    val votingDuration: Long = 3600, // 기본 1시간 (초 단위)
+
+    @field:Min(value = 60, message = "베팅 기간은 최소 60초입니다.")
+    val bettingDuration: Long = 3600 // 기본 1시간 (초 단위)
+)
+
+// 관리자 결과 입력 요청
+data class SetQuestionResultRequest(
+    @field:NotNull(message = "결과(YES/NO)는 필수입니다.")
+    val result: String // "YES" or "NO"
 )

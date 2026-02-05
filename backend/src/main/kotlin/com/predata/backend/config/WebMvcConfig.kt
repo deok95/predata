@@ -22,10 +22,12 @@ class WebMvcConfig(
     }
 
     override fun addCorsMappings(registry: CorsRegistry) {
-        registry.addMapping("/api/**")
-            .allowedOrigins("http://localhost:3000", "http://localhost:3001")
-            .allowedMethods("GET", "POST", "PUT", "DELETE", "OPTIONS")
-            .allowedHeaders("*")
-            .allowCredentials(true)
+        registry.addMapping("/**")  // 모든 경로에 대해 CORS 허용
+            .allowedOriginPatterns("http://localhost:*", "http://127.0.0.1:*")  // 모든 로컬호스트 포트 허용
+            .allowedMethods("GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS", "HEAD")  // 모든 HTTP 메서드 허용
+            .allowedHeaders("*")  // 모든 헤더 허용
+            .exposedHeaders("X-RateLimit-Limit", "X-RateLimit-Remaining", "Retry-After")  // Rate limit 헤더 노출
+            .allowCredentials(true)  // 쿠키 허용
+            .maxAge(3600)  // Preflight 캐시 1시간
     }
 }

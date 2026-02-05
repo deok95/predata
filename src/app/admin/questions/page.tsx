@@ -273,15 +273,15 @@ export default function AdminQuestionManagement() {
             <p className="text-3xl font-black text-blue-600">{questions.length}</p>
           </div>
           <div className="bg-white rounded-xl shadow-lg p-6">
-            <p className="text-sm text-slate-600 mb-1">진행 중</p>
-            <p className="text-3xl font-black text-green-600">
-              {questions.filter(q => q.status === 'OPEN').length}
+            <p className="text-sm text-slate-600 mb-1">투표 중</p>
+            <p className="text-3xl font-black text-blue-600">
+              {questions.filter(q => q.status === 'VOTING').length}
             </p>
           </div>
           <div className="bg-white rounded-xl shadow-lg p-6">
-            <p className="text-sm text-slate-600 mb-1">정산 대기</p>
-            <p className="text-3xl font-black text-amber-600">
-              {questions.filter(q => q.status === 'PENDING_SETTLEMENT').length}
+            <p className="text-sm text-slate-600 mb-1">베팅 중</p>
+            <p className="text-3xl font-black text-green-600">
+              {questions.filter(q => q.status === 'BETTING').length}
             </p>
           </div>
           <div className="bg-white rounded-xl shadow-lg p-6">
@@ -318,12 +318,16 @@ export default function AdminQuestionManagement() {
                   </td>
                   <td className="p-4">
                     <span className={`px-2 py-1 rounded text-xs font-bold ${
-                      question.status === 'OPEN' ? 'bg-green-100 text-green-700' :
-                      question.status === 'PENDING_SETTLEMENT' ? 'bg-amber-100 text-amber-700' :
+                      question.status === 'VOTING' ? 'bg-blue-100 text-blue-700' :
+                      question.status === 'BREAK' ? 'bg-amber-100 text-amber-700' :
+                      question.status === 'BETTING' ? 'bg-green-100 text-green-700' :
                       question.status === 'SETTLED' ? 'bg-purple-100 text-purple-700' :
                       'bg-slate-100 text-slate-700'
                     }`}>
-                      {question.status === 'PENDING_SETTLEMENT' ? '정산 대기' : question.status}
+                      {question.status === 'VOTING' ? '투표중' :
+                       question.status === 'BREAK' ? '휴식' :
+                       question.status === 'BETTING' ? '베팅중' :
+                       question.status === 'SETTLED' ? '정산완료' : question.status}
                     </span>
                   </td>
                   <td className="p-4 text-sm">${question.totalBetPool.toLocaleString()}</td>
@@ -339,7 +343,7 @@ export default function AdminQuestionManagement() {
                       >
                         <TrendingUp size={16} />
                       </button>
-                      {question.status === 'OPEN' && (
+                      {(question.status === 'BETTING' || question.status === 'VOTING') && (
                         <button
                           onClick={() => { setSettleTarget(question); setSettleFinalResult('YES'); setSettleSourceUrl(''); }}
                           className="p-2 text-amber-600 hover:bg-amber-50 rounded transition"
@@ -348,7 +352,7 @@ export default function AdminQuestionManagement() {
                           <Gavel size={16} />
                         </button>
                       )}
-                      {question.status === 'PENDING_SETTLEMENT' && (
+                      {question.status === 'SETTLED' && question.disputeDeadline && new Date(question.disputeDeadline) > new Date() && (
                         <>
                           <button
                             onClick={() => handleFinalize(question.id)}
@@ -364,7 +368,7 @@ export default function AdminQuestionManagement() {
                           </button>
                         </>
                       )}
-                      {question.status !== 'SETTLED' && question.status !== 'PENDING_SETTLEMENT' && (
+                      {question.status !== 'SETTLED' && (
                         <button
                           onClick={() => handleDelete(question.id)}
                           className="p-2 text-red-600 hover:bg-red-50 rounded transition"

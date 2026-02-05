@@ -1,6 +1,7 @@
 package com.predata.backend.service
 
 import com.predata.backend.domain.ActivityType
+import com.predata.backend.domain.QuestionStatus
 import com.predata.backend.domain.Choice
 import com.predata.backend.domain.FinalResult
 import com.predata.backend.exception.NotFoundException
@@ -47,7 +48,7 @@ class PortfolioService(
             val question = questionRepository.findById(bet.questionId).orElse(null) ?: continue
 
             when (question.status) {
-                "SETTLED" -> {
+                QuestionStatus.SETTLED -> {
                     settledBets++
                     val winningChoice = if (question.finalResult == FinalResult.YES) Choice.YES else Choice.NO
                     if (bet.choice == winningChoice) {
@@ -62,7 +63,7 @@ class PortfolioService(
                         losses++
                     }
                 }
-                "OPEN", "CLOSED", "PENDING_SETTLEMENT" -> {
+                QuestionStatus.VOTING, QuestionStatus.BREAK, QuestionStatus.BETTING -> {
                     openBets++
                     val estimatedPayout = estimateOpenPayout(
                         betAmount = bet.amount,
@@ -105,7 +106,7 @@ class PortfolioService(
 
         return bets.mapNotNull { bet ->
             val question = questionRepository.findById(bet.questionId).orElse(null) ?: return@mapNotNull null
-            if (question.status !in listOf("OPEN", "CLOSED", "PENDING_SETTLEMENT")) return@mapNotNull null
+            if (question.status !in listOf(QuestionStatus.VOTING, QuestionStatus.BREAK, QuestionStatus.BETTING)) return@mapNotNull null
 
             val totalPool = question.totalBetPool.toDouble()
             val yesPercentage = if (totalPool > 0) question.yesBetPool.toDouble() / totalPool * 100.0 else 50.0
@@ -163,7 +164,7 @@ class PortfolioService(
             accum.invested += bet.amount
 
             when (question.status) {
-                "SETTLED" -> {
+                QuestionStatus.SETTLED -> {
                     val winningChoice = if (question.finalResult == FinalResult.YES) Choice.YES else Choice.NO
                     if (bet.choice == winningChoice) {
                         val payout = calculatePayout(
@@ -216,7 +217,7 @@ class PortfolioService(
 
         for (bet in bets) {
             val question = questionRepository.findById(bet.questionId).orElse(null) ?: continue
-            if (question.status != "SETTLED") continue
+            if (question.status != QuestionStatus.SETTLED) continue
 
             val monthKey = question.createdAt.format(MONTH_FORMATTER)
             val accum = monthMap.getOrPut(monthKey) { MonthAccum() }

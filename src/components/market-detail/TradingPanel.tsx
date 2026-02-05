@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { CheckCircle, UserPlus } from 'lucide-react';
+import { CheckCircle, UserPlus, Clock } from 'lucide-react';
 import { useTheme } from '@/hooks/useTheme';
 import { useToast } from '@/components/ui/Toast';
 import { useAuth } from '@/hooks/useAuth';
@@ -20,7 +20,7 @@ interface TradingPanelProps {
 export default function TradingPanel({ question, user, onTradeComplete, votedChoice, onVoted }: TradingPanelProps) {
   const { isDark } = useTheme();
   const { showToast } = useToast();
-  const { isGuest } = useAuth();
+  const { isGuest, refreshUser } = useAuth();
   const { open: openRegister } = useRegisterModal();
   const [tradeAmount, setTradeAmount] = useState('');
   const [selectedOutcome, setSelectedOutcome] = useState<'YES' | 'NO'>('YES');
@@ -49,6 +49,7 @@ export default function TradingPanel({ question, user, onTradeComplete, votedCho
         if (result.success) {
           showToast(`${selectedOutcome} 구매 완료!`);
           setTradeAmount('');
+          await refreshUser();
           onTradeComplete();
         }
       } else {
@@ -63,6 +64,7 @@ export default function TradingPanel({ question, user, onTradeComplete, votedCho
         if (result.success) {
           showToast(`${selectedOutcome} 매도(헤지) 완료! (${oppositeChoice} 포지션 구매)`);
           setTradeAmount('');
+          await refreshUser();
           onTradeComplete();
         }
       }
@@ -89,6 +91,7 @@ export default function TradingPanel({ question, user, onTradeComplete, votedCho
       if (result.success) {
         showToast(`${choice} 투표 완료!`, 'vote');
         onVoted?.(choice);
+        await refreshUser();
         onTradeComplete();
       }
     } catch (error) {
@@ -117,6 +120,97 @@ export default function TradingPanel({ question, user, onTradeComplete, votedCho
       })()
     : null;
 
+  // Render different UI based on question status
+  if (question.status === 'VOTING') {
+    // VOTING status: Show only voting buttons
+    return (
+      <div className={`p-6 rounded-[2.5rem] border sticky top-24 ${isDark ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-100 shadow-xl'}`}>
+        <p className="text-xs font-bold text-slate-400 uppercase mb-4">무료 투표</p>
+        {isGuest ? (
+          <div className={`text-center py-8 rounded-xl ${isDark ? 'bg-slate-800/50' : 'bg-slate-50'}`}>
+            <p className={`text-sm ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>회원가입 후 투표에 참여할 수 있습니다</p>
+            <button
+              onClick={openRegister}
+              className="mt-4 px-6 py-3 rounded-xl font-black text-sm transition-all bg-indigo-600 text-white hover:bg-indigo-700 flex items-center justify-center gap-2 mx-auto"
+            >
+              <UserPlus size={16} />
+              회원가입
+            </button>
+          </div>
+        ) : votedChoice ? (
+          <div className={`flex items-center justify-center gap-2 py-8 rounded-xl ${
+            votedChoice === 'YES'
+              ? isDark ? 'bg-emerald-500/10 border border-emerald-500/30' : 'bg-emerald-50 border border-emerald-200'
+              : isDark ? 'bg-rose-500/10 border border-rose-500/30' : 'bg-rose-50 border border-rose-200'
+          }`}>
+            <CheckCircle size={20} className={votedChoice === 'YES' ? 'text-emerald-500' : 'text-rose-500'} />
+            <span className={`font-bold ${votedChoice === 'YES' ? 'text-emerald-500' : 'text-rose-500'}`}>
+              {votedChoice} 투표 완료
+            </span>
+          </div>
+        ) : (
+          <div className="space-y-3">
+            <button
+              onClick={() => handleVote('YES')}
+              disabled={loading}
+              className={`w-full py-5 rounded-2xl font-black text-lg transition-all shadow-lg ${isDark ? 'bg-emerald-500/20 text-emerald-400 hover:bg-emerald-500/30 border-2 border-emerald-500/50' : 'bg-emerald-50 text-emerald-600 hover:bg-emerald-100 border-2 border-emerald-200'}`}
+            >
+              {loading ? '처리 중...' : 'Vote Yes'}
+            </button>
+            <button
+              onClick={() => handleVote('NO')}
+              disabled={loading}
+              className={`w-full py-5 rounded-2xl font-black text-lg transition-all shadow-lg ${isDark ? 'bg-rose-500/20 text-rose-400 hover:bg-rose-500/30 border-2 border-rose-500/50' : 'bg-rose-50 text-rose-600 hover:bg-rose-100 border-2 border-rose-200'}`}
+            >
+              {loading ? '처리 중...' : 'Vote No'}
+            </button>
+          </div>
+        )}
+        <div className={`mt-6 pt-6 border-t ${isDark ? 'border-slate-800' : 'border-slate-100'}`}>
+          <div className="flex justify-between items-center text-sm">
+            <span className="text-slate-400">현재 풀 비율</span>
+            <div className="flex gap-3">
+              <span className="text-emerald-500 font-bold">{yesOdds}% YES</span>
+              <span className="text-rose-500 font-bold">{100 - yesOdds}% NO</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (question.status === 'BREAK') {
+    // BREAK status: Show message that voting ended and betting will start soon
+    return (
+      <div className={`p-6 rounded-[2.5rem] border sticky top-24 ${isDark ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-100 shadow-xl'}`}>
+        <div className={`text-center py-12 rounded-xl ${isDark ? 'bg-amber-950/20 border border-amber-900/30' : 'bg-amber-50 border border-amber-200'}`}>
+          <Clock size={48} className="mx-auto mb-4 text-amber-500" />
+          <h3 className={`text-lg font-black mb-2 ${isDark ? 'text-amber-400' : 'text-amber-700'}`}>휴식 시간</h3>
+          <p className={`text-sm ${isDark ? 'text-amber-500/70' : 'text-amber-600'}`}>
+            투표가 종료되었습니다.<br/>
+            잠시 후 베팅이 시작됩니다.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  if (question.status === 'SETTLED') {
+    // SETTLED status: Show final result
+    return (
+      <div className={`p-6 rounded-[2.5rem] border sticky top-24 ${isDark ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-100 shadow-xl'}`}>
+        <div className={`text-center py-12 rounded-xl ${isDark ? 'bg-emerald-950/20 border border-emerald-900/30' : 'bg-emerald-50 border border-emerald-200'}`}>
+          <CheckCircle size={48} className="mx-auto mb-4 text-emerald-500" />
+          <h3 className={`text-lg font-black mb-2 ${isDark ? 'text-emerald-400' : 'text-emerald-700'}`}>정산 완료</h3>
+          <p className={`text-sm ${isDark ? 'text-emerald-500/70' : 'text-emerald-600'}`}>
+            이 질문의 정산이 완료되었습니다.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  // BETTING status: Show full trading interface
   return (
     <div className={`p-6 rounded-[2.5rem] border sticky top-24 ${isDark ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-100 shadow-xl'}`}>
       <div className={`flex border-b mb-6 ${isDark ? 'border-slate-800' : 'border-slate-100'}`}>
@@ -242,43 +336,6 @@ export default function TradingPanel({ question, user, onTradeComplete, votedCho
           {loading ? '처리 중...' : activeTab === 'buy' ? `Buy ${selectedOutcome}` : `Sell ${selectedOutcome}`}
         </button>
       )}
-
-      <div className="mt-6 pt-6 border-t dark:border-slate-800">
-        <p className="text-xs font-bold text-slate-400 uppercase mb-3">무료 투표</p>
-        {isGuest ? (
-          <div className={`text-center py-4 rounded-xl ${isDark ? 'bg-slate-800/50' : 'bg-slate-50'}`}>
-            <p className={`text-sm ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>회원가입 후 투표에 참여할 수 있습니다</p>
-          </div>
-        ) : votedChoice ? (
-          <div className={`flex items-center justify-center gap-2 py-4 rounded-xl ${
-            votedChoice === 'YES'
-              ? isDark ? 'bg-emerald-500/10 border border-emerald-500/30' : 'bg-emerald-50 border border-emerald-200'
-              : isDark ? 'bg-rose-500/10 border border-rose-500/30' : 'bg-rose-50 border border-rose-200'
-          }`}>
-            <CheckCircle size={18} className={votedChoice === 'YES' ? 'text-emerald-500' : 'text-rose-500'} />
-            <span className={`font-bold text-sm ${votedChoice === 'YES' ? 'text-emerald-500' : 'text-rose-500'}`}>
-              {votedChoice} 투표 완료
-            </span>
-          </div>
-        ) : (
-          <div className="grid grid-cols-2 gap-3">
-            <button
-              onClick={() => handleVote('YES')}
-              disabled={loading}
-              className={`py-3 rounded-xl font-bold text-sm transition-all ${isDark ? 'bg-emerald-500/10 text-emerald-500 hover:bg-emerald-500/20' : 'bg-emerald-50 text-emerald-600 hover:bg-emerald-100'}`}
-            >
-              Vote Yes
-            </button>
-            <button
-              onClick={() => handleVote('NO')}
-              disabled={loading}
-              className={`py-3 rounded-xl font-bold text-sm transition-all ${isDark ? 'bg-rose-500/10 text-rose-500 hover:bg-rose-500/20' : 'bg-rose-50 text-rose-600 hover:bg-rose-100'}`}
-            >
-              Vote No
-            </button>
-          </div>
-        )}
-      </div>
     </div>
   );
 }

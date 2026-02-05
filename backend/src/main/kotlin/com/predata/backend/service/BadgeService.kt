@@ -1,6 +1,7 @@
 package com.predata.backend.service
 
 import com.predata.backend.domain.ActivityType
+import com.predata.backend.domain.QuestionStatus
 import com.predata.backend.domain.Choice
 import com.predata.backend.domain.FinalResult
 import com.predata.backend.domain.MemberBadge
@@ -116,7 +117,7 @@ class BadgeService(
             val settledBets = allBets
                 .mapNotNull { bet ->
                     val q = questionRepository.findById(bet.questionId).orElse(null)
-                    if (q != null && q.status == "SETTLED") {
+                    if (q != null && q.status == QuestionStatus.SETTLED) {
                         val winningChoice = if (q.finalResult == FinalResult.YES) Choice.YES else Choice.NO
                         Pair(bet.createdAt, bet.choice == winningChoice)
                     } else null

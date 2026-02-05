@@ -1,6 +1,7 @@
 package com.predata.backend.service
 
 import com.predata.backend.domain.Choice
+import com.predata.backend.domain.QuestionStatus
 import com.predata.backend.domain.FinalResult
 import com.predata.backend.repository.ActivityRepository
 import com.predata.backend.repository.QuestionRepository
@@ -22,7 +23,8 @@ class SettlementService(
 ) {
 
     companion object {
-        private const val DISPUTE_HOURS = 24L
+        private const val DISPUTE_HOURS = 0L // 테스트용: 이의제기 기간 없음 (즉시 확정)
+        // TODO: 실제 운영에서는 24L로 변경
     }
 
     /**
@@ -35,20 +37,25 @@ class SettlementService(
         val question = questionRepository.findByIdWithLock(questionId)
             ?: throw IllegalArgumentException("질문을 찾을 수 없습니다.")
 
-        if (question.status == "SETTLED") {
+        if (question.status == QuestionStatus.SETTLED) {
             throw IllegalStateException("이미 정산된 질문입니다.")
         }
-        if (question.status == "PENDING_SETTLEMENT") {
+        if (question.status == QuestionStatus.SETTLED) {
             throw IllegalStateException("이미 정산 대기 중인 질문입니다.")
         }
-        if (question.status != "OPEN" && question.status != "CLOSED") {
+        if (question.status != QuestionStatus.VOTING && question.status != QuestionStatus.BETTING) {
             throw IllegalStateException("정산 가능한 상태가 아닙니다. (현재: ${question.status})")
         }
 
-        question.status = "PENDING_SETTLEMENT"
+        question.status = QuestionStatus.SETTLED
         question.finalResult = finalResult
         question.sourceUrl = sourceUrl
-        question.disputeDeadline = LocalDateTime.now().plusHours(DISPUTE_HOURS)
+        // 이의제기 기간이 0이면 즉시 확정 가능하도록 과거 시간 설정
+        question.disputeDeadline = if (DISPUTE_HOURS == 0L) {
+            LocalDateTime.now().minusSeconds(1)
+        } else {
+            LocalDateTime.now().plusHours(DISPUTE_HOURS)
+        }
         questionRepository.save(question)
 
         val bets = activityRepository.findByQuestionIdAndActivityType(
@@ -76,7 +83,7 @@ class SettlementService(
         val question = questionRepository.findByIdWithLock(questionId)
             ?: throw IllegalArgumentException("질문을 찾을 수 없습니다.")
 
-        if (question.status != "PENDING_SETTLEMENT") {
+        if (question.status != QuestionStatus.SETTLED) {
             throw IllegalStateException("정산 대기 상태의 질문만 확정할 수 있습니다. (현재: ${question.status})")
         }
 
@@ -87,7 +94,7 @@ class SettlementService(
         val finalResult = question.finalResult
 
         // 상태 확정
-        question.status = "SETTLED"
+        question.status = QuestionStatus.SETTLED
         questionRepository.save(question)
 
         // 베팅 내역 조회
@@ -144,12 +151,12 @@ class SettlementService(
         val question = questionRepository.findByIdWithLock(questionId)
             ?: throw IllegalArgumentException("질문을 찾을 수 없습니다.")
 
-        if (question.status != "PENDING_SETTLEMENT") {
+        if (question.status != QuestionStatus.SETTLED) {
             throw IllegalStateException("정산 대기 상태의 질문만 취소할 수 있습니다. (현재: ${question.status})")
         }
 
-        // 만료일 체크: 이미 만료된 질문은 CLOSED로 전환
-        val newStatus = if (question.expiredAt.isBefore(LocalDateTime.now())) "CLOSED" else "OPEN"
+        // 만료일 체크: 이미 만료된 질문은 SETTLED로, 아니면 BETTING으로 복원
+        val newStatus = if (question.expiredAt.isBefore(LocalDateTime.now())) QuestionStatus.SETTLED else QuestionStatus.BETTING
 
         question.status = newStatus
         question.finalResult = FinalResult.PENDING
@@ -164,10 +171,10 @@ class SettlementService(
             totalWinners = 0,
             totalPayout = 0,
             voterRewards = 0,
-            message = if (newStatus == "CLOSED")
-                "정산이 취소되었습니다. 질문이 만료되어 CLOSED 상태로 전환되었습니다."
+            message = if (newStatus == QuestionStatus.SETTLED)
+                "정산이 취소되었습니다. 질문이 만료되어 SETTLED 상태로 전환되었습니다."
             else
-                "정산이 취소되었습니다. 질문이 다시 OPEN 상태로 전환되었습니다."
+                "정산이 취소되었습니다. 질문이 다시 BETTING 상태로 전환되었습니다."
         )
     }
 
@@ -208,7 +215,7 @@ class SettlementService(
 
         return allBets.mapNotNull { bet ->
             val question = questionRepository.findById(bet.questionId).orElse(null)
-            if (question != null && question.status == "SETTLED") {
+            if (question != null && question.status == QuestionStatus.SETTLED) {
                 val finalResultChoice = if (question.finalResult == FinalResult.YES) Choice.YES else Choice.NO
                 val isWinner = bet.choice == finalResultChoice
                 val payout = if (isWinner) {

@@ -1,5 +1,6 @@
 package com.predata.backend.service
 
+import com.predata.backend.domain.QuestionStatus
 import com.predata.backend.dto.QuestionResponse
 import com.predata.backend.repository.QuestionRepository
 import org.springframework.stereotype.Service
@@ -27,7 +28,8 @@ class QuestionService(
                 id = question.id!!,
                 title = question.title,
                 category = question.category,
-                status = question.status,
+                status = question.status.name,
+                type = question.type.name,
                 finalResult = question.finalResult.name,
                 totalBetPool = question.totalBetPool,
                 yesBetPool = question.yesBetPool,
@@ -36,6 +38,9 @@ class QuestionService(
                 noPercentage = noPercentage,
                 sourceUrl = question.sourceUrl,
                 disputeDeadline = question.disputeDeadline?.format(formatter),
+                votingEndAt = question.votingEndAt.format(formatter),
+                bettingStartAt = question.bettingStartAt.format(formatter),
+                bettingEndAt = question.bettingEndAt.format(formatter),
                 expiredAt = question.expiredAt.format(formatter),
                 createdAt = question.createdAt.format(formatter)
             )
@@ -57,7 +62,8 @@ class QuestionService(
             id = question.id!!,
             title = question.title,
             category = question.category,
-            status = question.status,
+            status = question.status.name,
+            type = question.type.name,
             finalResult = question.finalResult.name,
             totalBetPool = question.totalBetPool,
             yesBetPool = question.yesBetPool,
@@ -66,6 +72,9 @@ class QuestionService(
             noPercentage = noPercentage,
             sourceUrl = question.sourceUrl,
             disputeDeadline = question.disputeDeadline?.format(formatter),
+            votingEndAt = question.votingEndAt.format(formatter),
+            bettingStartAt = question.bettingStartAt.format(formatter),
+            bettingEndAt = question.bettingEndAt.format(formatter),
             expiredAt = question.expiredAt.format(formatter),
             createdAt = question.createdAt.format(formatter)
         )
@@ -75,7 +84,7 @@ class QuestionService(
      * 상태별 질문 조회
      */
     @Transactional(readOnly = true)
-    fun getQuestionsByStatus(status: String): List<QuestionResponse> {
+    fun getQuestionsByStatus(status: QuestionStatus): List<QuestionResponse> {
         return questionRepository.findByStatus(status).map { question ->
             val total = question.totalBetPool.toDouble()
             val yesPercentage = if (total > 0) (question.yesBetPool / total) * 100 else 0.0
@@ -85,7 +94,8 @@ class QuestionService(
                 id = question.id!!,
                 title = question.title,
                 category = question.category,
-                status = question.status,
+                status = question.status.name,
+                type = question.type.name,
                 finalResult = question.finalResult.name,
                 totalBetPool = question.totalBetPool,
                 yesBetPool = question.yesBetPool,
@@ -94,6 +104,9 @@ class QuestionService(
                 noPercentage = noPercentage,
                 sourceUrl = question.sourceUrl,
                 disputeDeadline = question.disputeDeadline?.format(formatter),
+                votingEndAt = question.votingEndAt.format(formatter),
+                bettingStartAt = question.bettingStartAt.format(formatter),
+                bettingEndAt = question.bettingEndAt.format(formatter),
                 expiredAt = question.expiredAt.format(formatter),
                 createdAt = question.createdAt.format(formatter)
             )

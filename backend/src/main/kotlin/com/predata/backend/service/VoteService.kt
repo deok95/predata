@@ -1,6 +1,7 @@
 package com.predata.backend.service
 
 import com.predata.backend.domain.Activity
+import com.predata.backend.domain.QuestionStatus
 import com.predata.backend.domain.ActivityType
 import com.predata.backend.domain.Choice
 import com.predata.backend.dto.ActivityResponse
@@ -43,7 +44,7 @@ class VoteService(
                 message = "질문을 찾을 수 없습니다."
             )
 
-        if (question.status != "OPEN") {
+        if (question.status != QuestionStatus.VOTING) {
             return ActivityResponse(
                 success = false,
                 message = "투표가 종료되었습니다."

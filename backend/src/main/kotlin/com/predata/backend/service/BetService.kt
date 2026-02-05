@@ -1,6 +1,7 @@
 package com.predata.backend.service
 
 import com.predata.backend.domain.Activity
+import com.predata.backend.domain.QuestionStatus
 import com.predata.backend.domain.ActivityType
 import com.predata.backend.dto.ActivityResponse
 import com.predata.backend.dto.BetRequest
@@ -55,7 +56,7 @@ class BetService(
                 message = "질문을 찾을 수 없습니다."
             )
 
-        if (question.status != "OPEN") {
+        if (question.status != QuestionStatus.BETTING) {
             return ActivityResponse(
                 success = false,
                 message = "베팅이 종료되었습니다."
@@ -69,25 +70,11 @@ class BetService(
             )
         }
 
-        // 3. 중복 베팅 방지
-        val alreadyBet = activityRepository.existsByMemberIdAndQuestionIdAndActivityType(
-            request.memberId,
-            request.questionId,
-            ActivityType.BET
-        )
-
-        if (alreadyBet) {
-            return ActivityResponse(
-                success = false,
-                message = "이미 베팅하셨습니다."
-            )
-        }
-
-        // 4. 포인트 차감
+        // 3. 포인트 차감
         member.pointBalance -= request.amount
         memberRepository.save(member)
 
-        // 5. 판돈 업데이트
+        // 4. 판돈 업데이트
         when (request.choice) {
             com.predata.backend.domain.Choice.YES -> {
                 question.yesBetPool += request.amount
@@ -99,7 +86,7 @@ class BetService(
         question.totalBetPool += request.amount
         questionRepository.save(question)
 
-        // 6. 베팅 기록 저장 (IP 포함)
+        // 5. 베팅 기록 저장 (IP 포함)
         val activity = Activity(
             memberId = request.memberId,
             questionId = request.questionId,
@@ -112,7 +99,7 @@ class BetService(
 
         val savedActivity = activityRepository.save(activity)
 
-        // 7. 온체인 큐에 추가 (비동기)
+        // 6. 온체인 큐에 추가 (비동기)
         if (member.walletAddress != null) {
             bettingBatchService.enqueueBet(
                 PendingBet(

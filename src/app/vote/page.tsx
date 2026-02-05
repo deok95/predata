@@ -1,40 +1,34 @@
 'use client';
 
 import { useState, useEffect, useMemo, useCallback } from 'react';
-import { SlidersHorizontal } from 'lucide-react';
+import { SlidersHorizontal, Vote as VoteIcon } from 'lucide-react';
 import MainLayout from '@/components/layout/MainLayout';
 import MarketCard from '@/components/market/MarketCard';
 import CategoryFilter from '@/components/market/CategoryFilter';
 import { useTheme } from '@/hooks/useTheme';
 import { questionApi } from '@/lib/api';
-import { mockQuestions } from '@/lib/mockData';
 import { useAuth } from '@/hooks/useAuth';
 import { useVotedQuestions } from '@/hooks/useVotedQuestions';
 import type { Question, QuestionCategory } from '@/types/api';
 
-function MarketplaceContent() {
+function VoteContent() {
   const { isDark } = useTheme();
   const { user } = useAuth();
   const { getChoice } = useVotedQuestions(user?.id);
   const [questions, setQuestions] = useState<Question[]>([]);
   const [loading, setLoading] = useState(true);
   const [category, setCategory] = useState<QuestionCategory>('ALL');
-  const [sortBy, setSortBy] = useState<'volume' | 'recent'>('volume');
+  const [sortBy, setSortBy] = useState<'volume' | 'recent'>('recent');
 
   const fetchQuestions = useCallback(() => {
     questionApi.getAll().then(res => {
-      if (res.success && res.data && res.data.length > 0) {
-        // 투표가 완료된 질문만 표시 (VOTING 제외)
-        const completedVoting = res.data.filter(q => q.status !== 'VOTING');
-        setQuestions(completedVoting);
-      }
-      else {
-        const completedVoting = mockQuestions.filter(q => q.status !== 'VOTING');
-        setQuestions(completedVoting);
+      if (res.success && res.data) {
+        // VOTING 상태만 필터링
+        const votingQuestions = res.data.filter(q => q.status === 'VOTING');
+        setQuestions(votingQuestions);
       }
     }).catch(() => {
-      const completedVoting = mockQuestions.filter(q => q.status !== 'VOTING');
-      setQuestions(completedVoting);
+      setQuestions([]);
     }).finally(() => setLoading(false));
   }, []);
 
@@ -78,8 +72,11 @@ function MarketplaceContent() {
   return (
     <div className="max-w-7xl mx-auto animate-fade-in">
       <div className="mb-8">
-        <h1 className={`text-3xl font-black mb-2 ${isDark ? 'text-white' : 'text-slate-900'}`}>마켓 탐색</h1>
-        <p className="text-slate-400">투표가 완료된 예측 마켓에서 베팅하세요</p>
+        <div className="flex items-center gap-3 mb-2">
+          <VoteIcon className={`w-8 h-8 ${isDark ? 'text-indigo-400' : 'text-indigo-600'}`} />
+          <h1 className={`text-3xl font-black ${isDark ? 'text-white' : 'text-slate-900'}`}>투표</h1>
+        </div>
+        <p className="text-slate-400">VOTING 상태의 질문에 투표하세요 (하루 5개 제한)</p>
       </div>
 
       <div className="flex items-center justify-between mb-6 gap-4 flex-wrap">
@@ -111,8 +108,9 @@ function MarketplaceContent() {
 
       {filtered.length === 0 ? (
         <div className="text-center py-20">
+          <VoteIcon className={`w-16 h-16 mx-auto mb-4 ${isDark ? 'text-slate-700' : 'text-slate-300'}`} />
           <p className="text-slate-400 text-lg">
-            {questions.length === 0 ? '현재 등록된 마켓이 없습니다.' : '해당 카테고리에 마켓이 없습니다.'}
+            {questions.length === 0 ? '현재 투표 가능한 질문이 없습니다.' : '해당 카테고리에 투표 가능한 질문이 없습니다.'}
           </p>
         </div>
       ) : (
@@ -126,10 +124,10 @@ function MarketplaceContent() {
   );
 }
 
-export default function MarketplacePage() {
+export default function VotePage() {
   return (
     <MainLayout>
-      <MarketplaceContent />
+      <VoteContent />
     </MainLayout>
   );
 }

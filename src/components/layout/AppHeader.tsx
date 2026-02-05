@@ -141,8 +141,8 @@ export default function AppHeader() {
                   onClick={() => handleSearchSelect(q)}
                   className={`w-full px-5 py-3.5 flex items-center gap-3 text-left transition-all ${isDark ? 'hover:bg-slate-800' : 'hover:bg-slate-50'}`}
                 >
-                  <div className={`w-8 h-8 rounded-lg flex items-center justify-center text-[10px] font-bold ${q.status === 'OPEN' ? 'bg-emerald-500/10 text-emerald-500' : 'bg-slate-500/10 text-slate-500'}`}>
-                    {q.status === 'OPEN' ? 'L' : 'C'}
+                  <div className={`w-8 h-8 rounded-lg flex items-center justify-center text-[10px] font-bold ${q.status !== 'SETTLED' ? 'bg-emerald-500/10 text-emerald-500' : 'bg-slate-500/10 text-slate-500'}`}>
+                    {q.status !== 'SETTLED' ? 'L' : 'C'}
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className={`text-sm font-bold truncate ${isDark ? 'text-white' : 'text-slate-900'}`}>{q.title}</p>
