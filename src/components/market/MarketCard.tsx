@@ -67,13 +67,27 @@ export default function MarketCard({ question, votedChoice }: MarketCardProps) {
   const endDate = getEndDate();
   const timeRemaining = endDate ? useTimeRemaining(endDate) : '종료됨';
 
+  // Check if voting period has expired (even if status is still VOTING)
+  const isVotingExpired = question.status === 'VOTING' && question.votingEndAt && new Date(question.votingEndAt) < new Date();
+  const isBettingExpired = question.status === 'BETTING' && question.bettingEndAt && new Date(question.bettingEndAt) < new Date();
+
   // 상태 배지 및 설명 설정
   const getStatusBadge = () => {
+    // If voting expired but status not updated yet, show BREAK state
+    if (isVotingExpired) {
+      return { text: '베팅 준비 중', color: 'bg-amber-500', description: '휴식 시간' };
+    }
+
+    // If betting expired but status not updated yet, show pending settlement
+    if (isBettingExpired) {
+      return { text: '정산 대기 중', color: 'bg-amber-500', description: '정산 대기' };
+    }
+
     switch (question.status) {
       case 'VOTING':
         return { text: '투표 진행 중', color: 'bg-blue-500', description: '투표중' };
       case 'BREAK':
-        return { text: '베팅 준비 중', color: 'bg-amber-500', description: '투표 마감 - 베팅 준비 중' };
+        return { text: '베팅 준비 중', color: 'bg-amber-500', description: '휴식 시간' };
       case 'BETTING':
         return { text: '베팅 진행 중', color: 'bg-emerald-500', description: '베팅중' };
       case 'SETTLED':

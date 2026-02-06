@@ -4,8 +4,8 @@ spring:
 
   datasource:
     url: jdbc:mariadb://localhost:3306/predata
-    username: root
-    password: ${DB_PASSWORD:your-password-here}
+    username: ${DB_USERNAME:mac}
+    password: ${DB_PASSWORD:predata}
     driver-class-name: org.mariadb.jdbc.Driver
 
   jpa:
@@ -17,8 +17,32 @@ spring:
         format_sql: true
         dialect: org.hibernate.dialect.MariaDBDialect
 
+  mail:
+    host: ${MAIL_HOST:smtp.gmail.com}
+    port: ${MAIL_PORT:587}
+    username: ${MAIL_USERNAME:}
+    password: ${MAIL_PASSWORD:}
+    properties:
+      mail:
+        smtp:
+          auth: true
+          starttls:
+            enable: true
+            required: true
+
 server:
   port: 8080
+
+jwt:
+  secret: ${JWT_SECRET:your-secret-key-must-be-at-least-256-bits-long-for-HS256-algorithm-to-work-properly}
+  expiration-ms: ${JWT_EXPIRATION:86400000}  # 24 hours in milliseconds
+
+auth:
+  demo-mode: ${AUTH_DEMO_MODE:true}  # true: 이메일 발송 안함(로그만), false: 실제 이메일 발송
+
+anthropic:
+  api:
+    key: ${ANTHROPIC_API_KEY:}
 
 logging:
   level:

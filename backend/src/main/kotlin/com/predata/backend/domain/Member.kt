@@ -48,6 +48,9 @@ data class Member(
     @Column(name = "point_balance")
     var pointBalance: Long = 0,
 
+    @Column(length = 20)
+    var role: String = "USER",  // USER 또는 ADMIN
+
     // === 레퍼럴 시스템 ===
     @Column(name = "referral_code", unique = true, length = 10)
     var referralCode: String? = null,

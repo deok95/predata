@@ -10,6 +10,7 @@ import com.predata.backend.repository.ActivityRepository
 import com.predata.backend.repository.QuestionRepository
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
+import java.time.LocalDateTime
 
 @Service
 class VoteService(
@@ -48,6 +49,14 @@ class VoteService(
             return ActivityResponse(
                 success = false,
                 message = "투표가 종료되었습니다."
+            )
+        }
+
+        // 투표 종료 시간 체크
+        if (question.votingEndAt.isBefore(LocalDateTime.now())) {
+            return ActivityResponse(
+                success = false,
+                message = "투표 기간이 종료되었습니다."
             )
         }
 

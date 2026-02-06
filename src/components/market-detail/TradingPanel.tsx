@@ -120,8 +120,11 @@ export default function TradingPanel({ question, user, onTradeComplete, votedCho
       })()
     : null;
 
+  // Check if voting period has expired
+  const isVotingExpired = question.votingEndAt && new Date(question.votingEndAt) < new Date();
+
   // Render different UI based on question status
-  if (question.status === 'VOTING') {
+  if (question.status === 'VOTING' && !isVotingExpired) {
     // VOTING status: Show only voting buttons
     return (
       <div className={`p-6 rounded-[2.5rem] border sticky top-24 ${isDark ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-100 shadow-xl'}`}>
@@ -179,8 +182,8 @@ export default function TradingPanel({ question, user, onTradeComplete, votedCho
     );
   }
 
-  if (question.status === 'BREAK') {
-    // BREAK status: Show message that voting ended and betting will start soon
+  if (question.status === 'BREAK' || (question.status === 'VOTING' && isVotingExpired)) {
+    // BREAK status or voting expired: Show message that voting ended and betting will start soon
     return (
       <div className={`p-6 rounded-[2.5rem] border sticky top-24 ${isDark ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-100 shadow-xl'}`}>
         <div className={`text-center py-12 rounded-xl ${isDark ? 'bg-amber-950/20 border border-amber-900/30' : 'bg-amber-50 border border-amber-200'}`}>

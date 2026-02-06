@@ -97,13 +97,19 @@ function mapQuestion(raw: any): Question {
     title: raw.title,
     category: raw.category ?? undefined,
     status: raw.status,
+    type: raw.type ?? 'VERIFIABLE',
     totalBetPool: raw.totalBetPool ?? 0,
     yesBetPool: raw.yesBetPool ?? 0,
     noBetPool: raw.noBetPool ?? 0,
+    yesPercentage: raw.yesPercentage ?? 50,
+    noPercentage: raw.noPercentage ?? 50,
     finalResult: raw.finalResult ?? undefined,
     sourceUrl: raw.sourceUrl ?? undefined,
     disputeDeadline: raw.disputeDeadline ?? undefined,
-    expiresAt: raw.expiredAt || raw.expiresAt,
+    votingEndAt: raw.votingEndAt,
+    bettingStartAt: raw.bettingStartAt,
+    bettingEndAt: raw.bettingEndAt,
+    expiredAt: raw.expiredAt || raw.expiresAt,
     createdAt: raw.createdAt,
   };
 }
@@ -122,6 +128,7 @@ function mapMember(raw: any): Member {
     pointBalance: raw.pointBalance ?? 0,
     totalPredictions: raw.totalPredictions ?? 0,
     correctPredictions: raw.correctPredictions ?? 0,
+    role: raw.role ?? 'USER',
     createdAt: raw.createdAt ?? new Date().toISOString(),
   };
 }

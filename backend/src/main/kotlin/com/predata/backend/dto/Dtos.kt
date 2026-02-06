@@ -2,6 +2,7 @@ package com.predata.backend.dto
 
 import com.predata.backend.domain.ActivityType
 import com.predata.backend.domain.Choice
+import jakarta.validation.constraints.Max
 import jakarta.validation.constraints.Min
 import jakarta.validation.constraints.NotNull
 
@@ -35,7 +36,8 @@ data class BetRequest(
     val choice: Choice,
 
     @field:NotNull(message = "베팅 금액은 필수입니다.")
-    @field:Min(value = 100, message = "최소 베팅 금액은 100P입니다.")
+    @field:Min(value = 1, message = "최소 베팅 금액은 1P입니다.")
+    @field:Max(value = 100, message = "최대 베팅 금액은 100P입니다.")
     val amount: Long,
 
     val latencyMs: Int? = null

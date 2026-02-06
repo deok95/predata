@@ -83,14 +83,18 @@ function QuestionDetailContent() {
     ? Math.round((question.yesBetPool / question.totalBetPool) * 100)
     : 50;
 
+  // Determine back link based on question status
+  const backLink = question.status === 'VOTING' ? '/vote' : '/marketplace';
+  const backLabel = question.status === 'VOTING' ? '투표 목록' : '마켓 목록';
+
   return (
     <div className="max-w-7xl mx-auto animate-fade-in">
       <Link
-        href="/marketplace"
+        href={backLink}
         className="inline-flex items-center gap-2 text-sm text-slate-400 hover:text-indigo-600 transition mb-6"
       >
         <ArrowLeft size={16} />
-        마켓 목록
+        {backLabel}
       </Link>
 
       <div className="mb-8">

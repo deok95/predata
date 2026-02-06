@@ -148,7 +148,8 @@ data class MemberResponse(
     val ageGroup: Int,
     val tier: String,
     val tierWeight: Double,
-    val pointBalance: Long
+    val pointBalance: Long,
+    val role: String
 ) {
     companion object {
         fun from(member: Member): MemberResponse {
@@ -161,7 +162,8 @@ data class MemberResponse(
                 ageGroup = member.ageGroup ?: 0,
                 tier = member.tier,
                 tierWeight = member.tierWeight.toDouble(),
-                pointBalance = member.pointBalance
+                pointBalance = member.pointBalance,
+                role = member.role
             )
         }
     }

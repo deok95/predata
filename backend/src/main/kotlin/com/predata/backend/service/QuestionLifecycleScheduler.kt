@@ -149,6 +149,13 @@ class QuestionLifecycleScheduler(
                                     result
                                 )
                                 logger.info("[Lifecycle] 정산 메시지: {}", settlementResult.message)
+
+                                // 즉시 배당금 지급
+                                val finalResult = settlementService.finalizeSettlement(
+                                    questionId = locked.id!!,
+                                    skipDeadlineCheck = true
+                                )
+                                logger.info("[Lifecycle] 배당금 지급 완료: 승자 {}명, 총 배당금 {}P", finalResult.totalWinners, finalResult.totalPayout)
                             } catch (settlementError: Exception) {
                                 logger.error(
                                     "[Lifecycle] OPINION 질문 #{} 정산 시작 실패: {}",

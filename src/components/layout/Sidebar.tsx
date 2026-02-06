@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { LayoutDashboard, Globe, BarChart3, User, LogOut, UserPlus, Vote } from 'lucide-react';
+import { LayoutDashboard, Globe, BarChart3, User, LogOut, UserPlus, Vote, Settings } from 'lucide-react';
 import { usePathname } from 'next/navigation';
 import Link from 'next/link';
 import PredataLogo from '@/components/ui/PredataLogo';
@@ -16,11 +16,13 @@ interface SidebarProps {
 }
 
 const navItems = [
-  { id: '/', icon: LayoutDashboard, label: '메인 광장' },
-  { id: '/vote', icon: Vote, label: '투표' },
-  { id: '/marketplace', icon: Globe, label: '마켓 탐색' },
-  { id: '/data-center', icon: BarChart3, label: '데이터 인사이트' },
-  { id: '/my-page', icon: User, label: '마이페이지' },
+  { id: '/', icon: LayoutDashboard, label: '메인 광장', adminOnly: false },
+  { id: '/vote', icon: Vote, label: '투표', adminOnly: false },
+  { id: '/marketplace', icon: Globe, label: '마켓 탐색', adminOnly: false },
+  { id: '/my-page', icon: User, label: '마이페이지', adminOnly: false },
+  // 어드민 전용 메뉴
+  { id: '/admin/questions', icon: Settings, label: '질문 관리', adminOnly: true },
+  { id: '/data-center', icon: BarChart3, label: '데이터센터', adminOnly: true },
 ];
 
 export default function Sidebar({ user, onLogout }: SidebarProps) {
@@ -39,8 +41,8 @@ export default function Sidebar({ user, onLogout }: SidebarProps) {
 
   // 권한에 따라 메뉴 필터링
   const visibleNavItems = navItems.filter(item => {
-    if (item.id === '/data-center') {
-      return isAdmin; // 데이터 센터는 ADMIN만
+    if (item.adminOnly) {
+      return isAdmin; // adminOnly 메뉴는 ADMIN만 표시
     }
     return true; // 나머지 메뉴는 모두 표시
   });

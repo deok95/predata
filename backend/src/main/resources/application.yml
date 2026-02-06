@@ -40,6 +40,10 @@ jwt:
 auth:
   demo-mode: ${AUTH_DEMO_MODE:true}  # true: 이메일 발송 안함(로그만), false: 실제 이메일 발송
 
+anthropic:
+  api:
+    key: ${ANTHROPIC_API_KEY:}
+
 logging:
   level:
     com.predata.backend: DEBUG
