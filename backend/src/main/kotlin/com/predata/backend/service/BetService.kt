@@ -17,7 +17,8 @@ class BetService(
     private val activityRepository: ActivityRepository,
     private val questionRepository: QuestionRepository,
     private val memberRepository: MemberRepository,
-    private val bettingBatchService: BettingBatchService
+    private val bettingBatchService: BettingBatchService,
+    private val betRecordService: BetRecordService
 ) {
 
     /**
@@ -99,7 +100,10 @@ class BetService(
 
         val savedActivity = activityRepository.save(activity)
 
-        // 6. 온체인 큐에 추가 (비동기)
+        // 6. 온체인(Mock) 기록
+        betRecordService.recordBet(savedActivity)
+
+        // 7. 온체인 큐에 추가 (비동기 - 지갑 있는 경우)
         if (member.walletAddress != null) {
             bettingBatchService.enqueueBet(
                 PendingBet(
