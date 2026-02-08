@@ -1,0 +1,27 @@
+# Redis Configuration for 8GB Mac
+# Location: /opt/homebrew/etc/redis.conf
+
+# Network
+bind 127.0.0.1 ::1
+port 6379
+protected-mode yes
+
+# Memory Limit (8GB Mac: 256MB max)
+maxmemory 256mb
+maxmemory-policy allkeys-lru
+
+# Persistence (lighter for 8GB)
+save 900 1
+save 300 10
+# Disable save 60 10000 to reduce I/O
+
+# Performance
+tcp-keepalive 300
+timeout 0
+
+# Logging
+loglevel notice
+logfile ""
+
+# Databases
+databases 16

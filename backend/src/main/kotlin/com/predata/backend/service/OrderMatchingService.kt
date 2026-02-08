@@ -1,0 +1,254 @@
+package com.predata.backend.service
+
+import com.predata.backend.domain.*
+import com.predata.backend.dto.*
+import com.predata.backend.repository.*
+import org.springframework.stereotype.Service
+import org.springframework.transaction.annotation.Transactional
+import java.math.BigDecimal
+import java.time.LocalDateTime
+
+@Service
+class OrderMatchingService(
+    private val orderRepository: OrderRepository,
+    private val tradeRepository: TradeRepository,
+    private val memberRepository: MemberRepository,
+    private val questionRepository: QuestionRepository
+) {
+
+    /**
+     * Limit Order 생성 및 매칭
+     *
+     * 예시: YES를 0.60에 100P 매수
+     * 1. 0.40 이하의 NO 매수 주문과 매칭 (YES 0.60 = NO 0.40 역가격)
+     * 2. 매칭되지 않은 수량은 오더북에 추가
+     */
+    @Transactional
+    fun createOrder(request: CreateOrderRequest): CreateOrderResponse {
+        // 1. 회원 및 잔액 확인
+        val member = memberRepository.findById(request.memberId)
+            .orElse(null) ?: return CreateOrderResponse(
+                success = false,
+                message = "회원을 찾을 수 없습니다."
+            )
+
+        if (member.isBanned) {
+            return CreateOrderResponse(
+                success = false,
+                message = "계정이 정지되었습니다."
+            )
+        }
+
+        val totalCost = request.amount
+        if (member.pointBalance < totalCost) {
+            return CreateOrderResponse(
+                success = false,
+                message = "포인트가 부족합니다. (보유: ${member.pointBalance}, 필요: $totalCost)"
+            )
+        }
+
+        // 2. 질문 상태 확인
+        val question = questionRepository.findByIdWithLock(request.questionId)
+            ?: return CreateOrderResponse(
+                success = false,
+                message = "질문을 찾을 수 없습니다."
+            )
+
+        if (question.status != QuestionStatus.BETTING) {
+            return CreateOrderResponse(
+                success = false,
+                message = "베팅 기간이 아닙니다. (현재: ${question.status})"
+            )
+        }
+
+        if (question.expiredAt.isBefore(LocalDateTime.now())) {
+            return CreateOrderResponse(
+                success = false,
+                message = "베팅 기간이 만료되었습니다."
+            )
+        }
+
+        // 3. 포인트 차감 (예치)
+        member.pointBalance -= totalCost
+        memberRepository.save(member)
+
+        // 4. 주문 생성
+        val order = Order(
+            memberId = request.memberId,
+            questionId = request.questionId,
+            orderType = OrderType.BUY,
+            side = request.side,
+            price = request.price,
+            amount = request.amount,
+            remainingAmount = request.amount
+        )
+
+        val savedOrder = orderRepository.save(order)
+
+        // 5. 매칭 실행
+        val matchResult = matchOrder(savedOrder, question)
+
+        return CreateOrderResponse(
+            success = true,
+            message = when {
+                matchResult.filledAmount == request.amount -> "주문이 완전 체결되었습니다."
+                matchResult.filledAmount > 0 -> "부분 체결되었습니다. (${matchResult.filledAmount}/${request.amount})"
+                else -> "주문이 오더북에 등록되었습니다."
+            },
+            orderId = savedOrder.id,
+            filledAmount = matchResult.filledAmount,
+            remainingAmount = savedOrder.remainingAmount
+        )
+    }
+
+    /**
+     * 주문 매칭 로직
+     *
+     * YES 매수 @ 0.60 → NO 매수 @ 0.40 이하와 매칭
+     * (가격 합이 1.00이 되면 체결)
+     */
+    private fun matchOrder(order: Order, question: Question): MatchResult {
+        // 반대 포지션의 역가격 계산
+        val oppositePrice = BigDecimal.ONE.subtract(order.price)
+        val oppositeSide = if (order.side == OrderSide.YES) OrderSide.NO else OrderSide.YES
+
+        // 반대 방향 주문 조회 (락 적용)
+        val matchableOrders = orderRepository.findMatchableOrdersWithLock(
+            questionId = order.questionId,
+            side = oppositeSide,
+            price = oppositePrice
+        )
+
+        var totalFilled = 0L
+
+        for (counterOrder in matchableOrders) {
+            if (order.remainingAmount <= 0) break
+
+            val fillAmount = minOf(order.remainingAmount, counterOrder.remainingAmount)
+            val tradePrice = order.price  // Taker 가격 사용
+
+            // 체결 기록
+            val trade = Trade(
+                questionId = order.questionId,
+                buyOrderId = order.id!!,
+                sellOrderId = counterOrder.id!!,
+                price = tradePrice,
+                amount = fillAmount,
+                side = order.side
+            )
+            tradeRepository.save(trade)
+
+            // 주문 수량 업데이트
+            order.remainingAmount -= fillAmount
+            counterOrder.remainingAmount -= fillAmount
+
+            // 상태 업데이트
+            updateOrderStatus(order)
+            updateOrderStatus(counterOrder)
+
+            orderRepository.save(counterOrder)
+
+            totalFilled += fillAmount
+        }
+
+        orderRepository.save(order)
+
+        // 풀 업데이트 (통계용)
+        if (totalFilled > 0) {
+            when (order.side) {
+                OrderSide.YES -> question.yesBetPool += totalFilled
+                OrderSide.NO -> question.noBetPool += totalFilled
+            }
+            question.totalBetPool += totalFilled
+            questionRepository.save(question)
+        }
+
+        return MatchResult(filledAmount = totalFilled)
+    }
+
+    private fun updateOrderStatus(order: Order) {
+        order.status = when {
+            order.remainingAmount == 0L -> OrderStatus.FILLED
+            order.remainingAmount < order.amount -> OrderStatus.PARTIAL
+            else -> OrderStatus.OPEN
+        }
+        order.updatedAt = LocalDateTime.now()
+    }
+
+    /**
+     * 주문 취소
+     */
+    @Transactional
+    fun cancelOrder(orderId: Long, memberId: Long): CancelOrderResponse {
+        val order = orderRepository.findByIdWithLock(orderId)
+            ?: return CancelOrderResponse(
+                success = false,
+                message = "주문을 찾을 수 없습니다."
+            )
+
+        if (order.memberId != memberId) {
+            return CancelOrderResponse(
+                success = false,
+                message = "본인의 주문만 취소할 수 있습니다."
+            )
+        }
+
+        if (order.status !in listOf(OrderStatus.OPEN, OrderStatus.PARTIAL)) {
+            return CancelOrderResponse(
+                success = false,
+                message = "취소할 수 없는 주문입니다. (상태: ${order.status})"
+            )
+        }
+
+        // 남은 수량 환불
+        val refundAmount = order.remainingAmount
+        val member = memberRepository.findById(memberId).orElse(null)
+        if (member != null) {
+            member.pointBalance += refundAmount
+            memberRepository.save(member)
+        }
+
+        order.status = OrderStatus.CANCELLED
+        order.remainingAmount = 0
+        order.updatedAt = LocalDateTime.now()
+        orderRepository.save(order)
+
+        return CancelOrderResponse(
+            success = true,
+            message = "주문이 취소되었습니다.",
+            refundedAmount = refundAmount
+        )
+    }
+
+    /**
+     * 회원의 활성 주문 조회
+     */
+    fun getActiveOrders(memberId: Long): List<OrderResponse> {
+        val activeStatuses = listOf(OrderStatus.OPEN, OrderStatus.PARTIAL)
+        return orderRepository.findByMemberIdAndStatusIn(memberId, activeStatuses)
+            .map { it.toResponse() }
+    }
+
+    /**
+     * 회원의 특정 질문에 대한 주문 조회
+     */
+    fun getOrdersByQuestion(memberId: Long, questionId: Long): List<OrderResponse> {
+        return orderRepository.findByMemberIdAndQuestionId(memberId, questionId)
+            .map { it.toResponse() }
+    }
+
+    private fun Order.toResponse() = OrderResponse(
+        orderId = this.id!!,
+        memberId = this.memberId,
+        questionId = this.questionId,
+        side = this.side,
+        price = this.price,
+        amount = this.amount,
+        remainingAmount = this.remainingAmount,
+        status = this.status,
+        createdAt = this.createdAt,
+        updatedAt = this.updatedAt
+    )
+
+    data class MatchResult(val filledAmount: Long)
+}

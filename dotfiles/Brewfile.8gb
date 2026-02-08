@@ -1,0 +1,50 @@
+# Brewfile.8gb - Lightweight Development Environment (8GB Macs)
+# Usage: brew bundle --file=Brewfile.8gb
+#
+# Optimized for M1 Air 8GB:
+# - No Docker Desktop (memory intensive)
+# - No IntelliJ (use VSCode with Java extensions)
+# - Databases installed but not auto-started
+
+# Taps
+tap "homebrew/bundle"
+tap "homebrew/cask-versions"
+
+# CLI Tools
+brew "git"
+brew "gradle"
+brew "maven"
+brew "node"
+brew "python@3.14"
+
+# Java
+brew "openjdk@17"
+cask "zulu@17"
+
+# Databases (install but don't auto-start)
+# Start manually: brew services start mariadb
+# brew "mariadb"
+# brew "redis"
+
+# Development Apps (lightweight selection)
+cask "cursor"
+cask "dbeaver-community"
+cask "postman"
+cask "visual-studio-code"
+
+# Communication
+cask "slack"
+
+# VSCode Extensions (including Java support as IntelliJ alternative)
+vscode "anthropic.claude-code"
+vscode "github.copilot"
+vscode "github.copilot-chat"
+vscode "ms-python.debugpy"
+vscode "ms-python.python"
+vscode "ms-python.vscode-pylance"
+vscode "ms-python.vscode-python-envs"
+vscode "vscjava.vscode-gradle"
+vscode "vscjava.vscode-java-pack"
+vscode "vscjava.vscode-java-debug"
+vscode "vscjava.vscode-maven"
+vscode "vscjava.vscode-spring-initializr"
