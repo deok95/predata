@@ -19,6 +19,24 @@ class GlobalExceptionHandler {
 
     // === 비즈니스 예외 ===
 
+    @ExceptionHandler(BusinessException::class)
+    fun handleBusinessException(ex: BusinessException): ResponseEntity<ErrorResponse> {
+        // 401, 403은 warning, 나머지는 info 레벨 로깅
+        if (ex.httpStatus in 401..403) {
+            logger.warn("Business exception: ${ex.code} - ${ex.message}")
+        } else {
+            logger.info("Business exception: ${ex.code} - ${ex.message}")
+        }
+
+        return ResponseEntity.status(ex.httpStatus).body(
+            ErrorResponse(
+                code = ex.code,
+                message = ex.message,
+                status = ex.httpStatus
+            )
+        )
+    }
+
     @ExceptionHandler(IllegalArgumentException::class)
     fun handleBadRequest(ex: IllegalArgumentException): ResponseEntity<ErrorResponse> {
         logger.warn("Bad request: ${ex.message}")

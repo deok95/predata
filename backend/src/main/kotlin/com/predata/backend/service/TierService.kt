@@ -38,17 +38,24 @@ class TierService(
 
     /**
      * 정산 시 모든 참여자의 티어 업데이트
+     * 최적화: N+1 → 배치 조회, 개별 save → saveAll
      */
     @Transactional
     fun updateTiersAfterSettlement(questionId: Long, finalResult: FinalResult) {
         // 1. 질문에 투표한 모든 사용자 조회
         val votes = activityRepository.findByQuestionIdAndActivityType(questionId, ActivityType.VOTE)
+        if (votes.isEmpty()) return
 
         val winningChoice = if (finalResult == FinalResult.YES) Choice.YES else Choice.NO
 
-        // 2. 각 사용자의 정확도 업데이트
+        // 2. 배치 조회: N+1 → 1회 조회
+        val memberIds = votes.map { it.memberId }.distinct()
+        val membersMap = memberRepository.findAllByIdIn(memberIds).associateBy { it.id!! }
+        val updatedMembers = mutableListOf<com.predata.backend.domain.Member>()
+
+        // 3. 각 사용자의 정확도 업데이트
         votes.forEach { vote ->
-            val member = memberRepository.findById(vote.memberId).orElse(null) ?: return@forEach
+            val member = membersMap[vote.memberId] ?: return@forEach
 
             val isCorrect = vote.choice == winningChoice
 
@@ -73,8 +80,11 @@ class TierService(
                 member.tierWeight = TIER_WEIGHTS[newTier] ?: BigDecimal("1.00")
             }
 
-            memberRepository.save(member)
+            updatedMembers.add(member)
         }
+
+        // 4. 일괄 저장
+        memberRepository.saveAll(updatedMembers)
     }
 
     /**

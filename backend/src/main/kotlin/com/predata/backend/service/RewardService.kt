@@ -48,12 +48,16 @@ class RewardService(
             )
         }
 
-        // 4. 티어 가중치 합계 계산
+        // 4. 배치 조회: N+1 → 1회 조회
+        val memberIds = voters.map { it.memberId }.distinct()
+        val membersMap = memberRepository.findAllByIdIn(memberIds).associateBy { it.id!! }
+
+        // 5. 티어 가중치 합계 계산
         var totalWeight = BigDecimal.ZERO
         val voterWeights = mutableMapOf<Long, BigDecimal>()
 
         voters.forEach { vote ->
-            val member = memberRepository.findById(vote.memberId).orElse(null)
+            val member = membersMap[vote.memberId]
             if (member != null) {
                 val weight = member.tierWeight
                 voterWeights[vote.memberId] = weight
@@ -61,12 +65,13 @@ class RewardService(
             }
         }
 
-        // 5. 가중치에 따라 보상 분배
+        // 6. 가중치에 따라 보상 분배
         val distributedRewards = mutableListOf<VoterReward>()
         var totalDistributed = 0L
+        val updatedMembers = mutableListOf<com.predata.backend.domain.Member>()
 
         voterWeights.forEach { (memberId, weight) ->
-            val member = memberRepository.findById(memberId).orElse(null)
+            val member = membersMap[memberId]
             if (member != null) {
                 // 가중치 비율에 따른 보상 계산
                 val rewardAmount = BigDecimal(rewardPool)
@@ -75,7 +80,7 @@ class RewardService(
                     .toLong()
 
                 member.pointBalance += rewardAmount
-                memberRepository.save(member)
+                updatedMembers.add(member)
 
                 distributedRewards.add(
                     VoterReward(
@@ -89,6 +94,9 @@ class RewardService(
                 totalDistributed += rewardAmount
             }
         }
+
+        // 7. 일괄 저장
+        memberRepository.saveAll(updatedMembers)
 
         return RewardDistributionResult(
             questionId = questionId,

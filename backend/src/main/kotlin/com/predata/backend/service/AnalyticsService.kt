@@ -19,27 +19,43 @@ class AnalyticsService(
 
     /**
      * 페르소나별 투표 분포 분석
+     * 최적화: N+1 → 배치 조회, @Cacheable 적용
      */
     @Transactional(readOnly = true)
+    @org.springframework.cache.annotation.Cacheable(value = ["demographics"], key = "#questionId")
     fun getVoteDemographics(questionId: Long): VoteDemographicsReport {
         val votes = activityRepository.findByQuestionIdAndActivityType(questionId, ActivityType.VOTE)
-        
+
+        if (votes.isEmpty()) {
+            return VoteDemographicsReport(
+                questionId = questionId,
+                totalVotes = 0,
+                byCountry = emptyList(),
+                byJob = emptyList(),
+                byAge = emptyList()
+            )
+        }
+
+        // 배치 조회: N+1 → 1회 조회
+        val memberIds = votes.map { it.memberId }.distinct()
+        val membersMap = memberRepository.findAllByIdIn(memberIds).associateBy { it.id!! }
+
         // 국가별 분포
         val byCountry = mutableMapOf<String, CountryVoteData>()
         // 직업별 분포
         val byJob = mutableMapOf<String, JobVoteData>()
         // 연령대별 분포
         val byAge = mutableMapOf<Int, AgeVoteData>()
-        
+
         votes.forEach { vote ->
-            val member = memberRepository.findById(vote.memberId).orElse(null) ?: return@forEach
-            
+            val member = membersMap[vote.memberId] ?: return@forEach
+
             // 국가별 집계
             val countryData = byCountry.getOrPut(member.countryCode) {
                 CountryVoteData(member.countryCode, 0, 0)
             }
             if (vote.choice == Choice.YES) countryData.yesCount++ else countryData.noCount++
-            
+
             // 직업별 집계
             member.jobCategory?.let { job ->
                 val jobData = byJob.getOrPut(job) {
@@ -47,7 +63,7 @@ class AnalyticsService(
                 }
                 if (vote.choice == Choice.YES) jobData.yesCount++ else jobData.noCount++
             }
-            
+
             // 연령대별 집계
             member.ageGroup?.let { age ->
                 val ageData = byAge.getOrPut(age) {
@@ -56,7 +72,7 @@ class AnalyticsService(
                 if (vote.choice == Choice.YES) ageData.yesCount++ else ageData.noCount++
             }
         }
-        
+
         return VoteDemographicsReport(
             questionId = questionId,
             totalVotes = votes.size,
@@ -161,13 +177,15 @@ class AnalyticsService(
     
     /**
      * 전체 데이터 품질 대시보드
+     * 최적화: @Cacheable 적용 (하위 메서드도 캐시됨)
      */
     @Transactional(readOnly = true)
+    @org.springframework.cache.annotation.Cacheable(value = ["qualityDashboard"], key = "#questionId")
     fun getQualityDashboard(questionId: Long): QualityDashboard {
         val demographics = getVoteDemographics(questionId)
         val gapAnalysis = getVoteBetGapAnalysis(questionId)
         val filteringEffect = getFilteringEffectReport(questionId)
-        
+
         return QualityDashboard(
             questionId = questionId,
             demographics = demographics,

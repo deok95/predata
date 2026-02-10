@@ -77,6 +77,9 @@ class SettlementService(
      * 2단계: 정산 확정 (SETTLED)
      * 이의 제기 기간이 지난 후 배당금 분배를 실행한다.
      * 관리자가 강제 확정할 경우 skipDeadlineCheck = true
+     *
+     * 최적화: 3개 서비스(Settlement/Tier/Reward) 로직을 통합
+     * - 1회 조회 → 메모리 처리 → 1회 저장
      */
     @Transactional
     fun finalizeSettlement(questionId: Long, skipDeadlineCheck: Boolean = false): SettlementResult {
@@ -92,23 +95,33 @@ class SettlementService(
         }
 
         val finalResult = question.finalResult
+        val winningChoice = if (finalResult == FinalResult.YES) Choice.YES else Choice.NO
 
         // 상태 확정
         question.status = QuestionStatus.SETTLED
         questionRepository.save(question)
 
-        // 베팅 내역 조회
-        val bets = activityRepository.findByQuestionIdAndActivityType(
-            questionId, com.predata.backend.domain.ActivityType.BET
-        )
+        // === 1회 조회: 모든 활동(투표+베팅) 조회 ===
+        val allActivities = activityRepository.findByQuestionId(questionId)
+        val votes = allActivities.filter { it.activityType == com.predata.backend.domain.ActivityType.VOTE }
+        val bets = allActivities.filter { it.activityType == com.predata.backend.domain.ActivityType.BET }
 
-        val winningChoice = if (finalResult == FinalResult.YES) Choice.YES else Choice.NO
+        // === 1회 조회: 관련 멤버 전체 배치 조회 ===
+        val allMemberIds = (votes.map { it.memberId } + bets.map { it.memberId }).distinct()
+        val membersMap = if (allMemberIds.isNotEmpty()) {
+            memberRepository.findAllByIdIn(allMemberIds).associateBy { it.id!! }
+        } else {
+            emptyMap()
+        }
+
         var totalWinners = 0
         var totalPayout = 0L
+        var totalRewardPool = 0L
 
-        // 승자에게 배당금 지급
-        bets.filter { it.choice == winningChoice }.forEach { bet ->
-            val member = memberRepository.findById(bet.memberId).orElse(null)
+        // === 메모리 처리 1: 베팅 승자 배당금 지급 ===
+        val winningBets = bets.filter { it.choice == winningChoice }
+        winningBets.forEach { bet ->
+            val member = membersMap[bet.memberId]
             if (member != null) {
                 val payout = calculatePayout(
                     betAmount = bet.amount,
@@ -116,17 +129,70 @@ class SettlementService(
                     winningPool = if (finalResult == FinalResult.YES) question.yesBetPool else question.noBetPool
                 )
                 member.pointBalance += payout
-                memberRepository.save(member)
                 totalWinners++
                 totalPayout += payout
             }
         }
 
-        // 티어 자동 업데이트
-        tierService.updateTiersAfterSettlement(questionId, finalResult)
+        // === 메모리 처리 2: 티어 업데이트 (TierService 로직 인라인) ===
+        votes.forEach { vote ->
+            val member = membersMap[vote.memberId] ?: return@forEach
+            val isCorrect = vote.choice == winningChoice
 
-        // 보상 분배
-        val rewardResult = rewardService.distributeRewards(questionId)
+            if (isCorrect) {
+                member.accuracyScore += TierService.CORRECT_PREDICTION_POINTS
+                member.correctPredictions++
+            } else {
+                member.accuracyScore += TierService.WRONG_PREDICTION_PENALTY
+            }
+            member.totalPredictions++
+
+            if (member.accuracyScore < 0) {
+                member.accuracyScore = 0
+            }
+
+            val newTier = tierService.calculateTier(member.accuracyScore)
+            if (newTier != member.tier) {
+                member.tier = newTier
+                member.tierWeight = TierService.TIER_WEIGHTS[newTier] ?: BigDecimal("1.00")
+            }
+        }
+
+        // === 메모리 처리 3: 보상 분배 (RewardService 로직 인라인) ===
+        if (votes.isNotEmpty()) {
+            val totalBetAmount = question.totalBetPool
+            val totalFee = (totalBetAmount * RewardService.FEE_PERCENTAGE).toLong()
+            val rewardPool = (totalFee * RewardService.REWARD_POOL_PERCENTAGE).toLong()
+            totalRewardPool = rewardPool
+
+            // 티어 가중치 합계 계산
+            var totalWeight = BigDecimal.ZERO
+            val voterWeights = mutableMapOf<Long, BigDecimal>()
+            votes.forEach { vote ->
+                val member = membersMap[vote.memberId]
+                if (member != null) {
+                    voterWeights[vote.memberId] = member.tierWeight
+                    totalWeight = totalWeight.add(member.tierWeight)
+                }
+            }
+
+            // 가중치에 따라 보상 분배
+            if (totalWeight > BigDecimal.ZERO) {
+                voterWeights.forEach { (memberId, weight) ->
+                    val member = membersMap[memberId]
+                    if (member != null) {
+                        val rewardAmount = BigDecimal(rewardPool)
+                            .multiply(weight)
+                            .divide(totalWeight, 0, java.math.RoundingMode.DOWN)
+                            .toLong()
+                        member.pointBalance += rewardAmount
+                    }
+                }
+            }
+        }
+
+        // managed 엔티티 → @Transactional 커밋 시 자동 dirty-check flush
+        // saveAll() 불필요 (merge() N번 오버헤드 제거)
 
         // 온체인 기록
         blockchainService.settleQuestionOnChain(questionId, finalResult)
@@ -137,8 +203,8 @@ class SettlementService(
             totalBets = bets.size,
             totalWinners = totalWinners,
             totalPayout = totalPayout,
-            voterRewards = rewardResult.totalRewardPool,
-            message = "정산이 확정되었습니다. (보상: ${rewardResult.totalRewardPool}P 분배)"
+            voterRewards = totalRewardPool,
+            message = "정산이 확정되었습니다. (보상: ${totalRewardPool}P 분배)"
         )
     }
 

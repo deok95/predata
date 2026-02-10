@@ -44,10 +44,11 @@ export default function LiveMatchesDashboard() {
     try {
       const response = await fetch(`${API_BASE_URL}/admin/sports/live`);
       const data = await response.json();
-      setLiveMatches(data);
+      const matches = Array.isArray(data) ? data : [];
+      setLiveMatches(matches);
 
       // 각 경기의 베팅 중지 상태 확인
-      for (const match of data) {
+      for (const match of matches) {
         if (match.questionId) {
           checkSuspensionStatus(match.questionId);
         }

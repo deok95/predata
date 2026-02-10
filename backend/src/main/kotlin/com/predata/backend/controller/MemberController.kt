@@ -102,13 +102,31 @@ class MemberController(
     }
 
     /**
+     * 현재 로그인한 회원 정보 조회 (JWT 토큰 기반)
+     * GET /api/members/me
+     */
+    @GetMapping("/me")
+    fun getMyInfo(httpRequest: HttpServletRequest): ResponseEntity<MemberResponse> {
+        val memberId = httpRequest.getAttribute("authenticatedMemberId") as? Long
+            ?: return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build()
+
+        val member = memberRepository.findById(memberId)
+
+        return if (member.isPresent) {
+            ResponseEntity.ok(MemberResponse.from(member.get()))
+        } else {
+            ResponseEntity.notFound().build()
+        }
+    }
+
+    /**
      * 회원 정보 조회 (ID로)
      * GET /api/members/{id}
      */
     @GetMapping("/{id}")
     fun getMember(@PathVariable id: Long): ResponseEntity<MemberResponse> {
         val member = memberRepository.findById(id)
-        
+
         return if (member.isPresent) {
             ResponseEntity.ok(MemberResponse.from(member.get()))
         } else {

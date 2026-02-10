@@ -16,8 +16,13 @@ class NotificationController(
 
     @GetMapping
     fun getNotifications(httpRequest: HttpServletRequest): ResponseEntity<List<NotificationResponse>> {
-        val memberId = httpRequest.getAttribute(JwtAuthInterceptor.ATTR_MEMBER_ID) as? Long ?: throw UnauthorizedException()
-        return ResponseEntity.ok(notificationService.getNotifications(memberId))
+        return try {
+            val memberId = httpRequest.getAttribute(JwtAuthInterceptor.ATTR_MEMBER_ID) as? Long ?: throw UnauthorizedException()
+            ResponseEntity.ok(notificationService.getNotifications(memberId))
+        } catch (e: Exception) {
+            // Return empty list on any error
+            ResponseEntity.ok(emptyList())
+        }
     }
 
     @GetMapping("/unread-count")

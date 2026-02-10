@@ -56,10 +56,14 @@ async function apiRequest<T>(
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), 15000);
 
+  // localStorage에서 JWT 토큰 가져오기
+  const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+
   try {
     const response = await fetch(`${API_URL}${endpoint}`, {
       headers: {
         'Content-Type': 'application/json',
+        ...(token && { Authorization: `Bearer ${token}` }),
         ...options?.headers,
       },
       ...options,

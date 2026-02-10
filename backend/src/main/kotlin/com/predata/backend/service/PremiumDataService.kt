@@ -20,6 +20,7 @@ class PremiumDataService(
 
     /**
      * 프리미엄 데이터 추출 (필터링 + 세분화)
+     * 최적화: 회원 정보를 일괄 조회하여 N+1 문제 해결
      */
     @Transactional(readOnly = true)
     fun extractPremiumData(request: PremiumDataRequest): PremiumDataResponse {
@@ -28,24 +29,26 @@ class PremiumDataService(
             .orElseThrow { IllegalArgumentException("질문을 찾을 수 없습니다.") }
 
         // 2. 투표 데이터 조회
-        val allVotes = activityRepository.findByQuestionIdAndActivityType(
+        var allVotes = activityRepository.findByQuestionIdAndActivityType(
             request.questionId,
             ActivityType.VOTE
         )
 
-        // 3. 필터링 적용
-        var filteredVotes = allVotes
-
-        // 3-1. 지연시간 필터링 (어뷰징 제거)
+        // 3-1. 지연시간 필터링 (어뷰징 제거) - 메모리 필터링 먼저
         if (request.minLatencyMs != null) {
-            filteredVotes = filteredVotes.filter { vote ->
+            allVotes = allVotes.filter { vote ->
                 (vote.latencyMs ?: Int.MAX_VALUE) >= request.minLatencyMs
             }
         }
 
-        // 3-2. 페르소나 필터링
-        filteredVotes = filteredVotes.filter { vote ->
-            val member = memberRepository.findById(vote.memberId).orElse(null) ?: return@filter false
+        // 3-2. 회원 정보 일괄 조회 (N+1 해결 - 핵심 최적화)
+        val memberIds = allVotes.map { it.memberId }.distinct()
+        val membersMap = memberRepository.findAllByIdIn(memberIds)
+            .associateBy { it.id!! }
+
+        // 3-3. 페르소나 필터링 (Map 조회로 O(1))
+        val filteredVotes = allVotes.filter { vote ->
+            val member = membersMap[vote.memberId] ?: return@filter false
 
             val countryMatch = request.countryCode == null || member.countryCode == request.countryCode
             val jobMatch = request.jobCategory == null || member.jobCategory == request.jobCategory
@@ -55,9 +58,9 @@ class PremiumDataService(
             countryMatch && jobMatch && ageMatch && tierMatch
         }
 
-        // 4. 데이터 추출
+        // 4. 데이터 추출 (Map 조회로 O(1))
         val dataPoints = filteredVotes.mapNotNull { vote ->
-            val member = memberRepository.findById(vote.memberId).orElse(null) ?: return@mapNotNull null
+            val member = membersMap[vote.memberId] ?: return@mapNotNull null
 
             PremiumDataPoint(
                 voteId = vote.id ?: 0,
@@ -105,6 +108,7 @@ class PremiumDataService(
 
     /**
      * 데이터 품질 요약 (필터별)
+     * 최적화: 회원 정보를 일괄 조회하여 N+1 문제 해결
      */
     @Transactional(readOnly = true)
     fun getDataQualitySummary(questionId: Long): DataQualitySummary {
@@ -116,10 +120,14 @@ class PremiumDataService(
         val normal = allVotes.count { val ms = it.latencyMs ?: Int.MAX_VALUE; ms >= 5000 && ms < 10000 } // 5-10초
         val slow = allVotes.count { (it.latencyMs ?: Int.MAX_VALUE) >= 10000 } // 10초 이상
 
-        // 티어별 분류
+        // 회원 정보 일괄 조회 (N+1 해결)
+        val memberIds = allVotes.map { it.memberId }.distinct()
+        val membersMap = memberRepository.findAllByIdIn(memberIds).associateBy { it.id!! }
+
+        // 티어별 분류 (Map 조회로 O(1))
         val tierCounts = mutableMapOf<String, Int>()
         allVotes.forEach { vote ->
-            val member = memberRepository.findById(vote.memberId).orElse(null)
+            val member = membersMap[vote.memberId]
             if (member != null) {
                 tierCounts[member.tier] = tierCounts.getOrDefault(member.tier, 0) + 1
             }

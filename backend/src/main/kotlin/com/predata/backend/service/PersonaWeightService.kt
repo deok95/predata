@@ -5,6 +5,7 @@ import com.predata.backend.domain.Choice
 import com.predata.backend.dto.WeightedVoteResult
 import com.predata.backend.repository.ActivityRepository
 import com.predata.backend.repository.MemberRepository
+import org.springframework.cache.annotation.Cacheable
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import java.math.BigDecimal
@@ -18,17 +19,19 @@ class PersonaWeightService(
 
     /**
      * 페르소나별 가중치를 적용한 투표 결과 계산
+     * 최적화: 회원 정보를 일괄 조회하여 N+1 문제 해결
      */
     @Transactional(readOnly = true)
+    @Cacheable(value = ["weightedVotes"], key = "#questionId + '_' + #category", unless = "#result.totalVotes == 0")
     fun calculateWeightedVotes(
         questionId: Long,
         category: String? = null
     ): WeightedVoteResult {
         val votes = activityRepository.findByQuestionIdAndActivityType(
-            questionId, 
+            questionId,
             ActivityType.VOTE
         )
-        
+
         if (votes.isEmpty()) {
             return WeightedVoteResult(
                 rawYesPercentage = 0.0,
@@ -37,44 +40,48 @@ class PersonaWeightService(
                 effectiveVotes = 0.0
             )
         }
-        
+
+        // 회원 정보 일괄 조회 (N+1 해결)
+        val memberIds = votes.map { it.memberId }.distinct()
+        val membersMap = memberRepository.findAllByIdIn(memberIds).associateBy { it.id!! }
+
         var yesWeightSum = 0.0
         var noWeightSum = 0.0
-        
+
         votes.forEach { vote ->
-            val member = memberRepository.findById(vote.memberId).orElse(null) ?: return@forEach
-            
+            val member = membersMap[vote.memberId] ?: return@forEach
+
             // 기본 티어 가중치
             val tierWeight = member.tierWeight.toDouble()
-            
+
             // 직업별 보너스 (질문 카테고리에 따라)
             val jobBonus = calculateJobBonus(member.jobCategory, category)
-            
+
             // 연령대별 가중치
             val ageBonus = calculateAgeBonus(member.ageGroup)
-            
+
             val finalWeight = tierWeight * jobBonus * ageBonus
-            
+
             if (vote.choice == Choice.YES) {
                 yesWeightSum += finalWeight
             } else {
                 noWeightSum += finalWeight
             }
         }
-        
+
         val totalWeight = yesWeightSum + noWeightSum
-        
+
         // 원본 비율
         val rawYesCount = votes.count { it.choice == Choice.YES }
         val rawYesPct = rawYesCount * 100.0 / votes.size
-        
+
         // 가중치 적용 비율
         val weightedYesPct = if (totalWeight > 0) {
             (yesWeightSum / totalWeight) * 100
         } else {
             rawYesPct
         }
-        
+
         return WeightedVoteResult(
             rawYesPercentage = BigDecimal(rawYesPct).setScale(2, RoundingMode.HALF_UP).toDouble(),
             weightedYesPercentage = BigDecimal(weightedYesPct).setScale(2, RoundingMode.HALF_UP).toDouble(),
@@ -88,7 +95,7 @@ class PersonaWeightService(
      */
     private fun calculateJobBonus(jobCategory: String?, questionCategory: String?): Double {
         if (jobCategory == null) return 1.0
-        
+
         return when (questionCategory?.uppercase()) {
             "ECONOMY", "FINANCE" -> when (jobCategory) {
                 "Finance" -> 1.5   // 금융인은 경제 질문에 +50%
@@ -126,54 +133,42 @@ class PersonaWeightService(
 
     /**
      * 국가별 가중치 적용 투표
+     * 최적화: 회원 정보를 한 번만 조회하여 국가 추출
      */
     @Transactional(readOnly = true)
+    @Cacheable(value = ["votesByCountry"], key = "#questionId")
     fun calculateVotesByCountry(questionId: Long): Map<String, WeightedVoteResult> {
         val votes = activityRepository.findByQuestionIdAndActivityType(
-            questionId, 
+            questionId,
             ActivityType.VOTE
         )
-        
-        val countries = votes.mapNotNull { vote ->
-            memberRepository.findById(vote.memberId).orElse(null)?.countryCode
-        }.distinct()
-        
-        return countries.associateWith { country ->
-            calculateWeightedVotesForCountry(questionId, country)
-        }
-    }
 
-    /**
-     * 특정 국가의 가중치 투표 계산
-     */
-    private fun calculateWeightedVotesForCountry(
-        questionId: Long, 
-        countryCode: String
-    ): WeightedVoteResult {
-        val votes = activityRepository.findByQuestionIdAndActivityType(
-            questionId, 
-            ActivityType.VOTE
-        )
-        
-        val countryMembers = memberRepository.findAll()
-            .filter { it.countryCode == countryCode }
-            .map { it.id!! }
-            .toSet()
-        
-        val countryVotes = votes.filter { it.memberId in countryMembers }
-        
-        if (countryVotes.isEmpty()) {
-            return WeightedVoteResult(0.0, 0.0, 0, 0.0)
+        if (votes.isEmpty()) {
+            return emptyMap()
         }
-        
-        val rawYesCount = countryVotes.count { it.choice == Choice.YES }
-        val rawYesPct = rawYesCount * 100.0 / countryVotes.size
-        
-        return WeightedVoteResult(
-            rawYesPercentage = BigDecimal(rawYesPct).setScale(2, RoundingMode.HALF_UP).toDouble(),
-            weightedYesPercentage = rawYesPct, // 국가별은 단순 집계
-            totalVotes = countryVotes.size,
-            effectiveVotes = countryVotes.size.toDouble()
-        )
+
+        // 회원 정보 일괄 조회 (N+1 해결)
+        val memberIds = votes.map { it.memberId }.distinct()
+        val membersMap = memberRepository.findAllByIdIn(memberIds).associateBy { it.id!! }
+
+        // 국가별로 투표 그룹화
+        val votesByCountry = votes.groupBy { vote ->
+            membersMap[vote.memberId]?.countryCode ?: "UNKNOWN"
+        }.filterKeys { it != "UNKNOWN" }
+
+        // 각 국가별 결과 계산
+        return votesByCountry.mapValues { (_, countryVotes) ->
+            val rawYesCount = countryVotes.count { it.choice == Choice.YES }
+            val rawYesPct = if (countryVotes.isNotEmpty()) {
+                rawYesCount * 100.0 / countryVotes.size
+            } else 0.0
+
+            WeightedVoteResult(
+                rawYesPercentage = BigDecimal(rawYesPct).setScale(2, RoundingMode.HALF_UP).toDouble(),
+                weightedYesPercentage = rawYesPct, // 국가별은 단순 집계
+                totalVotes = countryVotes.size,
+                effectiveVotes = countryVotes.size.toDouble()
+            )
+        }
     }
 }

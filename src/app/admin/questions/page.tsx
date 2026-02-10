@@ -1,10 +1,12 @@
 'use client';
 
-import React, { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo } from 'react';
+import { useRouter } from 'next/navigation';
 import { Plus, Trash2, TrendingUp, Gavel, X, AlertTriangle, Loader2, Sparkles, Settings, ChevronUp, ChevronDown, ChevronsUpDown } from 'lucide-react';
 import LiveMatchesDashboard from '@/components/LiveMatchesDashboard';
 import MainLayout from '@/components/layout/MainLayout';
 import { useTheme } from '@/hooks/useTheme';
+import { useAuth } from '@/hooks/useAuth';
 import { API_BASE_URL } from '@/lib/api';
 
 interface QuestionAdminView {
@@ -21,6 +23,8 @@ interface QuestionAdminView {
 
 function AdminQuestionContent() {
   const { isDark } = useTheme();
+  const { user, isAuthenticated, isLoading: authLoading } = useAuth();
+  const router = useRouter();
   const [questions, setQuestions] = useState<QuestionAdminView[]>([]);
   const [loading, setLoading] = useState(false);
   const [showCreateForm, setShowCreateForm] = useState(false);
@@ -55,10 +59,19 @@ function AdminQuestionContent() {
     { value: 21600, label: '6시간' },
   ];
 
+  // 비로그인 → 홈으로 리다이렉트
   useEffect(() => {
-    fetchQuestions();
-    fetchGeneratorSettings();
-  }, []);
+    if (!authLoading && !isAuthenticated) {
+      router.push('/');
+    }
+  }, [authLoading, isAuthenticated, router]);
+
+  useEffect(() => {
+    if (isAuthenticated && user?.role === 'ADMIN') {
+      fetchQuestions();
+      fetchGeneratorSettings();
+    }
+  }, [isAuthenticated, user?.role]);
 
   // 정렬된 질문 목록
   const sortedQuestions = useMemo(() => {
@@ -195,7 +208,7 @@ function AdminQuestionContent() {
     try {
       const response = await fetch(`${API_BASE_URL}/admin/questions`);
       const data = await response.json();
-      setQuestions(data);
+      setQuestions(Array.isArray(data) ? data : []);
     } catch (error) {
       if (process.env.NODE_ENV === 'development') {
         console.error('Failed to fetch questions:', error);
@@ -342,6 +355,37 @@ function AdminQuestionContent() {
       alert('취소 중 오류가 발생했습니다.');
     }
   };
+
+  // 로딩 중
+  if (authLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <Loader2 className="w-8 h-8 animate-spin text-indigo-500" />
+      </div>
+    );
+  }
+
+  // 비로그인 (리다이렉트 중)
+  if (!isAuthenticated) {
+    return null;
+  }
+
+  // Admin이 아닌 경우
+  if (user?.role !== 'ADMIN') {
+    return (
+      <div className={`flex flex-col items-center justify-center min-h-[60vh] gap-4 ${isDark ? 'text-white' : 'text-slate-800'}`}>
+        <AlertTriangle className="w-16 h-16 text-amber-500" />
+        <h1 className="text-2xl font-bold">접근 권한이 없습니다</h1>
+        <p className={isDark ? 'text-slate-400' : 'text-slate-500'}>이 페이지는 관리자만 접근할 수 있습니다.</p>
+        <button
+          onClick={() => router.push('/')}
+          className="px-6 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition"
+        >
+          홈으로 돌아가기
+        </button>
+      </div>
+    );
+  }
 
   return (
     <div className="max-w-7xl mx-auto">
