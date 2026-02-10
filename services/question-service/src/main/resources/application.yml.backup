@@ -1,10 +1,10 @@
 spring:
   application:
-    name: betting-service
+    name: question-service
   datasource:
-    url: jdbc:mariadb://localhost:3306/predata_betting
+    url: jdbc:mariadb://localhost:3306/predata_question
     username: root
-    password: ${DB_PASSWORD:predata}
+    password: 1234
     driver-class-name: org.mariadb.jdbc.Driver
   jpa:
     hibernate:
@@ -15,14 +15,12 @@ spring:
     port: 6379
 
 server:
-  port: 8083
+  port: 8082
 
 services:
-  member:
-    url: http://localhost:8081
-  question:
-    url: http://localhost:8082
+  blockchain:
+    url: http://localhost:8087
 
 logging:
   level:
-    com.predata.betting: DEBUG
+    com.predata.question: DEBUG

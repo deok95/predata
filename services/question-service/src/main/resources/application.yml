@@ -4,7 +4,7 @@ spring:
   datasource:
     url: jdbc:mariadb://localhost:3306/predata_question
     username: root
-    password: 1234
+    password: ${DB_PASSWORD:predata}
     driver-class-name: org.mariadb.jdbc.Driver
   jpa:
     hibernate:
