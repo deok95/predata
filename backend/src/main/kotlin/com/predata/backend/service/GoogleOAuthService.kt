@@ -7,6 +7,7 @@ import com.predata.backend.config.JwtUtil
 import com.predata.backend.domain.Member
 import com.predata.backend.dto.GoogleAuthRequest
 import com.predata.backend.dto.GoogleAuthResponse
+import com.predata.backend.dto.CompleteGoogleRegistrationRequest
 import com.predata.backend.repository.MemberRepository
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.stereotype.Service
@@ -107,6 +108,64 @@ class GoogleOAuthService(
             return GoogleAuthResponse(
                 success = false,
                 message = "Google authentication failed: ${e.message}"
+            )
+        }
+    }
+
+    fun completeRegistration(request: CompleteGoogleRegistrationRequest): GoogleAuthResponse {
+        try {
+            val email = request.email.lowercase()
+
+            // 1. 이미 등록된 사용자인지 확인
+            val existingByGoogleId = memberRepository.findByGoogleId(request.googleId)
+            if (existingByGoogleId.isPresent) {
+                return GoogleAuthResponse(
+                    success = false,
+                    message = "User already registered"
+                )
+            }
+
+            val existingByEmail = memberRepository.findByEmail(email)
+            if (existingByEmail.isPresent) {
+                // 기존 이메일 사용자 → Google ID 연결
+                val member = existingByEmail.get()
+                member.googleId = request.googleId
+                memberRepository.save(member)
+
+                val jwt = jwtUtil.generateToken(member.id!!, member.email, member.role)
+                return GoogleAuthResponse(
+                    success = true,
+                    message = "Google account linked successfully",
+                    token = jwt,
+                    memberId = member.id
+                )
+            }
+
+            // 2. 신규 회원 생성
+            val newMember = Member(
+                email = email,
+                googleId = request.googleId,
+                passwordHash = null,  // Google 사용자는 비밀번호 없음
+                countryCode = request.countryCode,
+                jobCategory = request.jobCategory,
+                ageGroup = request.ageGroup,
+                tier = "BRONZE",
+                pointBalance = 10000,  // 가입 보너스
+                role = "USER"
+            )
+            val saved = memberRepository.save(newMember)
+
+            val jwt = jwtUtil.generateToken(saved.id!!, saved.email, saved.role)
+            return GoogleAuthResponse(
+                success = true,
+                message = "Registration successful",
+                token = jwt,
+                memberId = saved.id
+            )
+        } catch (e: Exception) {
+            return GoogleAuthResponse(
+                success = false,
+                message = "Registration failed: ${e.message}"
             )
         }
     }

@@ -176,3 +176,15 @@ data class GoogleAuthResponse(
     val memberId: Long? = null,
     val needsAdditionalInfo: Boolean = false  // 추가 정보 입력 필요 여부
 )
+
+// Google OAuth 회원가입 완료 요청 (추가 정보)
+data class CompleteGoogleRegistrationRequest(
+    @field:NotBlank(message = "Google ID is required")
+    val googleId: String,
+    @field:NotBlank(message = "Email is required")
+    val email: String,
+    @field:NotBlank(message = "Country code is required")
+    val countryCode: String,
+    val jobCategory: String? = null,
+    val ageGroup: Int? = null
+)
