@@ -29,62 +29,29 @@ services:
       timeout: 5s
       retries: 5
 
-  # ===== 마이크로서비스 =====
-  member-service:
-    build: ./services/member-service
-    container_name: predata-member
+  # ===== Backend API =====
+  backend:
+    build: ./backend
+    container_name: predata-backend
     ports:
-      - "8081:8081"
+      - "8080:8080"
     environment:
-      SPRING_DATASOURCE_URL: jdbc:mariadb://mariadb:3306/predata_member
+      SPRING_DATASOURCE_URL: jdbc:mariadb://mariadb:3306/predata
+      SPRING_DATASOURCE_USERNAME: root
+      SPRING_DATASOURCE_PASSWORD: ${DB_PASSWORD:-changeme}
       SPRING_REDIS_HOST: redis
+      SPRING_REDIS_PORT: 6379
     depends_on:
       mariadb:
         condition: service_healthy
       redis:
         condition: service_healthy
-
-  question-service:
-    build: ./services/question-service
-    container_name: predata-question
-    ports:
-      - "8082:8082"
-    environment:
-      SPRING_DATASOURCE_URL: jdbc:mariadb://mariadb:3306/predata_question
-      SPRING_REDIS_HOST: redis
-    depends_on:
-      mariadb:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
-
-  betting-service:
-    build: ./services/betting-service
-    container_name: predata-betting
-    ports:
-      - "8083:8083"
-    environment:
-      SPRING_DATASOURCE_URL: jdbc:mariadb://mariadb:3306/predata_betting
-      SPRING_REDIS_HOST: redis
-      SERVICES_MEMBER_SERVICE_URL: http://member-service:8081
-      SERVICES_QUESTION_SERVICE_URL: http://question-service:8082
-    depends_on:
-      - member-service
-      - question-service
-
-  settlement-service:
-    build: ./services/settlement-service
-    container_name: predata-settlement
-    ports:
-      - "8084:8084"
-    environment:
-      SPRING_DATASOURCE_URL: jdbc:mariadb://mariadb:3306/predata_settlement
-      SPRING_REDIS_HOST: redis
-      SERVICES_MEMBER_SERVICE_URL: http://member-service:8081
-      SERVICES_QUESTION_SERVICE_URL: http://question-service:8082
-      SERVICES_BETTING_SERVICE_URL: http://betting-service:8083
-    depends_on:
-      - betting-service
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/actuator/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
 
   # ===== 프론트엔드 =====
   frontend:
@@ -95,9 +62,8 @@ services:
     environment:
       NEXT_PUBLIC_API_URL: http://localhost:8080
     depends_on:
-      - member-service
-      - question-service
-      - betting-service
+      backend:
+        condition: service_healthy
 
 volumes:
   mariadb-data:
