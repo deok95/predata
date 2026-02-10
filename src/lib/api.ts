@@ -319,6 +319,24 @@ export const authApi = {
         ageGroup: additionalInfo?.ageGroup,
       }),
     }),
+
+  // Google OAuth 회원가입 완료 (추가 정보 입력)
+  completeGoogleRegistration: (data: {
+    googleId: string;
+    email: string;
+    countryCode: string;
+    jobCategory?: string;
+    ageGroup?: number;
+  }) =>
+    apiRequest<{
+      success: boolean;
+      message: string;
+      token?: string;
+      memberId?: number;
+    }>('/api/auth/google/complete-registration', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
 };
 
 // ===== Blockchain API =====

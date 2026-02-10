@@ -6,6 +6,7 @@ import com.predata.backend.dto.CompleteSignupRequest
 import com.predata.backend.dto.LoginRequest
 import com.predata.backend.dto.GoogleAuthRequest
 import com.predata.backend.dto.GoogleAuthResponse
+import com.predata.backend.dto.CompleteGoogleRegistrationRequest
 import com.predata.backend.service.AuthService
 import com.predata.backend.service.GoogleOAuthService
 import org.springframework.http.ResponseEntity
@@ -117,6 +118,29 @@ class AuthController(
         }
 
         val response = googleOAuthService.authenticate(request)
+        return if (response.success) {
+            ResponseEntity.ok(response)
+        } else {
+            ResponseEntity.badRequest().body(response)
+        }
+    }
+
+    /**
+     * Google OAuth 회원가입 완료 (추가 정보 입력)
+     * POST /api/auth/google/complete-registration
+     */
+    @PostMapping("/google/complete-registration")
+    fun completeGoogleRegistration(@RequestBody request: CompleteGoogleRegistrationRequest): ResponseEntity<GoogleAuthResponse> {
+        if (request.googleId.isBlank() || request.email.isBlank() || request.countryCode.isBlank()) {
+            return ResponseEntity.badRequest().body(
+                GoogleAuthResponse(
+                    success = false,
+                    message = "Required fields are missing"
+                )
+            )
+        }
+
+        val response = googleOAuthService.completeRegistration(request)
         return if (response.success) {
             ResponseEntity.ok(response)
         } else {

@@ -8,7 +8,10 @@ import org.springframework.security.web.SecurityFilterChain
 
 @Configuration
 @EnableWebSecurity
-class SecurityConfig {
+class SecurityConfig(
+    private val oAuth2LoginSuccessHandler: OAuth2LoginSuccessHandler,
+    private val oAuth2LoginFailureHandler: OAuth2LoginFailureHandler
+) {
 
     @Bean
     fun filterChain(http: HttpSecurity): SecurityFilterChain {
@@ -16,6 +19,11 @@ class SecurityConfig {
             .csrf { it.disable() }  // REST API는 CSRF 불필요
             .authorizeHttpRequests { auth ->
                 auth.anyRequest().permitAll()  // 기존 JWT 인터셉터가 인증 처리
+            }
+            .oauth2Login { oauth2 ->
+                oauth2
+                    .successHandler(oAuth2LoginSuccessHandler)
+                    .failureHandler(oAuth2LoginFailureHandler)
             }
 
         return http.build()
