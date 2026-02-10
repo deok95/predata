@@ -5,6 +5,7 @@ import com.predata.backend.domain.Choice
 import jakarta.validation.constraints.Max
 import jakarta.validation.constraints.Min
 import jakarta.validation.constraints.NotNull
+import jakarta.validation.constraints.NotBlank
 
 // 투표 요청
 data class VoteRequest(
@@ -152,4 +153,26 @@ data class AdminCreateQuestionRequest(
 data class SetQuestionResultRequest(
     @field:NotNull(message = "결과(YES/NO)는 필수입니다.")
     val result: String // "YES" or "NO"
+)
+
+// ============================================================
+// Google OAuth DTOs
+// ============================================================
+
+// Google OAuth 로그인 요청
+data class GoogleAuthRequest(
+    @field:NotBlank(message = "Google token is required")
+    val googleToken: String,         // Google에서 받은 ID Token
+    val countryCode: String? = null, // 추가 정보 (선택)
+    val jobCategory: String? = null,
+    val ageGroup: Int? = null
+)
+
+// Google OAuth 로그인 응답
+data class GoogleAuthResponse(
+    val success: Boolean,
+    val message: String,
+    val token: String? = null,           // JWT 토큰
+    val memberId: Long? = null,
+    val needsAdditionalInfo: Boolean = false  // 추가 정보 입력 필요 여부
 )

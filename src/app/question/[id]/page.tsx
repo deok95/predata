@@ -194,7 +194,7 @@ function QuestionDetailContent() {
             noPool={question.noBetPool}
             marketId={question.id}
           />
-          <OrderBook yesPercent={yesPercent} totalPool={question.totalBetPool} />
+          <OrderBook questionId={question.id} yesPercent={yesPercent} totalPool={question.totalBetPool} />
           <ActivityFeed questionId={question.id} refreshKey={refreshKey} />
         </div>
         <div className="lg:col-span-4">

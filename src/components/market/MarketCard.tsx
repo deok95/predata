@@ -11,10 +11,15 @@ interface MarketCardProps {
   votedChoice?: 'YES' | 'NO';
 }
 
-function useTimeRemaining(targetDate: string) {
-  const [timeLeft, setTimeLeft] = useState('');
+function useTimeRemaining(targetDate: string | null) {
+  const [timeLeft, setTimeLeft] = useState('종료됨');
 
   useEffect(() => {
+    if (!targetDate) {
+      setTimeLeft('종료됨');
+      return;
+    }
+
     const calculateTimeLeft = () => {
       const now = new Date().getTime();
       const target = new Date(targetDate).getTime();
@@ -65,7 +70,7 @@ export default function MarketCard({ question, votedChoice }: MarketCardProps) {
   };
 
   const endDate = getEndDate();
-  const timeRemaining = endDate ? useTimeRemaining(endDate) : '종료됨';
+  const timeRemaining = useTimeRemaining(endDate);
 
   // Check if voting period has expired (even if status is still VOTING)
   const isVotingExpired = question.status === 'VOTING' && question.votingEndAt && new Date(question.votingEndAt) < new Date();

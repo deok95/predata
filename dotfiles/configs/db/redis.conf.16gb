@@ -1,0 +1,27 @@
+# Redis Configuration for 16GB Mac
+# Location: /opt/homebrew/etc/redis.conf
+
+# Network
+bind 127.0.0.1 ::1
+port 6379
+protected-mode yes
+
+# Memory Limit (16GB Mac: 512MB max)
+maxmemory 512mb
+maxmemory-policy allkeys-lru
+
+# Persistence
+save 900 1
+save 300 10
+save 60 10000
+
+# Performance
+tcp-keepalive 300
+timeout 0
+
+# Logging
+loglevel notice
+logfile ""
+
+# Databases
+databases 16

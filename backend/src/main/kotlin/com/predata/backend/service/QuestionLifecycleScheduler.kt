@@ -1,25 +1,47 @@
 package com.predata.backend.service
 
+import com.fasterxml.jackson.databind.ObjectMapper
+import com.predata.backend.domain.Question
 import com.predata.backend.domain.QuestionStatus
 import com.predata.backend.domain.QuestionType
 import com.predata.backend.domain.FinalResult
 import com.predata.backend.domain.ActivityType
 import com.predata.backend.domain.Choice
+import com.predata.backend.dto.ClaudeApiRequest
+import com.predata.backend.dto.ClaudeMessage
 import com.predata.backend.repository.QuestionRepository
 import com.predata.backend.repository.ActivityRepository
 import org.slf4j.LoggerFactory
+import org.springframework.beans.factory.annotation.Value
+import org.springframework.http.HttpEntity
+import org.springframework.http.HttpHeaders
+import org.springframework.http.HttpMethod
+import org.springframework.http.MediaType
 import org.springframework.scheduling.annotation.Scheduled
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
+import org.springframework.web.client.RestTemplate
+import java.time.LocalDate
 import java.time.LocalDateTime
 
 @Service
 class QuestionLifecycleScheduler(
     private val questionRepository: QuestionRepository,
     private val activityRepository: ActivityRepository,
-    private val settlementService: SettlementService
+    private val settlementService: SettlementService,
+    @Value("\${anthropic.api.key:}") private val apiKey: String
 ) {
     private val logger = LoggerFactory.getLogger(QuestionLifecycleScheduler::class.java)
+    private val restTemplate = RestTemplate()
+    private val objectMapper = ObjectMapper()
+
+    companion object {
+        const val CLAUDE_API_URL = "https://api.anthropic.com/v1/messages"
+        const val CLAUDE_MODEL = "claude-sonnet-4-20250514"
+        const val ANTHROPIC_VERSION = "2023-06-01"
+    }
+
+    fun isDemoMode(): Boolean = apiKey.isBlank()
 
     /**
      * 1분마다 실행:
@@ -168,13 +190,8 @@ class QuestionLifecycleScheduler(
                         }
 
                         QuestionType.VERIFIABLE -> {
-                            // VERIFIABLE 타입: 관리자 입력 대기, 상태만 SETTLED로 변경
-                            logger.info(
-                                "[Lifecycle] VERIFIABLE 질문 #{} '{}' → 관리자 결과 입력 대기",
-                                locked.id,
-                                locked.title
-                            )
-                            // 자동 정산 안 함 - 관리자가 수동으로 결과 입력할 때까지 대기
+                            // VERIFIABLE 타입: Claude API 또는 투표 결과로 자동 정산
+                            settleVerifiableQuestion(locked)
                         }
                     }
                 }
@@ -198,5 +215,166 @@ class QuestionLifecycleScheduler(
                 logger.error("[Lifecycle] 질문 #{} 자동 정산 실패: {}", question.id, e.message)
             }
         }
+    }
+
+    /**
+     * VERIFIABLE 질문 자동 정산
+     * - 데모 모드: 투표 결과로 자동 정산
+     * - API 모드: Claude API로 결과 판정
+     */
+    private fun settleVerifiableQuestion(question: Question) {
+        if (isDemoMode()) {
+            // 데모 모드: 투표 결과로 자동 정산 (OPINION과 동일)
+            settleByVoteResult(question, "AUTO_SETTLEMENT_VERIFIABLE_DEMO")
+        } else {
+            // API 모드: Claude로 판단
+            val judgment = callClaudeForJudgment(question)
+            when (judgment) {
+                "YES" -> {
+                    logger.info("[Lifecycle] VERIFIABLE 질문 #{} → Claude 판정: YES", question.id)
+                    autoSettle(question, FinalResult.YES, "AUTO_SETTLEMENT_VERIFIABLE_AI")
+                }
+                "NO" -> {
+                    logger.info("[Lifecycle] VERIFIABLE 질문 #{} → Claude 판정: NO", question.id)
+                    autoSettle(question, FinalResult.NO, "AUTO_SETTLEMENT_VERIFIABLE_AI")
+                }
+                else -> {
+                    // UNKNOWN: 관리자 수동 입력 대기
+                    logger.info(
+                        "[Lifecycle] VERIFIABLE 질문 #{} '{}' → Claude 판정 불가 (UNKNOWN), 관리자 입력 대기",
+                        question.id,
+                        question.title
+                    )
+                }
+            }
+        }
+    }
+
+    /**
+     * 투표 결과로 정산
+     */
+    private fun settleByVoteResult(question: Question, sourceUrl: String) {
+        try {
+            val votes = activityRepository.findByQuestionIdAndActivityType(
+                question.id!!,
+                ActivityType.VOTE
+            )
+
+            val yesVotes = votes.count { it.choice == Choice.YES }
+            val noVotes = votes.count { it.choice == Choice.NO }
+
+            val result = if (yesVotes > noVotes) FinalResult.YES else FinalResult.NO
+
+            val settlementResult = settlementService.initiateSettlement(
+                questionId = question.id!!,
+                finalResult = result,
+                sourceUrl = sourceUrl
+            )
+            logger.info(
+                "[Lifecycle] VERIFIABLE 질문 #{} '{}' → 투표 결과로 자동 정산 (YES: {}, NO: {}, 결과: {})",
+                question.id,
+                question.title,
+                yesVotes,
+                noVotes,
+                result
+            )
+            logger.info("[Lifecycle] 정산 메시지: {}", settlementResult.message)
+
+            // 즉시 배당금 지급
+            val finalResult = settlementService.finalizeSettlement(
+                questionId = question.id!!,
+                skipDeadlineCheck = true
+            )
+            logger.info("[Lifecycle] 배당금 지급 완료: 승자 {}명, 총 배당금 {}P", finalResult.totalWinners, finalResult.totalPayout)
+        } catch (e: Exception) {
+            logger.error("[Lifecycle] VERIFIABLE 질문 #{} 정산 실패: {}", question.id, e.message)
+            question.status = QuestionStatus.SETTLED
+            questionRepository.save(question)
+        }
+    }
+
+    /**
+     * 자동 정산 실행
+     */
+    private fun autoSettle(question: Question, result: FinalResult, sourceUrl: String) {
+        try {
+            val settlementResult = settlementService.initiateSettlement(
+                questionId = question.id!!,
+                finalResult = result,
+                sourceUrl = sourceUrl
+            )
+            logger.info("[Lifecycle] 정산 메시지: {}", settlementResult.message)
+
+            // 즉시 배당금 지급
+            val finalResult = settlementService.finalizeSettlement(
+                questionId = question.id!!,
+                skipDeadlineCheck = true
+            )
+            logger.info("[Lifecycle] 배당금 지급 완료: 승자 {}명, 총 배당금 {}P", finalResult.totalWinners, finalResult.totalPayout)
+        } catch (e: Exception) {
+            logger.error("[Lifecycle] 질문 #{} 자동 정산 실패: {}", question.id, e.message)
+            question.status = QuestionStatus.SETTLED
+            questionRepository.save(question)
+        }
+    }
+
+    /**
+     * Claude API로 질문 결과 판정
+     * @return "YES", "NO", or "UNKNOWN"
+     */
+    private fun callClaudeForJudgment(question: Question): String {
+        val prompt = buildJudgmentPrompt(question)
+
+        val request = ClaudeApiRequest(
+            model = CLAUDE_MODEL,
+            max_tokens = 64,
+            messages = listOf(ClaudeMessage(role = "user", content = prompt))
+        )
+
+        val headers = HttpHeaders().apply {
+            contentType = MediaType.APPLICATION_JSON
+            set("x-api-key", apiKey)
+            set("anthropic-version", ANTHROPIC_VERSION)
+        }
+
+        val entity = HttpEntity(objectMapper.writeValueAsString(request), headers)
+
+        try {
+            val response = restTemplate.exchange(
+                CLAUDE_API_URL,
+                HttpMethod.POST,
+                entity,
+                String::class.java
+            )
+
+            val jsonNode = objectMapper.readTree(response.body)
+            val content = jsonNode.get("content")?.get(0)?.get("text")?.asText()?.trim()?.uppercase()
+
+            logger.info("[Lifecycle] Claude 응답: $content (질문: ${question.title})")
+
+            return when {
+                content?.contains("YES") == true -> "YES"
+                content?.contains("NO") == true -> "NO"
+                else -> "UNKNOWN"
+            }
+
+        } catch (e: Exception) {
+            logger.error("[Lifecycle] Claude API 호출 실패: ${e.message}")
+            return "UNKNOWN"
+        }
+    }
+
+    /**
+     * 결과 판정용 프롬프트 생성
+     */
+    private fun buildJudgmentPrompt(question: Question): String {
+        val today = LocalDate.now()
+        return """
+질문: ${question.title}
+현재 날짜: $today
+이 질문의 결과가 YES인지 NO인지 판단해줘.
+아직 모르면 UNKNOWN.
+YES, NO, UNKNOWN 중 하나만 답해.
+        """.trimIndent()
     }
 }

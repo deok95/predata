@@ -6,7 +6,7 @@ import { useTheme } from '@/hooks/useTheme';
 import { useToast } from '@/components/ui/Toast';
 import { useAuth } from '@/hooks/useAuth';
 import { useRegisterModal } from '@/components/RegisterModal';
-import { bettingApi, ApiError } from '@/lib/api';
+import { bettingApi, orderApi, ApiError } from '@/lib/api';
 import type { Question, Member } from '@/types/api';
 
 interface TradingPanelProps {
@@ -25,6 +25,8 @@ export default function TradingPanel({ question, user, onTradeComplete, votedCho
   const [tradeAmount, setTradeAmount] = useState('');
   const [selectedOutcome, setSelectedOutcome] = useState<'YES' | 'NO'>('YES');
   const [activeTab, setActiveTab] = useState<'buy' | 'sell'>('buy');
+  const [orderType, setOrderType] = useState<'market' | 'limit'>('market');
+  const [limitPrice, setLimitPrice] = useState('');
   const [loading, setLoading] = useState(false);
 
   const yesOdds = question.totalBetPool > 0
@@ -34,6 +36,12 @@ export default function TradingPanel({ question, user, onTradeComplete, votedCho
   const handleTrade = async () => {
     if (!tradeAmount || parseFloat(tradeAmount) <= 0) {
       showToast('금액을 입력해주세요', 'error');
+      return;
+    }
+
+    // Limit Order인 경우 별도 처리
+    if (orderType === 'limit') {
+      await handleLimitOrder();
       return;
     }
 
@@ -73,6 +81,46 @@ export default function TradingPanel({ question, user, onTradeComplete, votedCho
         showToast(error.message, 'error');
       } else {
         showToast(activeTab === 'buy' ? '베팅 중 오류가 발생했습니다.' : '매도 중 오류가 발생했습니다.', 'error');
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleLimitOrder = async () => {
+    if (!limitPrice || parseFloat(limitPrice) <= 0 || parseFloat(limitPrice) >= 1) {
+      showToast('유효한 가격을 입력해주세요 (0.01 ~ 0.99)', 'error');
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const result = await orderApi.createOrder({
+        memberId: user.id,
+        questionId: question.id,
+        side: selectedOutcome,
+        price: parseFloat(limitPrice),
+        amount: Number(tradeAmount),
+      });
+
+      if (result.success) {
+        if (result.filledAmount === Number(tradeAmount)) {
+          showToast('주문이 완전 체결되었습니다!');
+        } else if (result.filledAmount > 0) {
+          showToast(`부분 체결: ${result.filledAmount}/${tradeAmount} P`);
+        } else {
+          showToast('주문이 오더북에 등록되었습니다.');
+        }
+        setTradeAmount('');
+        setLimitPrice('');
+        await refreshUser();
+        onTradeComplete();
+      }
+    } catch (error) {
+      if (error instanceof ApiError) {
+        showToast(error.message, 'error');
+      } else {
+        showToast('주문 중 오류가 발생했습니다.', 'error');
       }
     } finally {
       setLoading(false);
@@ -216,7 +264,7 @@ export default function TradingPanel({ question, user, onTradeComplete, votedCho
   // BETTING status: Show full trading interface
   return (
     <div className={`p-6 rounded-[2.5rem] border sticky top-24 ${isDark ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-100 shadow-xl'}`}>
-      <div className={`flex border-b mb-6 ${isDark ? 'border-slate-800' : 'border-slate-100'}`}>
+      <div className={`flex border-b mb-4 ${isDark ? 'border-slate-800' : 'border-slate-100'}`}>
         <button
           onClick={() => setActiveTab('buy')}
           className={`flex-1 pb-4 font-black text-sm transition-all ${activeTab === 'buy' ? 'border-b-4 border-indigo-600 text-indigo-600' : 'text-slate-400 hover:text-slate-300'}`}
@@ -228,6 +276,30 @@ export default function TradingPanel({ question, user, onTradeComplete, votedCho
           className={`flex-1 pb-4 font-black text-sm transition-all ${activeTab === 'sell' ? 'border-b-4 border-rose-500 text-rose-500' : 'text-slate-400 hover:text-slate-300'}`}
         >
           Sell
+        </button>
+      </div>
+
+      {/* Market / Limit 선택 */}
+      <div className="flex gap-2 mb-6">
+        <button
+          onClick={() => setOrderType('market')}
+          className={`flex-1 py-2 rounded-xl text-xs font-bold transition-all ${
+            orderType === 'market'
+              ? 'bg-indigo-600 text-white'
+              : isDark ? 'bg-slate-800 text-slate-400 hover:bg-slate-700' : 'bg-slate-100 text-slate-500 hover:bg-slate-200'
+          }`}
+        >
+          Market
+        </button>
+        <button
+          onClick={() => setOrderType('limit')}
+          className={`flex-1 py-2 rounded-xl text-xs font-bold transition-all ${
+            orderType === 'limit'
+              ? 'bg-indigo-600 text-white'
+              : isDark ? 'bg-slate-800 text-slate-400 hover:bg-slate-700' : 'bg-slate-100 text-slate-500 hover:bg-slate-200'
+          }`}
+        >
+          Limit
         </button>
       </div>
 
@@ -269,6 +341,41 @@ export default function TradingPanel({ question, user, onTradeComplete, votedCho
       {activeTab === 'sell' && (
         <div className={`rounded-2xl p-3 mb-4 text-xs ${isDark ? 'bg-amber-950/20 border border-amber-900/30 text-amber-400' : 'bg-amber-50 border border-amber-200 text-amber-700'}`}>
           매도는 반대 포지션을 구매하여 기존 포지션을 헤지합니다
+        </div>
+      )}
+
+      {/* Limit Order 가격 입력 */}
+      {orderType === 'limit' && (
+        <div className="mb-4">
+          <label className="text-xs font-bold text-slate-400 uppercase mb-2 block">Limit Price</label>
+          <div className="relative">
+            <input
+              type="number"
+              step="0.01"
+              min="0.01"
+              max="0.99"
+              value={limitPrice}
+              onChange={(e) => setLimitPrice(e.target.value)}
+              placeholder="0.50"
+              className={`w-full p-4 rounded-2xl border-2 font-bold text-lg transition-all ${
+                isDark
+                  ? 'bg-slate-800 border-slate-700 text-white focus:border-indigo-500'
+                  : 'bg-slate-50 border-slate-200 text-slate-900 focus:border-indigo-500'
+              }`}
+            />
+            <span className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 font-bold">$</span>
+          </div>
+          <div className="flex space-x-2 mt-2">
+            {[0.25, 0.50, 0.75].map(price => (
+              <button
+                key={price}
+                onClick={() => setLimitPrice(price.toFixed(2))}
+                className={`flex-1 py-1.5 rounded-xl text-xs font-bold transition-all ${isDark ? 'bg-slate-800 hover:bg-indigo-600 hover:text-white' : 'bg-slate-100 hover:bg-indigo-600 hover:text-white'}`}
+              >
+                ${price.toFixed(2)}
+              </button>
+            ))}
+          </div>
         </div>
       )}
 
@@ -336,7 +443,7 @@ export default function TradingPanel({ question, user, onTradeComplete, votedCho
               : 'bg-orange-500 text-white shadow-orange-500/20 hover:bg-orange-600'
           }`}
         >
-          {loading ? '처리 중...' : activeTab === 'buy' ? `Buy ${selectedOutcome}` : `Sell ${selectedOutcome}`}
+          {loading ? '처리 중...' : orderType === 'limit' ? `Place ${selectedOutcome} Limit Order` : activeTab === 'buy' ? `Buy ${selectedOutcome}` : `Sell ${selectedOutcome}`}
         </button>
       )}
     </div>

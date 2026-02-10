@@ -17,7 +17,8 @@ class VoteService(
     private val activityRepository: ActivityRepository,
     private val questionRepository: QuestionRepository,
     private val memberRepository: com.predata.backend.repository.MemberRepository,
-    private val ticketService: TicketService
+    private val ticketService: TicketService,
+    private val voteRecordService: VoteRecordService
 ) {
 
     /**
@@ -95,6 +96,10 @@ class VoteService(
         )
 
         val savedActivity = activityRepository.save(activity)
+
+        // 5. 온체인(Mock) 기록
+        voteRecordService.recordVote(savedActivity)
+
         val remainingTickets = ticketService.getRemainingTickets(request.memberId)
 
         return ActivityResponse(

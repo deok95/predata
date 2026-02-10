@@ -4,7 +4,10 @@ import com.predata.backend.dto.SendCodeRequest
 import com.predata.backend.dto.VerifyCodeRequest
 import com.predata.backend.dto.CompleteSignupRequest
 import com.predata.backend.dto.LoginRequest
+import com.predata.backend.dto.GoogleAuthRequest
+import com.predata.backend.dto.GoogleAuthResponse
 import com.predata.backend.service.AuthService
+import com.predata.backend.service.GoogleOAuthService
 import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.*
 
@@ -12,7 +15,8 @@ import org.springframework.web.bind.annotation.*
 @RequestMapping("/api/auth")
 @CrossOrigin(origins = ["http://localhost:3000", "http://localhost:3001"])
 class AuthController(
-    private val authService: AuthService
+    private val authService: AuthService,
+    private val googleOAuthService: GoogleOAuthService
 ) {
 
     /**
@@ -94,6 +98,29 @@ class AuthController(
             ResponseEntity.ok(result)
         } else {
             ResponseEntity.badRequest().body(result)
+        }
+    }
+
+    /**
+     * Google OAuth 로그인
+     * POST /api/auth/google
+     */
+    @PostMapping("/google")
+    fun googleLogin(@RequestBody request: GoogleAuthRequest): ResponseEntity<GoogleAuthResponse> {
+        if (request.googleToken.isBlank()) {
+            return ResponseEntity.badRequest().body(
+                GoogleAuthResponse(
+                    success = false,
+                    message = "Google token is required"
+                )
+            )
+        }
+
+        val response = googleOAuthService.authenticate(request)
+        return if (response.success) {
+            ResponseEntity.ok(response)
+        } else {
+            ResponseEntity.badRequest().body(response)
         }
     }
 }

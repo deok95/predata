@@ -1,0 +1,44 @@
+# Brewfile - Full Development Environment (16GB+ Macs)
+# Usage: brew bundle --file=Brewfile
+
+# Taps
+tap "homebrew/bundle"
+tap "homebrew/cask-versions"
+
+# CLI Tools
+brew "git"
+brew "gradle"
+brew "maven"
+brew "node"
+brew "python@3.14"
+
+# Java
+brew "openjdk@17"
+cask "zulu@17"
+
+# Databases
+brew "mariadb"
+brew "mysql"
+brew "redis"
+
+# Development Apps
+cask "cursor"
+cask "dbeaver-community"
+cask "docker-desktop"
+cask "intellij-idea-ce"
+cask "postman"
+cask "visual-studio-code"
+
+# Communication
+cask "slack"
+
+# VSCode Extensions
+vscode "anthropic.claude-code"
+vscode "github.copilot"
+vscode "github.copilot-chat"
+vscode "ms-python.debugpy"
+vscode "ms-python.python"
+vscode "ms-python.vscode-pylance"
+vscode "ms-python.vscode-python-envs"
+vscode "vscjava.vscode-gradle"
+vscode "vscjava.vscode-java-pack"

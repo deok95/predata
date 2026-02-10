@@ -297,6 +297,28 @@ export const authApi = {
       method: 'POST',
       body: JSON.stringify({ email, password }),
     }),
+
+  // Google OAuth 로그인
+  googleLogin: (googleToken: string, additionalInfo?: {
+    countryCode?: string;
+    jobCategory?: string;
+    ageGroup?: number;
+  }) =>
+    apiRequest<{
+      success: boolean;
+      message: string;
+      token?: string;
+      memberId?: number;
+      needsAdditionalInfo?: boolean;
+    }>('/api/auth/google', {
+      method: 'POST',
+      body: JSON.stringify({
+        googleToken,
+        countryCode: additionalInfo?.countryCode,
+        jobCategory: additionalInfo?.jobCategory,
+        ageGroup: additionalInfo?.ageGroup,
+      }),
+    }),
 };
 
 // ===== Blockchain API =====
@@ -366,6 +388,78 @@ export const leaderboardApi = {
   },
 };
 
+// ===== OrderBook API =====
+export interface OrderBookLevel {
+  price: number;
+  amount: number;
+  count: number;
+}
+
+export interface OrderBookData {
+  questionId: number;
+  bids: OrderBookLevel[];
+  asks: OrderBookLevel[];
+  lastPrice?: number;
+  spread?: number;
+}
+
+export interface CreateOrderRequest {
+  memberId: number;
+  questionId: number;
+  side: 'YES' | 'NO';
+  price: number;  // 0.01 ~ 0.99
+  amount: number;
+}
+
+export interface CreateOrderResponse {
+  success: boolean;
+  message?: string;
+  orderId?: number;
+  filledAmount: number;
+  remainingAmount: number;
+}
+
+export interface OrderData {
+  orderId: number;
+  memberId: number;
+  questionId: number;
+  side: 'YES' | 'NO';
+  price: number;
+  amount: number;
+  remainingAmount: number;
+  status: 'OPEN' | 'FILLED' | 'PARTIAL' | 'CANCELLED';
+  createdAt: string;
+  updatedAt: string;
+}
+
+export const orderApi = {
+  // 오더북 조회
+  getOrderBook: (questionId: number) =>
+    apiRequest<OrderBookData>(`/api/questions/${questionId}/orderbook`),
+
+  // Limit Order 생성
+  createOrder: (data: CreateOrderRequest) =>
+    apiRequest<CreateOrderResponse>('/api/orders', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+
+  // 주문 취소
+  cancelOrder: (orderId: number, memberId: number) =>
+    apiRequest<{ success: boolean; message?: string; refundedAmount?: number }>(
+      `/api/orders/${orderId}?memberId=${memberId}`,
+      { method: 'DELETE' }
+    ),
+
+  // 회원의 활성 주문 조회
+  getActiveOrders: (memberId: number) =>
+    apiRequest<OrderData[]>(`/api/orders/member/${memberId}`),
+
+  // 회원의 특정 질문에 대한 주문 조회
+  getOrdersByQuestion: (memberId: number, questionId: number) =>
+    apiRequest<OrderData[]>(`/api/orders/member/${memberId}/question/${questionId}`),
+};
+
 // Export all APIs
 export const api = {
   auth: authApi,
@@ -381,6 +475,7 @@ export const api = {
   tier: tierApi,
   reward: rewardApi,
   leaderboard: leaderboardApi,
+  order: orderApi,
 };
 
 export default api;
