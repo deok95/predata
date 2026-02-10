@@ -2,6 +2,9 @@ package com.predata.backend.controller
 
 import com.predata.backend.domain.FinalResult
 import com.predata.backend.service.*
+import org.springframework.data.domain.Page
+import org.springframework.data.domain.PageRequest
+import org.springframework.data.domain.Sort
 import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.*
@@ -125,12 +128,24 @@ class QuestionManagementController(
     }
 
     /**
-     * 모든 질문 조회 (관리자용)
-     * GET /api/admin/questions
+     * 모든 질문 조회 (관리자용 - 페이지네이션 지원)
+     * GET /api/admin/questions?page=0&size=20&sort=createdAt,desc
      */
     @GetMapping
-    fun getAllQuestions(): ResponseEntity<List<QuestionAdminView>> {
-        val questions = questionManagementService.getAllQuestionsForAdmin()
+    fun getAllQuestions(
+        @RequestParam(defaultValue = "0") page: Int,
+        @RequestParam(defaultValue = "20") size: Int,
+        @RequestParam(defaultValue = "createdAt") sortBy: String,
+        @RequestParam(defaultValue = "DESC") sortDirection: String
+    ): ResponseEntity<Page<QuestionAdminView>> {
+        val sort = if (sortDirection.uppercase() == "DESC") {
+            Sort.by(Sort.Direction.DESC, sortBy)
+        } else {
+            Sort.by(Sort.Direction.ASC, sortBy)
+        }
+
+        val pageable = PageRequest.of(page, size, sort)
+        val questions = questionManagementService.getAllQuestionsForAdmin(pageable)
         return ResponseEntity.ok(questions)
     }
 

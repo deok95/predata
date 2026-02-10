@@ -133,21 +133,31 @@ class QuestionManagementService(
 
     /**
      * 질문 목록 조회 (관리자용 - 모든 상태)
+     * 페이지네이션 적용 및 N+1 쿼리 해결
+     */
+    @Transactional(readOnly = true)
+    fun getAllQuestionsForAdmin(pageable: org.springframework.data.domain.Pageable): org.springframework.data.domain.Page<QuestionAdminView> {
+        return questionRepository.findAllQuestionsForAdmin(pageable).map { projection ->
+            QuestionAdminView(
+                id = projection.getId(),
+                title = projection.getTitle(),
+                category = projection.getCategory() ?: "",
+                status = projection.getStatus().name,
+                totalBetPool = projection.getTotalBetPool(),
+                totalVotes = projection.getVoteCount(),
+                expiredAt = projection.getExpiredAt().toString(),
+                createdAt = projection.getCreatedAt().toString()
+            )
+        }
+    }
+
+    /**
+     * 질문 목록 조회 (관리자용 - 모든 상태, 페이지네이션 없이 전체 조회)
+     * 기존 호환성을 위해 유지
      */
     @Transactional(readOnly = true)
     fun getAllQuestionsForAdmin(): List<QuestionAdminView> {
-        return questionRepository.findAll().map { question ->
-            QuestionAdminView(
-                id = question.id ?: 0,
-                title = question.title,
-                category = question.category ?: "",
-                status = question.status.name,
-                totalBetPool = question.totalBetPool,
-                totalVotes = 0, // TODO: 투표 수 계산
-                expiredAt = question.expiredAt.toString(),
-                createdAt = question.createdAt.toString()
-            )
-        }
+        return getAllQuestionsForAdmin(org.springframework.data.domain.Pageable.unpaged()).content
     }
 
     /**
