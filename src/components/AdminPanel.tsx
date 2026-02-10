@@ -45,7 +45,9 @@ export default function AdminPanel({ questionId, questionTitle, onClose, onSettl
         setError(response.message || '정산에 실패했습니다.');
       }
     } catch (err) {
-      console.error('Settlement error:', err);
+      if (process.env.NODE_ENV === 'development') {
+        console.error('Settlement error:', err);
+      }
       if (err instanceof ApiError) {
         setError(err.message);
       } else {

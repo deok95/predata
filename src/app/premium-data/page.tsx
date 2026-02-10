@@ -2,8 +2,7 @@
 
 import React, { useState } from 'react';
 import { Download, Filter, Eye, Database, CheckCircle, XCircle } from 'lucide-react';
-
-const BACKEND_URL = 'http://localhost:8080/api';
+import { API_BASE_URL } from '@/lib/api';
 
 interface PremiumDataRequest {
   questionId: number;
@@ -52,7 +51,7 @@ export default function PremiumDataExport() {
   const handlePreview = async () => {
     setLoading(true);
     try {
-      const response = await fetch(`${BACKEND_URL}/premium-data/preview`, {
+      const response = await fetch(`${API_BASE_URL}/premium-data/preview`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(filters)
@@ -60,7 +59,9 @@ export default function PremiumDataExport() {
       const data = await response.json();
       setPreviewData(data);
     } catch (error) {
-      console.error('Failed to preview:', error);
+      if (process.env.NODE_ENV === 'development') {
+        console.error('Failed to preview:', error);
+      }
       alert('미리보기에 실패했습니다.');
     } finally {
       setLoading(false);
@@ -70,7 +71,7 @@ export default function PremiumDataExport() {
   const handleExport = async (format: 'json' | 'csv') => {
     setLoading(true);
     try {
-      const response = await fetch(`${BACKEND_URL}/premium-data/export`, {
+      const response = await fetch(`${API_BASE_URL}/premium-data/export`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(filters)
@@ -83,7 +84,9 @@ export default function PremiumDataExport() {
         downloadCSV(data);
       }
     } catch (error) {
-      console.error('Failed to export:', error);
+      if (process.env.NODE_ENV === 'development') {
+        console.error('Failed to export:', error);
+      }
       alert('다운로드에 실패했습니다.');
     } finally {
       setLoading(false);

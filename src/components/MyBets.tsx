@@ -36,9 +36,11 @@ export default function MyBets({ memberId, onClose }: MyBetsProps) {
         setHistory(response.data);
       }
     } catch (error) {
-      console.error('Failed to fetch settlement history:', error);
-      if (error instanceof ApiError) {
-        console.error('API Error:', error.message);
+      if (process.env.NODE_ENV === 'development') {
+        console.error('Failed to fetch settlement history:', error);
+        if (error instanceof ApiError) {
+          console.error('API Error:', error.message);
+        }
       }
     } finally {
       setLoading(false);

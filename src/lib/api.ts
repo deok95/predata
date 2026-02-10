@@ -19,9 +19,22 @@ import type {
   FaucetClaimResponse,
   SendCodeResponse,
   VerifyCodeResponse,
+  Notification,
+  PortfolioSummary,
+  OpenPosition,
+  CategoryPerformance,
+  AccuracyTrendPoint,
+  ReferralStats,
+  ReferralResult,
+  TicketPurchaseResponse,
+  TicketPurchaseHistory,
 } from '@/types/api';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080';
+
+// Export for reuse across components
+export const BACKEND_URL = API_URL;
+export const API_BASE_URL = `${API_URL}/api`;
 
 // API Error Class
 export class ApiError extends Error {
@@ -478,6 +491,89 @@ export const orderApi = {
     apiRequest<OrderData[]>(`/api/orders/member/${memberId}/question/${questionId}`),
 };
 
+// ===== Notification API =====
+export const notificationApi = {
+  getAll: async (memberId: number): Promise<ApiResponse<Notification[]>> => {
+    const raw = await apiRequest<any[]>(`/api/notifications?memberId=${memberId}`);
+    return { success: true, data: Array.isArray(raw) ? raw : [] };
+  },
+
+  markAsRead: async (id: number): Promise<ApiResponse<void>> => {
+    const raw = await apiRequest<any>(`/api/notifications/${id}/read`, {
+      method: 'POST',
+    });
+    return { success: raw?.success ?? true };
+  },
+
+  markAllAsRead: async (memberId: number): Promise<ApiResponse<void>> => {
+    const raw = await apiRequest<any>('/api/notifications/read-all', {
+      method: 'POST',
+      body: JSON.stringify({ memberId }),
+    });
+    return { success: raw?.success ?? true };
+  },
+};
+
+// ===== Portfolio API =====
+export const portfolioApi = {
+  getSummary: async (): Promise<ApiResponse<PortfolioSummary>> => {
+    const raw = await apiRequest<any>('/api/portfolio/summary');
+    return { success: true, data: raw };
+  },
+
+  getPositions: async (): Promise<ApiResponse<OpenPosition[]>> => {
+    const raw = await apiRequest<any[]>('/api/portfolio/positions');
+    return { success: true, data: Array.isArray(raw) ? raw : [] };
+  },
+
+  getCategoryBreakdown: async (): Promise<ApiResponse<CategoryPerformance[]>> => {
+    const raw = await apiRequest<any[]>('/api/portfolio/category-breakdown');
+    return { success: true, data: Array.isArray(raw) ? raw : [] };
+  },
+
+  getAccuracyTrend: async (): Promise<ApiResponse<AccuracyTrendPoint[]>> => {
+    const raw = await apiRequest<any[]>('/api/portfolio/accuracy-trend');
+    return { success: true, data: Array.isArray(raw) ? raw : [] };
+  },
+};
+
+// ===== Referral API =====
+export const referralApi = {
+  getStats: async (): Promise<ApiResponse<ReferralStats>> => {
+    const raw = await apiRequest<any>('/api/referrals/stats');
+    return { success: true, data: raw };
+  },
+
+  getCode: async (): Promise<ApiResponse<{ code: string }>> => {
+    const raw = await apiRequest<any>('/api/referrals/code');
+    return { success: true, data: raw };
+  },
+
+  applyReferral: async (referralCode: string): Promise<ApiResponse<ReferralResult>> => {
+    const raw = await apiRequest<any>('/api/referrals/apply', {
+      method: 'POST',
+      body: JSON.stringify({ referralCode }),
+    });
+    return { success: true, data: raw };
+  },
+};
+
+// ===== Ticket API =====
+export const ticketApi = {
+  purchase: async (quantity: number): Promise<ApiResponse<TicketPurchaseResponse>> => {
+    const raw = await apiRequest<any>('/api/tickets/purchase', {
+      method: 'POST',
+      body: JSON.stringify({ quantity }),
+    });
+    return { success: true, data: raw };
+  },
+
+  getHistory: async (memberId: number): Promise<ApiResponse<TicketPurchaseHistory[]>> => {
+    const raw = await apiRequest<any[]>(`/api/tickets/history/${memberId}`);
+    return { success: true, data: Array.isArray(raw) ? raw : [] };
+  },
+};
+
 // Export all APIs
 export const api = {
   auth: authApi,
@@ -494,6 +590,10 @@ export const api = {
   reward: rewardApi,
   leaderboard: leaderboardApi,
   order: orderApi,
+  notification: notificationApi,
+  portfolio: portfolioApi,
+  referral: referralApi,
+  ticket: ticketApi,
 };
 
 export default api;

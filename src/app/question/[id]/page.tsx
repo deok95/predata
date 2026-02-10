@@ -119,10 +119,10 @@ function QuestionDetailContent() {
         <h1 className={`text-2xl font-black mb-3 ${isDark ? 'text-white' : 'text-slate-900'}`}>{question.title}</h1>
         <div className="flex items-center gap-4 text-sm text-slate-400">
           <span className="font-bold">Vol. {question.totalBetPool.toLocaleString()} P</span>
-          {question.expiresAt && (
+          {question.expiredAt && (
             <span className="flex items-center gap-1">
               <Clock size={14} />
-              {new Date(question.expiresAt).toLocaleDateString('ko-KR')}
+              {new Date(question.expiredAt).toLocaleDateString('ko-KR')}
             </span>
           )}
         </div>

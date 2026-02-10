@@ -127,7 +127,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       return { success: false };
     } catch (error) {
-      console.error('Google login failed:', error);
+      if (process.env.NODE_ENV === 'development') {
+        console.error('Google login failed:', error);
+      }
       return { success: false };
     } finally {
       setIsLoading(false);

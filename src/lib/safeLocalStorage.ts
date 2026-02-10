@@ -9,7 +9,9 @@ export const safeLocalStorage = {
     try {
       return localStorage.getItem(key);
     } catch (error) {
-      console.error('localStorage.getItem error:', error);
+      if (process.env.NODE_ENV === 'development') {
+        console.error('localStorage.getItem error:', error);
+      }
       return null;
     }
   },
@@ -19,7 +21,9 @@ export const safeLocalStorage = {
     try {
       localStorage.setItem(key, value);
     } catch (error) {
-      console.error('localStorage.setItem error:', error);
+      if (process.env.NODE_ENV === 'development') {
+        console.error('localStorage.setItem error:', error);
+      }
     }
   },
 
@@ -28,7 +32,9 @@ export const safeLocalStorage = {
     try {
       localStorage.removeItem(key);
     } catch (error) {
-      console.error('localStorage.removeItem error:', error);
+      if (process.env.NODE_ENV === 'development') {
+        console.error('localStorage.removeItem error:', error);
+      }
     }
   },
 
@@ -37,7 +43,9 @@ export const safeLocalStorage = {
     try {
       localStorage.clear();
     } catch (error) {
-      console.error('localStorage.clear error:', error);
+      if (process.env.NODE_ENV === 'development') {
+        console.error('localStorage.clear error:', error);
+      }
     }
   }
 };

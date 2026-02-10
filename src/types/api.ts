@@ -296,3 +296,101 @@ export interface FilteringData {
   yesPercentage: number;
   noPercentage: number;
 }
+
+// ===== Notification Types =====
+export interface Notification {
+  id: number;
+  type: string;                    // 'BET_PLACED', 'VOTE_RECORDED', 'SETTLEMENT_COMPLETE', 'FAUCET_CLAIMED', 'TIER_CHANGE'
+  title: string;
+  message: string;
+  relatedQuestionId?: number | null;
+  isRead: boolean;
+  createdAt: string;               // ISO datetime string
+}
+
+// ===== Portfolio Types =====
+export interface PortfolioSummary {
+  memberId: number;
+  totalInvested: number;
+  totalReturns: number;
+  netProfit: number;
+  unrealizedValue: number;
+  currentBalance: number;
+  winRate: number;                 // 0-100
+  totalBets: number;
+  openBets: number;
+  settledBets: number;
+  roi: number;                     // Return on Investment percentage
+}
+
+export interface OpenPosition {
+  activityId: number;
+  questionId: number;
+  questionTitle: string;
+  category?: string;
+  choice: string;                  // 'YES' or 'NO'
+  betAmount: number;
+  currentYesPercentage: number;    // 0-100
+  currentNoPercentage: number;     // 0-100
+  estimatedPayout: number;
+  estimatedProfitLoss: number;     // estimatedPayout - betAmount
+  expiresAt: string;               // ISO datetime
+  placedAt: string;                // ISO datetime
+}
+
+export interface CategoryPerformance {
+  category: string;                // ECONOMY, SPORTS, POLITICS, TECH, CULTURE, OTHER
+  totalBets: number;
+  wins: number;
+  losses: number;
+  pending: number;
+  invested: number;
+  returned: number;
+  profit: number;                  // returned - invested
+  winRate: number;                 // 0-100
+}
+
+export interface AccuracyTrendPoint {
+  date: string;                    // "yyyy-MM" format
+  totalPredictions: number;
+  correctPredictions: number;
+  accuracy: number;                // 0-100
+  cumulativeAccuracy: number;      // 0-100
+}
+
+// ===== Referral Types =====
+export interface ReferralStats {
+  referralCode: string;
+  totalReferrals: number;
+  totalPointsEarned: number;
+  referees: RefereeInfo[];
+}
+
+export interface RefereeInfo {
+  email: string;                   // Masked email (e.g., "ha***@example.com")
+  joinedAt: string;                // ISO datetime string
+  rewardAmount: number;            // Points earned from this referral
+}
+
+export interface ReferralResult {
+  success: boolean;
+  message: string;
+  referrerReward?: number;         // Points given to referrer (500)
+  refereeReward?: number;          // Points given to referee (500)
+}
+
+// ===== Ticket Types =====
+export interface TicketPurchaseResponse {
+  success: boolean;
+  purchasedQuantity: number;
+  totalCost: number;
+  remainingTickets: number;
+  remainingPoints: number;
+  message: string;
+}
+
+export interface TicketPurchaseHistory {
+  date: string;
+  remainingCount: number;
+  used: number;
+}

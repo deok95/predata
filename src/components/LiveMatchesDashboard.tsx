@@ -3,8 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { Activity, Trophy, Clock, AlertTriangle } from 'lucide-react';
 import { useTheme } from '@/hooks/useTheme';
-
-const BACKEND_URL = 'http://localhost:8080/api';
+import { API_BASE_URL } from '@/lib/api';
 
 interface LiveMatch {
   matchId: number;
@@ -43,7 +42,7 @@ export default function LiveMatchesDashboard() {
 
   const fetchLiveMatches = async () => {
     try {
-      const response = await fetch(`${BACKEND_URL}/admin/sports/live`);
+      const response = await fetch(`${API_BASE_URL}/admin/sports/live`);
       const data = await response.json();
       setLiveMatches(data);
 
@@ -56,18 +55,22 @@ export default function LiveMatchesDashboard() {
 
       setLoading(false);
     } catch (error) {
-      console.error('Failed to fetch live matches:', error);
+      if (process.env.NODE_ENV === 'development') {
+        console.error('Failed to fetch live matches:', error);
+      }
       setLoading(false);
     }
   };
 
   const checkSuspensionStatus = async (questionId: number) => {
     try {
-      const response = await fetch(`${BACKEND_URL}/betting/suspension/question/${questionId}`);
+      const response = await fetch(`${API_BASE_URL}/betting/suspension/question/${questionId}`);
       const status: BettingSuspension = await response.json();
       setSuspensionStatuses(prev => new Map(prev).set(questionId, status));
     } catch (error) {
-      console.error('Failed to check suspension status:', error);
+      if (process.env.NODE_ENV === 'development') {
+        console.error('Failed to check suspension status:', error);
+      }
     }
   };
 

@@ -5,8 +5,7 @@ import { Plus, Trash2, TrendingUp, Gavel, X, AlertTriangle, Loader2, Sparkles, S
 import LiveMatchesDashboard from '@/components/LiveMatchesDashboard';
 import MainLayout from '@/components/layout/MainLayout';
 import { useTheme } from '@/hooks/useTheme';
-
-const BACKEND_URL = 'http://localhost:8080/api';
+import { API_BASE_URL } from '@/lib/api';
 
 interface QuestionAdminView {
   id: number;
@@ -110,14 +109,16 @@ function AdminQuestionContent() {
 
   const fetchGeneratorSettings = async () => {
     try {
-      const response = await fetch(`${BACKEND_URL}/admin/settings/question-generator`);
+      const response = await fetch(`${API_BASE_URL}/admin/settings/question-generator`);
       const data = await response.json();
       setGeneratorEnabled(data.enabled);
       setGeneratorInterval(data.intervalSeconds);
       setGeneratorCategories(data.categories || []);
       setIsDemoMode(data.isDemoMode || false);
     } catch (error) {
-      console.error('Failed to fetch generator settings:', error);
+      if (process.env.NODE_ENV === 'development') {
+        console.error('Failed to fetch generator settings:', error);
+      }
     }
   };
 
@@ -128,7 +129,7 @@ function AdminQuestionContent() {
   }) => {
     setGeneratorLoading(true);
     try {
-      const response = await fetch(`${BACKEND_URL}/admin/settings/question-generator`, {
+      const response = await fetch(`${API_BASE_URL}/admin/settings/question-generator`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(updates),
@@ -138,7 +139,9 @@ function AdminQuestionContent() {
       setGeneratorInterval(data.intervalSeconds);
       setGeneratorCategories(data.categories || []);
     } catch (error) {
-      console.error('Failed to update generator settings:', error);
+      if (process.env.NODE_ENV === 'development') {
+        console.error('Failed to update generator settings:', error);
+      }
       alert('설정 업데이트에 실패했습니다.');
     } finally {
       setGeneratorLoading(false);
@@ -148,7 +151,7 @@ function AdminQuestionContent() {
   const handleGenerateQuestion = async () => {
     setGenerating(true);
     try {
-      const response = await fetch(`${BACKEND_URL}/admin/questions/generate`, {
+      const response = await fetch(`${API_BASE_URL}/admin/questions/generate`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
       });
@@ -160,7 +163,9 @@ function AdminQuestionContent() {
         alert(`❌ 생성 실패: ${data.message}`);
       }
     } catch (error) {
-      console.error('Failed to generate question:', error);
+      if (process.env.NODE_ENV === 'development') {
+        console.error('Failed to generate question:', error);
+      }
       alert('❌ 질문 생성 중 오류가 발생했습니다.');
     } finally {
       setGenerating(false);
@@ -188,11 +193,13 @@ function AdminQuestionContent() {
   const fetchQuestions = async () => {
     setLoading(true);
     try {
-      const response = await fetch(`${BACKEND_URL}/admin/questions`);
+      const response = await fetch(`${API_BASE_URL}/admin/questions`);
       const data = await response.json();
       setQuestions(data);
     } catch (error) {
-      console.error('Failed to fetch questions:', error);
+      if (process.env.NODE_ENV === 'development') {
+        console.error('Failed to fetch questions:', error);
+      }
     } finally {
       setLoading(false);
     }
@@ -206,7 +213,7 @@ function AdminQuestionContent() {
 
     setLoading(true);
     try {
-      const response = await fetch(`${BACKEND_URL}/admin/questions`, {
+      const response = await fetch(`${API_BASE_URL}/admin/questions`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -229,7 +236,9 @@ function AdminQuestionContent() {
         alert(`❌ 생성 실패: ${data.message}`);
       }
     } catch (error) {
-      console.error('Failed to create question:', error);
+      if (process.env.NODE_ENV === 'development') {
+        console.error('Failed to create question:', error);
+      }
       alert('❌ 질문 생성 중 오류가 발생했습니다.');
     } finally {
       setLoading(false);
@@ -240,7 +249,7 @@ function AdminQuestionContent() {
     if (!confirm('정말 이 질문을 삭제하시겠습니까?')) return;
 
     try {
-      const response = await fetch(`${BACKEND_URL}/admin/questions/${id}`, {
+      const response = await fetch(`${API_BASE_URL}/admin/questions/${id}`, {
         method: 'DELETE'
       });
       const data = await response.json();
@@ -252,7 +261,9 @@ function AdminQuestionContent() {
         alert(`❌ 삭제 실패: ${data.message}`);
       }
     } catch (error) {
-      console.error('Failed to delete question:', error);
+      if (process.env.NODE_ENV === 'development') {
+        console.error('Failed to delete question:', error);
+      }
       alert('❌ 질문 삭제 중 오류가 발생했습니다.');
     }
   };
@@ -261,7 +272,7 @@ function AdminQuestionContent() {
     if (!settleTarget) return;
     setLoading(true);
     try {
-      const response = await fetch(`${BACKEND_URL}/questions/${settleTarget.id}/settle`, {
+      const response = await fetch(`${API_BASE_URL}/questions/${settleTarget.id}/settle`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -279,7 +290,9 @@ function AdminQuestionContent() {
         alert(`정산 실패: ${data.message || '오류 발생'}`);
       }
     } catch (error) {
-      console.error('Settlement failed:', error);
+      if (process.env.NODE_ENV === 'development') {
+        console.error('Settlement failed:', error);
+      }
       alert('정산 중 오류가 발생했습니다.');
     } finally {
       setLoading(false);
@@ -289,7 +302,7 @@ function AdminQuestionContent() {
   const handleFinalize = async (id: number) => {
     if (!confirm('정산을 확정하시겠습니까? 배당금이 분배됩니다.')) return;
     try {
-      const response = await fetch(`${BACKEND_URL}/questions/${id}/settle/finalize`, {
+      const response = await fetch(`${API_BASE_URL}/questions/${id}/settle/finalize`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ force: true }),
@@ -302,7 +315,9 @@ function AdminQuestionContent() {
         alert(`확정 실패: ${data.message || '오류 발생'}`);
       }
     } catch (error) {
-      console.error('Finalize failed:', error);
+      if (process.env.NODE_ENV === 'development') {
+        console.error('Finalize failed:', error);
+      }
       alert('확정 중 오류가 발생했습니다.');
     }
   };
@@ -310,7 +325,7 @@ function AdminQuestionContent() {
   const handleCancelSettle = async (id: number) => {
     if (!confirm('정산을 취소하시겠습니까? 질문이 OPEN 상태로 돌아갑니다.')) return;
     try {
-      const response = await fetch(`${BACKEND_URL}/questions/${id}/settle/cancel`, {
+      const response = await fetch(`${API_BASE_URL}/questions/${id}/settle/cancel`, {
         method: 'POST',
       });
       const data = await response.json();
@@ -321,7 +336,9 @@ function AdminQuestionContent() {
         alert(`취소 실패: ${data.message || '오류 발생'}`);
       }
     } catch (error) {
-      console.error('Cancel failed:', error);
+      if (process.env.NODE_ENV === 'development') {
+        console.error('Cancel failed:', error);
+      }
       alert('취소 중 오류가 발생했습니다.');
     }
   };

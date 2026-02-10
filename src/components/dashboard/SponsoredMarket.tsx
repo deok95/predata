@@ -33,7 +33,7 @@ export default function SponsoredMarket({ question }: SponsoredMarketProps) {
               <div><p className="text-xs opacity-70 mb-1">Yes 확률</p><p className="font-black text-lg">{yesPercent}%</p></div>
               <div><p className="text-xs opacity-70 mb-1">카테고리</p><p className="font-black text-lg">{question.category || '-'}</p></div>
               <div><p className="text-xs opacity-70 mb-1">총 풀</p><p className="font-black text-lg">{question.totalBetPool.toLocaleString()} P</p></div>
-              <div><p className="text-xs opacity-70 mb-1">마감</p><p className="font-black text-lg">{(() => { if (!question.expiresAt) return '미정'; const d = new Date(question.expiresAt); return isNaN(d.getTime()) ? '미정' : d.toLocaleDateString('ko-KR'); })()}</p></div>
+              <div><p className="text-xs opacity-70 mb-1">마감</p><p className="font-black text-lg">{(() => { if (!question.expiredAt) return '미정'; const d = new Date(question.expiredAt); return isNaN(d.getTime()) ? '미정' : d.toLocaleDateString('ko-KR'); })()}</p></div>
             </div>
             <span className="bg-white text-indigo-600 px-8 py-4 rounded-2xl font-black text-sm hover:shadow-2xl transition-all active:scale-95 inline-block">상세 보기 및 투표 →</span>
           </div>

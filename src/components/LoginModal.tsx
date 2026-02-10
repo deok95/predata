@@ -7,7 +7,7 @@ import PredataLogo from '@/components/ui/PredataLogo';
 import { useTheme } from '@/hooks/useTheme';
 import { useAuth } from '@/hooks/useAuth';
 import { useRegisterModal } from '@/components/RegisterModal';
-import { authApi } from '@/lib/api';
+import { authApi, BACKEND_URL } from '@/lib/api';
 
 type Step = 'main' | 'email-login';
 
@@ -26,7 +26,7 @@ export default function LoginModal() {
   // Google 로그인 핸들러 (OAuth2 Redirect)
   const handleGoogleLogin = () => {
     // Spring Security OAuth2 authorization endpoint로 redirect
-    window.location.href = 'http://localhost:8080/oauth2/authorization/google';
+    window.location.href = `${BACKEND_URL}/oauth2/authorization/google`;
   };
 
   // 이메일 + 비밀번호 로그인

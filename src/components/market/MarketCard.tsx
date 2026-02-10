@@ -104,11 +104,6 @@ export default function MarketCard({ question, votedChoice }: MarketCardProps) {
 
   const statusBadge = getStatusBadge();
 
-  // 디버깅 로그
-  useEffect(() => {
-    console.log(`[MarketCard #${question.id}] Status: ${question.status}, EndDate: ${endDate}, TimeRemaining: ${timeRemaining}`);
-  }, [question.id, question.status, endDate, timeRemaining]);
-
   return (
     <Link href={`/question/${question.id}`}>
       <div className={`p-6 rounded-3xl border transition-all hover:shadow-xl hover:-translate-y-1 cursor-pointer group ${isDark ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-100'}`}>

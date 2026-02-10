@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Loader2, Globe, Briefcase, Users } from 'lucide-react';
 import { authApi } from '@/lib/api';
@@ -31,7 +31,7 @@ const AGE_GROUPS = [
   { value: 50, label: '50대 이상' },
 ];
 
-export default function GoogleCompletePage() {
+function GoogleCompleteContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
 
@@ -223,5 +223,17 @@ export default function GoogleCompletePage() {
         </button>
       </div>
     </div>
+  );
+}
+
+export default function GoogleCompletePage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen flex items-center justify-center">
+        <Loader2 size={40} className="animate-spin text-indigo-600" />
+      </div>
+    }>
+      <GoogleCompleteContent />
+    </Suspense>
   );
 }

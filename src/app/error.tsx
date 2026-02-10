@@ -15,7 +15,9 @@ export default function Error({
   const { t } = useI18n();
 
   useEffect(() => {
-    console.error('[App Error]', error);
+    if (process.env.NODE_ENV === 'development') {
+      console.error('[App Error]', error);
+    }
   }, [error]);
 
   return (

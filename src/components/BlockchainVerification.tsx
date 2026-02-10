@@ -2,9 +2,9 @@
 
 import { useState } from 'react'
 import { CheckCircle, AlertCircle, ExternalLink, Loader } from 'lucide-react'
+import { API_BASE_URL } from '@/lib/api'
 
-const BACKEND_URL = 'http://localhost:8080/api'
-const BASESCAN_URL = 'https://sepolia.basescan.org' // 테스트넷
+const BASESCAN_URL = process.env.NEXT_PUBLIC_BASESCAN_URL || 'https://sepolia.basescan.org'
 
 export default function BlockchainVerification({ questionId }: { questionId: number }) {
   const [onChainData, setOnChainData] = useState<any>(null)
@@ -17,7 +17,7 @@ export default function BlockchainVerification({ questionId }: { questionId: num
 
     try {
       // 백엔드에서 온체인 데이터 조회
-      const response = await fetch(`${BACKEND_URL}/blockchain/question/${questionId}`)
+      const response = await fetch(`${API_BASE_URL}/blockchain/question/${questionId}`)
       
       if (response.ok) {
         const data = await response.json()
