@@ -36,6 +36,19 @@ const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080';
 export const BACKEND_URL = API_URL;
 export const API_BASE_URL = `${API_URL}/api`;
 
+// Authenticated fetch wrapper — attaches JWT token from localStorage
+export function authFetch(url: string, options?: RequestInit): Promise<Response> {
+  const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+  return fetch(url, {
+    ...options,
+    headers: {
+      'Content-Type': 'application/json',
+      ...(token && { Authorization: `Bearer ${token}` }),
+      ...options?.headers,
+    },
+  });
+}
+
 // API Error Class
 export class ApiError extends Error {
   constructor(

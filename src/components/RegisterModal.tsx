@@ -118,7 +118,8 @@ function RegisterModalInner({ onClose }: { onClose: () => void }) {
     try {
       const result = await authApi.completeSignup(email.trim(), verificationCode, password, passwordConfirm);
       if (result.token && result.memberId) {
-        // 자동 로그인
+        localStorage.setItem('token', result.token);
+        localStorage.setItem('memberId', result.memberId.toString());
         await loginById(result.memberId);
         onClose();
       } else {

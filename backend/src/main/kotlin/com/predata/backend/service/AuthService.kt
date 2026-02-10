@@ -182,7 +182,7 @@ class AuthService(
         verifiedEmails.remove(normalizedEmail)
 
         // JWT 토큰 발급 (자동 로그인)
-        val token = jwtUtil.generateToken(savedMember.id!!, savedMember.email, "USER")
+        val token = jwtUtil.generateToken(savedMember.id!!, savedMember.email, savedMember.role)
 
         return mapOf(
             "success" to true,
@@ -230,7 +230,7 @@ class AuthService(
         }
 
         // JWT 토큰 발급
-        val token = jwtUtil.generateToken(member.id!!, member.email, "USER")
+        val token = jwtUtil.generateToken(member.id!!, member.email, member.role)
 
         return mapOf(
             "success" to true,

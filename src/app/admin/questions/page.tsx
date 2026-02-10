@@ -7,7 +7,7 @@ import LiveMatchesDashboard from '@/components/LiveMatchesDashboard';
 import MainLayout from '@/components/layout/MainLayout';
 import { useTheme } from '@/hooks/useTheme';
 import { useAuth } from '@/hooks/useAuth';
-import { API_BASE_URL } from '@/lib/api';
+import { API_BASE_URL, authFetch } from '@/lib/api';
 
 interface QuestionAdminView {
   id: number;
@@ -122,7 +122,7 @@ function AdminQuestionContent() {
 
   const fetchGeneratorSettings = async () => {
     try {
-      const response = await fetch(`${API_BASE_URL}/admin/settings/question-generator`);
+      const response = await authFetch(`${API_BASE_URL}/admin/settings/question-generator`);
       const data = await response.json();
       setGeneratorEnabled(data.enabled);
       setGeneratorInterval(data.intervalSeconds);
@@ -142,9 +142,8 @@ function AdminQuestionContent() {
   }) => {
     setGeneratorLoading(true);
     try {
-      const response = await fetch(`${API_BASE_URL}/admin/settings/question-generator`, {
+      const response = await authFetch(`${API_BASE_URL}/admin/settings/question-generator`, {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(updates),
       });
       const data = await response.json();
@@ -164,9 +163,8 @@ function AdminQuestionContent() {
   const handleGenerateQuestion = async () => {
     setGenerating(true);
     try {
-      const response = await fetch(`${API_BASE_URL}/admin/questions/generate`, {
+      const response = await authFetch(`${API_BASE_URL}/admin/questions/generate`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
       });
       const data = await response.json();
       if (data.success) {
@@ -206,7 +204,7 @@ function AdminQuestionContent() {
   const fetchQuestions = async () => {
     setLoading(true);
     try {
-      const response = await fetch(`${API_BASE_URL}/admin/questions`);
+      const response = await authFetch(`${API_BASE_URL}/admin/questions`);
       const data = await response.json();
       setQuestions(Array.isArray(data) ? data : []);
     } catch (error) {
@@ -226,9 +224,8 @@ function AdminQuestionContent() {
 
     setLoading(true);
     try {
-      const response = await fetch(`${API_BASE_URL}/admin/questions`, {
+      const response = await authFetch(`${API_BASE_URL}/admin/questions`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           title,
           category,
@@ -262,8 +259,8 @@ function AdminQuestionContent() {
     if (!confirm('정말 이 질문을 삭제하시겠습니까?')) return;
 
     try {
-      const response = await fetch(`${API_BASE_URL}/admin/questions/${id}`, {
-        method: 'DELETE'
+      const response = await authFetch(`${API_BASE_URL}/admin/questions/${id}`, {
+        method: 'DELETE',
       });
       const data = await response.json();
 
@@ -285,9 +282,8 @@ function AdminQuestionContent() {
     if (!settleTarget) return;
     setLoading(true);
     try {
-      const response = await fetch(`${API_BASE_URL}/questions/${settleTarget.id}/settle`, {
+      const response = await authFetch(`${API_BASE_URL}/questions/${settleTarget.id}/settle`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           finalResult: settleFinalResult,
           sourceUrl: settleSourceUrl || null,
@@ -315,9 +311,8 @@ function AdminQuestionContent() {
   const handleFinalize = async (id: number) => {
     if (!confirm('정산을 확정하시겠습니까? 배당금이 분배됩니다.')) return;
     try {
-      const response = await fetch(`${API_BASE_URL}/questions/${id}/settle/finalize`, {
+      const response = await authFetch(`${API_BASE_URL}/questions/${id}/settle/finalize`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ force: true }),
       });
       const data = await response.json();
@@ -338,7 +333,7 @@ function AdminQuestionContent() {
   const handleCancelSettle = async (id: number) => {
     if (!confirm('정산을 취소하시겠습니까? 질문이 OPEN 상태로 돌아갑니다.')) return;
     try {
-      const response = await fetch(`${API_BASE_URL}/questions/${id}/settle/cancel`, {
+      const response = await authFetch(`${API_BASE_URL}/questions/${id}/settle/cancel`, {
         method: 'POST',
       });
       const data = await response.json();

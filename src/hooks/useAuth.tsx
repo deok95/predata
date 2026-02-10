@@ -179,6 +179,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const logout = useCallback(() => {
     setUser(null);
     safeLocalStorage.removeItem(STORAGE_KEY);
+    safeLocalStorage.removeItem('token');
+    safeLocalStorage.removeItem('memberId');
   }, []);
 
   const refreshUser = useCallback(async () => {

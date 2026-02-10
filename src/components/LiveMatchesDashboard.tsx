@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { Activity, Trophy, Clock, AlertTriangle } from 'lucide-react';
 import { useTheme } from '@/hooks/useTheme';
-import { API_BASE_URL } from '@/lib/api';
+import { API_BASE_URL, authFetch } from '@/lib/api';
 
 interface LiveMatch {
   matchId: number;
@@ -42,7 +42,7 @@ export default function LiveMatchesDashboard() {
 
   const fetchLiveMatches = async () => {
     try {
-      const response = await fetch(`${API_BASE_URL}/admin/sports/live`);
+      const response = await authFetch(`${API_BASE_URL}/admin/sports/live`);
       const data = await response.json();
       const matches = Array.isArray(data) ? data : [];
       setLiveMatches(matches);

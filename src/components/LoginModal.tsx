@@ -44,6 +44,8 @@ export default function LoginModal() {
     try {
       const result = await authApi.login(email.trim(), password);
       if (result.success && result.token && result.memberId) {
+        localStorage.setItem('token', result.token);
+        localStorage.setItem('memberId', result.memberId.toString());
         await loginById(result.memberId);
       } else {
         setError(result.message || '로그인에 실패했습니다.');
