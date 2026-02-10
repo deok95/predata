@@ -2,8 +2,7 @@
 
 import { useState, useEffect, useCallback, useMemo, createContext, useContext } from 'react';
 import type { ReactNode } from 'react';
-import { useAccount } from 'wagmi';
-import { memberApi, ApiError } from '@/lib/api';
+import { memberApi, authApi, ApiError } from '@/lib/api';
 import { safeLocalStorage } from '@/lib/safeLocalStorage';
 import type { Member } from '@/types/api';
 
@@ -15,7 +14,14 @@ export interface AuthState {
   isAuthenticated: boolean;
   isGuest: boolean;
   loginAsGuest: () => void;
-  loginWithWallet: (walletAddress: string) => Promise<Member | null>;
+  loginWithGoogle: (
+    googleToken: string,
+    additionalInfo?: {
+      countryCode?: string;
+      jobCategory?: string;
+      ageGroup?: number;
+    }
+  ) => Promise<{ success: boolean; needsAdditionalInfo?: boolean }>;
   loginWithEmail: (email: string) => Promise<{ member: Member | null; isNew: boolean }>;
   loginById: (memberId: number) => Promise<Member | null>;
   register: (data: {
@@ -40,7 +46,6 @@ function checkIsGuest(user: Member | null): boolean {
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<Member | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const { address, isConnected } = useAccount();
 
   const isGuest = useMemo(() => checkIsGuest(user), [user]);
 
@@ -79,29 +84,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     persistUser(guestMember);
   }, [persistUser]);
 
-  const loginWithWallet = useCallback(async (walletAddress: string) => {
-    setIsLoading(true);
-    try {
-      const response = await memberApi.getByWallet(walletAddress);
-      if (response.success && response.data) {
-        persistUser(response.data);
-        return response.data;
-      }
-    } catch {
-      // 404 or network error — 미등록 지갑
-    } finally {
-      setIsLoading(false);
-    }
-    return null;
-  }, [persistUser]);
-
-  // 지갑 연결 시 자동 로그인
-  useEffect(() => {
-    if (isConnected && address && !user) {
-      loginWithWallet(address).catch(() => {});
-    }
-  }, [isConnected, address, user, loginWithWallet]);
-
   const loginById = useCallback(async (memberId: number) => {
     setIsLoading(true);
     try {
@@ -117,6 +99,40 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
     return null;
   }, [persistUser]);
+
+  const loginWithGoogle = useCallback(async (
+    googleToken: string,
+    additionalInfo?: {
+      countryCode?: string;
+      jobCategory?: string;
+      ageGroup?: number;
+    }
+  ) => {
+    setIsLoading(true);
+    try {
+      const response = await authApi.googleLogin(googleToken, additionalInfo);
+
+      if (response.success) {
+        if (response.needsAdditionalInfo) {
+          // 추가 정보 입력 필요
+          return { success: true, needsAdditionalInfo: true };
+        }
+
+        if (response.token && response.memberId) {
+          // JWT 토큰 저장 및 사용자 정보 조회
+          await loginById(response.memberId);
+          return { success: true };
+        }
+      }
+
+      return { success: false };
+    } catch (error) {
+      console.error('Google login failed:', error);
+      return { success: false };
+    } finally {
+      setIsLoading(false);
+    }
+  }, [loginById]);
 
   const loginWithEmail = useCallback(async (email: string) => {
     setIsLoading(true);
@@ -193,7 +209,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       isAuthenticated: !!user,
       isGuest,
       loginAsGuest,
-      loginWithWallet,
+      loginWithGoogle,
       loginWithEmail,
       loginById,
       register,

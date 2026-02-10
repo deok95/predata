@@ -297,6 +297,28 @@ export const authApi = {
       method: 'POST',
       body: JSON.stringify({ email, password }),
     }),
+
+  // Google OAuth 로그인
+  googleLogin: (googleToken: string, additionalInfo?: {
+    countryCode?: string;
+    jobCategory?: string;
+    ageGroup?: number;
+  }) =>
+    apiRequest<{
+      success: boolean;
+      message: string;
+      token?: string;
+      memberId?: number;
+      needsAdditionalInfo?: boolean;
+    }>('/api/auth/google', {
+      method: 'POST',
+      body: JSON.stringify({
+        googleToken,
+        countryCode: additionalInfo?.countryCode,
+        jobCategory: additionalInfo?.jobCategory,
+        ageGroup: additionalInfo?.ageGroup,
+      }),
+    }),
 };
 
 // ===== Blockchain API =====

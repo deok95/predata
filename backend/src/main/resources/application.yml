@@ -10,7 +10,7 @@ spring:
 
   jpa:
     hibernate:
-      ddl-auto: validate  # 기존 테이블 검증만 수행 (변경 안 함)
+      ddl-auto: update  # 테이블 스키마 자동 업데이트 (개발 전용)
     show-sql: true
     properties:
       hibernate:
@@ -39,6 +39,11 @@ jwt:
 
 auth:
   demo-mode: ${AUTH_DEMO_MODE:true}  # true: 이메일 발송 안함(로그만), false: 실제 이메일 발송
+
+google:
+  oauth:
+    client-id: ${GOOGLE_CLIENT_ID:}
+    client-secret: ${GOOGLE_CLIENT_SECRET:}
 
 anthropic:
   api:

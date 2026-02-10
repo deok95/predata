@@ -4,6 +4,7 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { GoogleOAuthProvider } from "@/providers/GoogleOAuthProvider";
 import { Web3Provider } from "@/lib/Web3Provider";
 import { AuthProvider } from "@/hooks/useAuth";
 import { ThemeProvider } from "@/hooks/useTheme";
@@ -47,15 +48,17 @@ export default function RootLayout({
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
         <ErrorBoundary>
-          <QueryClientProvider client={queryClient}>
-            <ThemeProvider>
-              <Web3Provider>
-                <AuthProvider>
-                  {children}
-                </AuthProvider>
-              </Web3Provider>
-            </ThemeProvider>
-          </QueryClientProvider>
+          <GoogleOAuthProvider>
+            <QueryClientProvider client={queryClient}>
+              <ThemeProvider>
+                <Web3Provider>
+                  <AuthProvider>
+                    {children}
+                  </AuthProvider>
+                </Web3Provider>
+              </ThemeProvider>
+            </QueryClientProvider>
+          </GoogleOAuthProvider>
         </ErrorBoundary>
       </body>
     </html>

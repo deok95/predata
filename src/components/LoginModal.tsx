@@ -1,18 +1,20 @@
 'use client';
 
 import { useState } from 'react';
-import { MousePointer2, Sun, Moon, ArrowLeft, Loader2, Mail, Lock } from 'lucide-react';
+import { MousePointer2, Sun, Moon, ArrowLeft, Loader2, Mail, Lock, ChevronDown } from 'lucide-react';
+import { GoogleLogin } from '@react-oauth/google';
 import PredataLogo from '@/components/ui/PredataLogo';
 import { useTheme } from '@/hooks/useTheme';
 import { useAuth } from '@/hooks/useAuth';
 import { useRegisterModal } from '@/components/RegisterModal';
+import GoogleAdditionalInfoModal from '@/components/GoogleAdditionalInfoModal';
 import { authApi } from '@/lib/api';
 
 type Step = 'main' | 'email-login';
 
 export default function LoginModal() {
   const { isDark, toggleTheme } = useTheme();
-  const { loginAsGuest, loginById } = useAuth();
+  const { loginAsGuest, loginById, loginWithGoogle } = useAuth();
   const { open: openRegisterModal } = useRegisterModal();
 
   const [step, setStep] = useState<Step>('main');
@@ -20,6 +22,58 @@ export default function LoginModal() {
   const [error, setError] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [showEmailAccordion, setShowEmailAccordion] = useState(false);
+  const [showAdditionalInfo, setShowAdditionalInfo] = useState(false);
+  const [googleToken, setGoogleToken] = useState<string | null>(null);
+
+  // Google 로그인 핸들러
+  const handleGoogleSuccess = async (credentialResponse: any) => {
+    const token = credentialResponse.credential;
+    setLoading(true);
+    setError('');
+
+    try {
+      // 먼저 추가 정보 없이 시도
+      const result = await loginWithGoogle(token);
+
+      if (result.needsAdditionalInfo) {
+        // 추가 정보 입력 모달 표시
+        setGoogleToken(token);
+        setShowAdditionalInfo(true);
+      } else if (result.success) {
+        // 성공 - 모달은 AuthProvider가 처리
+      } else {
+        setError('Google 로그인에 실패했습니다.');
+      }
+    } catch (err: any) {
+      setError(err?.message || 'Google 로그인 중 오류가 발생했습니다.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // 추가 정보 제출
+  const handleAdditionalInfoSubmit = async (info: any) => {
+    if (!googleToken) return;
+
+    setLoading(true);
+    try {
+      const result = await loginWithGoogle(googleToken, info);
+      if (result.success) {
+        setShowAdditionalInfo(false);
+      } else {
+        setError('회원가입에 실패했습니다.');
+      }
+    } catch (err: any) {
+      setError(err?.message || '회원가입 중 오류가 발생했습니다.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Google Client ID 확인
+  const googleClientId = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID || '';
+  const isGoogleEnabled = googleClientId && !googleClientId.includes('your-google-client-id');
 
   // 이메일 + 비밀번호 로그인
   const handleEmailLogin = async () => {
@@ -65,32 +119,87 @@ export default function LoginModal() {
         {step === 'main' && (
           <>
             <h1 className={`text-3xl font-black mb-4 ${isDark ? 'text-white' : 'text-slate-900'}`}>
-              데이터로 예측하는<br />현명한 미래
+              Welcome to Predata
             </h1>
-            <p className="text-slate-500 mb-10 text-sm leading-relaxed">
-              PRE(D)ATA는 지능형 오라클과 AI를 활용한<br />차세대 탈중앙화 예측 플랫폼입니다.
+            <p className="text-slate-500 mb-8 text-sm leading-relaxed">
+              로그인하고 예측에 참여하세요
             </p>
 
-            <div className="space-y-3">
-              <button
-                onClick={openRegisterModal}
-                disabled={loading}
-                className="w-full py-4 rounded-2xl font-bold text-lg flex items-center justify-center space-x-3 bg-indigo-600 text-white hover:bg-indigo-700 transition-all active:scale-95 disabled:opacity-50"
-              >
-                <Mail size={20} />
-                <span>이메일로 시작하기</span>
-              </button>
+            <div className="space-y-4">
+              {/* Google 로그인 버튼 - Google이 활성화된 경우만 표시 */}
+              {isGoogleEnabled && (
+                <>
+                  <div className="w-full flex justify-center">
+                    <GoogleLogin
+                      onSuccess={handleGoogleSuccess}
+                      onError={() => setError('Google 로그인 취소 또는 실패')}
+                      useOneTap
+                      theme={isDark ? 'filled_black' : 'outline'}
+                      size="large"
+                      text="continue_with"
+                      shape="rectangular"
+                      logo_alignment="left"
+                      width="100%"
+                    />
+                  </div>
 
-              <button
-                onClick={() => { setStep('email-login'); setError(''); }}
-                className="w-full text-sm text-slate-400 hover:text-indigo-500 transition-colors"
-              >
-                이미 계정이 있으신가요? <span className="font-semibold">로그인</span>
-              </button>
+                  {/* OR 구분선 */}
+                  <div className="flex items-center gap-3 my-6">
+                    <div className={`flex-1 h-px ${isDark ? 'bg-slate-700' : 'bg-slate-200'}`} />
+                    <span className="text-slate-400 text-sm">OR</span>
+                    <div className={`flex-1 h-px ${isDark ? 'bg-slate-700' : 'bg-slate-200'}`} />
+                  </div>
+                </>
+              )}
 
+              {/* 이메일 로그인 아코디언 */}
+              <div className={`border-2 rounded-2xl overflow-hidden ${isDark ? 'border-slate-700' : 'border-slate-200'}`}>
+                <button
+                  onClick={() => setShowEmailAccordion(!showEmailAccordion)}
+                  className={`w-full p-4 flex items-center justify-between transition ${
+                    isDark ? 'bg-slate-800 hover:bg-slate-750' : 'bg-slate-50 hover:bg-slate-100'
+                  }`}
+                >
+                  <div className="flex items-center gap-2">
+                    <Mail size={18} className={isDark ? 'text-slate-400' : 'text-slate-600'} />
+                    <span className={`font-medium ${isDark ? 'text-slate-200' : 'text-slate-900'}`}>Login with Email</span>
+                  </div>
+                  <ChevronDown
+                    size={20}
+                    className={`transition-transform ${showEmailAccordion ? 'rotate-180' : ''} ${isDark ? 'text-slate-400' : 'text-slate-600'}`}
+                  />
+                </button>
+
+                {showEmailAccordion && (
+                  <div className={`p-4 space-y-3 ${isDark ? 'bg-slate-900' : 'bg-white'}`}>
+                    <button
+                      onClick={() => { setStep('email-login'); setError(''); }}
+                      className={`w-full py-3 rounded-xl font-bold transition ${
+                        isDark
+                          ? 'bg-slate-700 text-white hover:bg-slate-600'
+                          : 'bg-slate-700 text-white hover:bg-slate-800'
+                      }`}
+                    >
+                      로그인
+                    </button>
+                    <button
+                      onClick={openRegisterModal}
+                      className={`w-full py-3 rounded-xl font-bold border-2 transition ${
+                        isDark
+                          ? 'border-slate-700 text-slate-200 hover:bg-slate-800'
+                          : 'border-slate-200 hover:bg-slate-50'
+                      }`}
+                    >
+                      회원가입
+                    </button>
+                  </div>
+                )}
+              </div>
+
+              {/* 게스트 로그인 */}
               <button
                 onClick={loginAsGuest}
-                className="w-full pt-4 text-sm text-slate-400 hover:text-indigo-500 transition-colors flex items-center justify-center space-x-1"
+                className="w-full py-3 rounded-xl font-medium text-slate-500 hover:text-indigo-500 hover:bg-slate-50 dark:hover:bg-slate-800 transition flex items-center justify-center gap-2"
               >
                 <MousePointer2 size={14} />
                 <span>게스트로 둘러보기</span>
@@ -164,6 +273,15 @@ export default function LoginModal() {
       </div>
 
       <p className="mt-8 text-xs text-slate-400">&copy; 2025 PRE(D)ATA. All rights reserved.</p>
+
+      {/* 추가 정보 입력 모달 */}
+      {showAdditionalInfo && googleToken && (
+        <GoogleAdditionalInfoModal
+          googleToken={googleToken}
+          onSubmit={handleAdditionalInfoSubmit}
+          onClose={() => setShowAdditionalInfo(false)}
+        />
+      )}
     </div>
   );
 }

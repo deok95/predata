@@ -15,6 +15,9 @@ data class Member(
     @Column(nullable = false, unique = true)
     val email: String,
 
+    @Column(name = "google_id", unique = true, length = 255)
+    var googleId: String? = null, // Google OAuth User ID (sub claim)
+
     @Column(name = "password_hash")
     var passwordHash: String? = null,
 
