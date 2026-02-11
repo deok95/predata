@@ -39,8 +39,8 @@ spring:
       client:
         registration:
           google:
-            client-id: ${GOOGLE_CLIENT_ID:}
-            client-secret: ${GOOGLE_CLIENT_SECRET:}
+            client-id: ${GOOGLE_CLIENT_ID}
+            client-secret: ${GOOGLE_CLIENT_SECRET}
             scope:
               - email
               - profile
@@ -64,8 +64,8 @@ auth:
 
 google:
   oauth:
-    client-id: ${GOOGLE_CLIENT_ID:}
-    client-secret: ${GOOGLE_CLIENT_SECRET:}
+    client-id: ${GOOGLE_CLIENT_ID}
+    client-secret: ${GOOGLE_CLIENT_SECRET}
 
 sports:
   api:
@@ -73,6 +73,9 @@ sports:
     enabled: ${SPORTS_API_ENABLED:false}
     rate-limit-delay-ms: ${SPORTS_RATE_LIMIT_MS:500}
     fetch-window-days: ${SPORTS_FETCH_WINDOW:14}
+  football-data:
+    api-key: ${FOOTBALL_DATA_API_KEY:}
+    base-url: ${FOOTBALL_DATA_BASE_URL:https://api.football-data.org/v4}
 
 anthropic:
   api:

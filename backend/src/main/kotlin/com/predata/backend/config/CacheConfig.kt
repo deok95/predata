@@ -32,7 +32,8 @@ class CacheConfig {
                 "abusingReport",      // AbusingDetectionService
                 "qualityScore",       // DataQualityService
                 "demographics",       // AnalyticsService
-                "qualityDashboard"    // AnalyticsService
+                "qualityDashboard",   // AnalyticsService
+                "sportsMatches"       // SportsMatchService
             )
         )
         return cacheManager
