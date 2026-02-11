@@ -37,7 +37,9 @@ function AdminQuestionContent() {
   // 폼 데이터
   const [title, setTitle] = useState('');
   const [category, setCategory] = useState('ECONOMY');
-  const [expiredAt, setExpiredAt] = useState('');
+  const [questionType, setQuestionType] = useState<'VERIFIABLE' | 'OPINION'>('VERIFIABLE');
+  const [votingDuration, setVotingDuration] = useState(3600); // 초 단위
+  const [bettingDuration, setBettingDuration] = useState(3600); // 초 단위
 
   // 자동 질문 생성기 설정
   const [generatorEnabled, setGeneratorEnabled] = useState(false);
@@ -51,7 +53,7 @@ function AdminQuestionContent() {
   const [sortBy, setSortBy] = useState<'id' | 'title' | 'category' | 'status' | 'totalBetPool' | 'expiredAt'>('id');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
 
-  const categories = ['ECONOMY', 'SPORTS', 'POLITICS', 'TECH', 'CULTURE'];
+  const categories = ['ECONOMY', 'SPORTS', 'POLITICS', 'TECH', 'CULTURE', 'CRYPTO'];
   const intervalOptions = [
     { value: 1800, label: '30분' },
     { value: 3600, label: '1시간' },
@@ -204,9 +206,11 @@ function AdminQuestionContent() {
   const fetchQuestions = async () => {
     setLoading(true);
     try {
-      const response = await authFetch(`${API_BASE_URL}/admin/questions`);
+      const response = await authFetch(`${API_BASE_URL}/admin/questions?page=0&size=1000`);
       const data = await response.json();
-      setQuestions(Array.isArray(data) ? data : []);
+      // Spring Data Page 응답 처리: { content: [...], totalElements, ... }
+      const questionList = Array.isArray(data) ? data : (data.content ?? []);
+      setQuestions(questionList);
     } catch (error) {
       if (process.env.NODE_ENV === 'development') {
         console.error('Failed to fetch questions:', error);
@@ -217,8 +221,8 @@ function AdminQuestionContent() {
   };
 
   const handleCreate = async () => {
-    if (!title || !expiredAt) {
-      alert('제목과 마감일을 입력해주세요.');
+    if (!title) {
+      alert('제목을 입력해주세요.');
       return;
     }
 
@@ -228,28 +232,28 @@ function AdminQuestionContent() {
         method: 'POST',
         body: JSON.stringify({
           title,
+          type: questionType,
           category,
-          expiredAt: new Date(expiredAt).toISOString(),
-          categoryWeight: 1.0
+          votingDuration,
+          bettingDuration
         })
       });
 
       const data = await response.json();
 
       if (data.success) {
-        alert('✅ 질문이 생성되었습니다!');
+        alert('질문이 생성되었습니다!');
         setTitle('');
-        setExpiredAt('');
         setShowCreateForm(false);
         fetchQuestions();
       } else {
-        alert(`❌ 생성 실패: ${data.message}`);
+        alert(`생성 실패: ${data.message}`);
       }
     } catch (error) {
       if (process.env.NODE_ENV === 'development') {
         console.error('Failed to create question:', error);
       }
-      alert('❌ 질문 생성 중 오류가 발생했습니다.');
+      alert('질문 생성 중 오류가 발생했습니다.');
     } finally {
       setLoading(false);
     }
@@ -556,6 +560,37 @@ function AdminQuestionContent() {
               />
             </div>
 
+            {/* 질문 타입 */}
+            <div>
+              <label className={`block text-sm font-semibold mb-2 ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>
+                질문 타입
+              </label>
+              <div className="grid grid-cols-2 gap-3">
+                <button
+                  type="button"
+                  onClick={() => setQuestionType('VERIFIABLE')}
+                  className={`py-2 rounded-lg font-semibold text-sm transition border-2 ${
+                    questionType === 'VERIFIABLE'
+                      ? 'bg-indigo-600 text-white border-indigo-700'
+                      : isDark ? 'bg-slate-700 text-slate-300 border-slate-600' : 'bg-slate-100 text-slate-600 border-slate-300'
+                  }`}
+                >
+                  VERIFIABLE (검증 가능)
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setQuestionType('OPINION')}
+                  className={`py-2 rounded-lg font-semibold text-sm transition border-2 ${
+                    questionType === 'OPINION'
+                      ? 'bg-indigo-600 text-white border-indigo-700'
+                      : isDark ? 'bg-slate-700 text-slate-300 border-slate-600' : 'bg-slate-100 text-slate-600 border-slate-300'
+                  }`}
+                >
+                  OPINION (의견 기반)
+                </button>
+              </div>
+            </div>
+
             {/* 카테고리 */}
             <div>
               <label className={`block text-sm font-semibold mb-2 ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>
@@ -576,21 +611,52 @@ function AdminQuestionContent() {
               </select>
             </div>
 
-            {/* 마감일 */}
+            {/* 투표 기간 */}
             <div>
               <label className={`block text-sm font-semibold mb-2 ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>
-                마감일
+                투표 기간
               </label>
-              <input
-                type="datetime-local"
-                value={expiredAt}
-                onChange={(e) => setExpiredAt(e.target.value)}
+              <select
+                value={votingDuration}
+                onChange={(e) => setVotingDuration(Number(e.target.value))}
                 className={`w-full p-3 rounded-lg focus:ring-2 focus:ring-indigo-500 ${
                   isDark
                     ? 'bg-slate-700 border-slate-600 text-white'
                     : 'bg-white border-slate-300 text-slate-800'
                 } border`}
-              />
+              >
+                <option value={300}>5분</option>
+                <option value={1800}>30분</option>
+                <option value={3600}>1시간</option>
+                <option value={7200}>2시간</option>
+                <option value={21600}>6시간</option>
+                <option value={43200}>12시간</option>
+                <option value={86400}>24시간</option>
+              </select>
+            </div>
+
+            {/* 베팅 기간 */}
+            <div>
+              <label className={`block text-sm font-semibold mb-2 ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>
+                베팅 기간
+              </label>
+              <select
+                value={bettingDuration}
+                onChange={(e) => setBettingDuration(Number(e.target.value))}
+                className={`w-full p-3 rounded-lg focus:ring-2 focus:ring-indigo-500 ${
+                  isDark
+                    ? 'bg-slate-700 border-slate-600 text-white'
+                    : 'bg-white border-slate-300 text-slate-800'
+                } border`}
+              >
+                <option value={300}>5분</option>
+                <option value={1800}>30분</option>
+                <option value={3600}>1시간</option>
+                <option value={7200}>2시간</option>
+                <option value={21600}>6시간</option>
+                <option value={43200}>12시간</option>
+                <option value={86400}>24시간</option>
+              </select>
             </div>
 
             {/* 버튼 */}

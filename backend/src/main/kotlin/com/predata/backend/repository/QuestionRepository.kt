@@ -20,7 +20,7 @@ interface QuestionRepository : JpaRepository<Question, Long> {
     @Query("SELECT q FROM Question q WHERE q.status = 'OPEN' AND q.expiredAt < :time")
     fun findOpenExpiredBefore(time: LocalDateTime): List<Question>
 
-    @Query("SELECT q FROM Question q WHERE q.finalResult = 'PENDING' AND q.disputeDeadline < :deadline")
+    @Query("SELECT q FROM Question q WHERE q.status = 'SETTLED' AND q.finalResult != 'PENDING' AND q.disputeDeadline IS NOT NULL AND q.disputeDeadline < :deadline")
     fun findPendingSettlementPastDeadline(deadline: LocalDateTime): List<Question>
 
     // New status transition queries

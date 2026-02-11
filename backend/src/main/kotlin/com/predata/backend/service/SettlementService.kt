@@ -19,8 +19,10 @@ class SettlementService(
     private val memberRepository: MemberRepository,
     private val tierService: TierService,
     private val rewardService: RewardService,
-    private val blockchainService: BlockchainService
+    private val blockchainService: BlockchainService,
+    private val badgeService: BadgeService
 ) {
+    private val logger = org.slf4j.LoggerFactory.getLogger(SettlementService::class.java)
 
     companion object {
         private const val DISPUTE_HOURS = 0L // 테스트용: 이의제기 기간 없음 (즉시 확정)
@@ -40,10 +42,7 @@ class SettlementService(
         if (question.status == QuestionStatus.SETTLED) {
             throw IllegalStateException("이미 정산된 질문입니다.")
         }
-        if (question.status == QuestionStatus.SETTLED) {
-            throw IllegalStateException("이미 정산 대기 중인 질문입니다.")
-        }
-        if (question.status != QuestionStatus.VOTING && question.status != QuestionStatus.BETTING) {
+        if (question.status != QuestionStatus.VOTING && question.status != QuestionStatus.BETTING && question.status != QuestionStatus.BREAK) {
             throw IllegalStateException("정산 가능한 상태가 아닙니다. (현재: ${question.status})")
         }
 
@@ -90,15 +89,21 @@ class SettlementService(
             throw IllegalStateException("정산 대기 상태의 질문만 확정할 수 있습니다. (현재: ${question.status})")
         }
 
-        if (!skipDeadlineCheck && question.disputeDeadline != null && LocalDateTime.now().isBefore(question.disputeDeadline)) {
+        // 이중 정산 방지: disputeDeadline이 null이면 이미 finalize 완료된 질문
+        if (question.disputeDeadline == null) {
+            throw IllegalStateException("이미 정산 확정된 질문입니다.")
+        }
+
+        if (!skipDeadlineCheck && LocalDateTime.now().isBefore(question.disputeDeadline)) {
             throw IllegalStateException("이의 제기 기간이 아직 종료되지 않았습니다. (기한: ${question.disputeDeadline})")
         }
 
         val finalResult = question.finalResult
         val winningChoice = if (finalResult == FinalResult.YES) Choice.YES else Choice.NO
 
-        // 상태 확정
+        // 상태 확정 + disputeDeadline null로 설정 (이중 정산 방지 마커)
         question.status = QuestionStatus.SETTLED
+        question.disputeDeadline = null
         questionRepository.save(question)
 
         // === 1회 조회: 모든 활동(투표+베팅) 조회 ===
@@ -196,6 +201,33 @@ class SettlementService(
 
         // 온체인 기록
         blockchainService.settleQuestionOnChain(questionId, finalResult)
+
+        // === Badge 업데이트: 정산 후 뱃지 체크 ===
+        bets.forEach { bet ->
+            try {
+                val member = membersMap[bet.memberId] ?: return@forEach
+                val isWinner = bet.choice == winningChoice
+                val payoutRatio = if (isWinner && bet.amount > 0) {
+                    calculatePayout(bet.amount, question.totalBetPool,
+                        if (finalResult == FinalResult.YES) question.yesBetPool else question.noBetPool
+                    ).toDouble() / bet.amount.toDouble()
+                } else 0.0
+                badgeService.onSettlement(bet.memberId, isWinner, payoutRatio)
+                badgeService.onPointsChange(bet.memberId, member.pointBalance)
+            } catch (e: Exception) {
+                logger.warn("[Settlement] Badge 업데이트 실패 member={}: {}", bet.memberId, e.message)
+            }
+        }
+
+        // 티어 변경 뱃지 체크
+        votes.forEach { vote ->
+            try {
+                val member = membersMap[vote.memberId] ?: return@forEach
+                badgeService.onTierChange(vote.memberId, member.tier)
+            } catch (e: Exception) {
+                logger.warn("[Settlement] Tier Badge 업데이트 실패 member={}: {}", vote.memberId, e.message)
+            }
+        }
 
         return SettlementResult(
             questionId = questionId,
