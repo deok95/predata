@@ -1,5 +1,6 @@
 package com.predata.backend.domain
 
+import com.predata.backend.sports.domain.QuestionPhase
 import jakarta.persistence.*
 import java.math.BigDecimal
 import java.time.LocalDateTime
@@ -67,7 +68,15 @@ data class Question(
     val expiredAt: LocalDateTime,
 
     @Column(name = "created_at", nullable = false, updatable = false)
-    val createdAt: LocalDateTime = LocalDateTime.now()
+    val createdAt: LocalDateTime = LocalDateTime.now(),
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "phase", length = 20)
+    var phase: QuestionPhase? = null,
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "match_id")
+    val match: com.predata.backend.sports.domain.Match? = null
 )
 
 enum class QuestionStatus {
