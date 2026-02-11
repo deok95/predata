@@ -258,48 +258,76 @@ export const mockGuestActivities: Activity[] = [
 ];
 
 // ===== 데이터센터 품질 대시보드 더미 데이터 =====
-export const mockQualityDashboard: QualityDashboard = {
-  questionId: 1,
-  overallQualityScore: 87.3,
-  demographics: {
-    questionId: 1,
-    totalVotes: 3842,
-    byCountry: [
-      { countryCode: 'KR', yesCount: 1240, noCount: 680, yesPercentage: 64.6, total: 1920 },
-      { countryCode: 'US', yesCount: 520, noCount: 310, yesPercentage: 62.7, total: 830 },
-      { countryCode: 'JP', yesCount: 280, noCount: 195, yesPercentage: 58.9, total: 475 },
-      { countryCode: 'CN', yesCount: 190, noCount: 145, yesPercentage: 56.7, total: 335 },
-      { countryCode: 'UK', yesCount: 125, noCount: 87, yesPercentage: 59.0, total: 212 },
-      { countryCode: 'DE', yesCount: 42, noCount: 28, yesPercentage: 60.0, total: 70 },
-    ],
-    byJob: [
-      { jobCategory: 'IT/개발', yesCount: 680, noCount: 320, yesPercentage: 68.0, total: 1000 },
-      { jobCategory: '금융', yesCount: 420, noCount: 380, yesPercentage: 52.5, total: 800 },
-      { jobCategory: '학생', yesCount: 350, noCount: 200, yesPercentage: 63.6, total: 550 },
-      { jobCategory: '공무원', yesCount: 180, noCount: 220, yesPercentage: 45.0, total: 400 },
-      { jobCategory: '자영업', yesCount: 280, noCount: 170, yesPercentage: 62.2, total: 450 },
-      { jobCategory: '기타', yesCount: 487, noCount: 155, yesPercentage: 75.9, total: 642 },
-    ],
-    byAge: [
-      { ageGroup: 20, yesCount: 580, noCount: 220, yesPercentage: 72.5, total: 800 },
-      { ageGroup: 30, yesCount: 720, noCount: 380, yesPercentage: 65.5, total: 1100 },
-      { ageGroup: 40, yesCount: 480, noCount: 420, yesPercentage: 53.3, total: 900 },
-      { ageGroup: 50, yesCount: 320, noCount: 350, yesPercentage: 47.8, total: 670 },
-      { ageGroup: 60, yesCount: 180, noCount: 192, yesPercentage: 48.4, total: 372 },
-    ],
-  },
-  gapAnalysis: {
-    questionId: 1,
-    voteDistribution: { yesPercentage: 63.2, noPercentage: 36.8, yesCount: 2428, noCount: 1414 },
-    betDistribution: { yesPercentage: 60.0, noPercentage: 40.0, yesCount: 1708, noCount: 1139 },
-    gapPercentage: 3.2,
-    qualityScore: 91.5,
-  },
-  filteringEffect: {
-    questionId: 1,
-    beforeFiltering: { totalCount: 4210, yesPercentage: 65.8, noPercentage: 34.2 },
-    afterFiltering: { totalCount: 3842, yesPercentage: 63.2, noPercentage: 36.8 },
-    filteredCount: 368,
-    filteredPercentage: 8.7,
-  },
-};
+// questionId에 따라 다른 mock 데이터를 생성하는 함수
+function seededRandom(seed: number): () => number {
+  let s = seed;
+  return () => {
+    s = (s * 16807 + 0) % 2147483647;
+    return (s - 1) / 2147483646;
+  };
+}
+
+export function generateMockDashboard(questionId: number): QualityDashboard {
+  const rand = seededRandom(questionId * 31 + 7);
+  const r = () => rand();
+
+  const totalVotes = Math.floor(1500 + r() * 5000);
+  const yesRatio = 0.35 + r() * 0.3; // 35~65%
+  const qualityScore = 60 + r() * 35; // 60~95
+  const gapPct = 1 + r() * 15; // 1~16%
+
+  const mkCountry = (code: string) => {
+    const total = Math.floor(100 + r() * 800);
+    const yesPct = 40 + r() * 30;
+    const yesCount = Math.floor(total * yesPct / 100);
+    return { countryCode: code, yesCount, noCount: total - yesCount, yesPercentage: Math.round(yesPct * 10) / 10, total };
+  };
+  const mkJob = (cat: string) => {
+    const total = Math.floor(100 + r() * 500);
+    const yesPct = 35 + r() * 35;
+    const yesCount = Math.floor(total * yesPct / 100);
+    return { jobCategory: cat, yesCount, noCount: total - yesCount, yesPercentage: Math.round(yesPct * 10) / 10, total };
+  };
+  const mkAge = (group: number) => {
+    const total = Math.floor(100 + r() * 600);
+    const yesPct = 40 + r() * 30;
+    const yesCount = Math.floor(total * yesPct / 100);
+    return { ageGroup: group, yesCount, noCount: total - yesCount, yesPercentage: Math.round(yesPct * 10) / 10, total };
+  };
+
+  const voteYes = Math.round(yesRatio * 1000) / 10;
+  const betYes = Math.round((yesRatio + (r() - 0.5) * 0.1) * 1000) / 10;
+  const voteYesCount = Math.floor(totalVotes * yesRatio);
+  const betTotal = Math.floor(totalVotes * (0.5 + r() * 0.3));
+  const betYesCount = Math.floor(betTotal * betYes / 100);
+  const beforeTotal = Math.floor(totalVotes * (1.05 + r() * 0.1));
+  const filteredCount = beforeTotal - totalVotes;
+
+  return {
+    questionId,
+    overallQualityScore: Math.round(qualityScore * 10) / 10,
+    demographics: {
+      questionId,
+      totalVotes,
+      byCountry: ['KR', 'US', 'JP', 'CN', 'UK', 'DE'].map(mkCountry),
+      byJob: ['IT/개발', '금융', '학생', '공무원', '자영업', '기타'].map(mkJob),
+      byAge: [20, 30, 40, 50, 60].map(mkAge),
+    },
+    gapAnalysis: {
+      questionId,
+      voteDistribution: { yesPercentage: voteYes, noPercentage: Math.round((100 - voteYes) * 10) / 10, yesCount: voteYesCount, noCount: totalVotes - voteYesCount },
+      betDistribution: { yesPercentage: betYes, noPercentage: Math.round((100 - betYes) * 10) / 10, yesCount: betYesCount, noCount: betTotal - betYesCount },
+      gapPercentage: Math.round(gapPct * 10) / 10,
+      qualityScore: Math.round((100 - gapPct * 2) * 10) / 10,
+    },
+    filteringEffect: {
+      questionId,
+      beforeFiltering: { totalCount: beforeTotal, yesPercentage: Math.round((voteYes + r() * 3) * 10) / 10, noPercentage: Math.round((100 - voteYes - r() * 3) * 10) / 10 },
+      afterFiltering: { totalCount: totalVotes, yesPercentage: voteYes, noPercentage: Math.round((100 - voteYes) * 10) / 10 },
+      filteredCount,
+      filteredPercentage: Math.round((filteredCount / beforeTotal) * 1000) / 10,
+    },
+  };
+}
+
+export const mockQualityDashboard: QualityDashboard = generateMockDashboard(1);

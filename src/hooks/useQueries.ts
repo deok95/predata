@@ -7,6 +7,7 @@ import {
   mockSettlementHistory,
   mockGuestActivities,
   mockQualityDashboard,
+  generateMockDashboard,
 } from '@/lib/mockData';
 import type { Question, GlobalStats, Activity, SettlementHistory, QualityDashboard } from '@/types/api';
 
@@ -115,6 +116,25 @@ export function useSettlementHistory(memberId: number) {
   });
 }
 
+// === Data Center Activities (for time-series derivation) ===
+
+export function useQuestionActivities(questionId: number) {
+  return useQuery<Activity[]>({
+    queryKey: ['datacenter', 'activities', questionId],
+    queryFn: async () => {
+      try {
+        const res = await bettingApi.getActivitiesByQuestion(questionId);
+        if (res.success && res.data && res.data.length > 0) return res.data;
+        return mockActivities.filter(a => a.questionId === questionId);
+      } catch {
+        return mockActivities.filter(a => a.questionId === questionId);
+      }
+    },
+    enabled: !!questionId,
+    staleTime: 60_000,
+  });
+}
+
 // === Data Center / Quality Dashboard ===
 
 export function useQualityDashboard(questionId: number) {
@@ -128,9 +148,9 @@ export function useQualityDashboard(questionId: number) {
           const data = res.data as unknown as QualityDashboard;
           if (data.gapAnalysis && data.demographics && data.filteringEffect) return data;
         }
-        return mockQualityDashboard;
+        return generateMockDashboard(questionId);
       } catch {
-        return mockQualityDashboard;
+        return generateMockDashboard(questionId);
       }
     },
     staleTime: 60_000,

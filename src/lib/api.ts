@@ -408,6 +408,24 @@ export const analyticsApi = {
     }),
 };
 
+// ===== Analysis API =====
+export const analysisApi = {
+  getQualityScore: async (questionId: number) => {
+    const raw = await apiRequest<any>(`/api/analysis/questions/${questionId}/quality-score`);
+    return { success: true as const, data: raw as { qualityScore: number; grade: string } };
+  },
+
+  getAbusingReport: async (questionId: number) => {
+    const raw = await apiRequest<any>(`/api/analysis/questions/${questionId}/abusing-report`);
+    return { success: true as const, data: raw };
+  },
+
+  getByCountry: async (questionId: number) => {
+    const raw = await apiRequest<any>(`/api/analysis/questions/${questionId}/by-country`);
+    return { success: true as const, data: raw as Record<string, any> };
+  },
+};
+
 // ===== Sports API =====
 export const sportsApi = {
   getLiveMatches: () =>
@@ -613,6 +631,7 @@ export const api = {
   faucet: faucetApi,
   blockchain: blockchainApi,
   analytics: analyticsApi,
+  analysis: analysisApi,
   sports: sportsApi,
   global: globalApi,
   tier: tierApi,

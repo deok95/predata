@@ -297,6 +297,21 @@ export interface FilteringData {
   noPercentage: number;
 }
 
+// Data Center Time-Series Types
+export interface VoteTrendPoint {
+  timestamp: string;
+  cumulativeYes: number;
+  cumulativeNo: number;
+  yesPercentage: number;
+  hourlyVotes: number;
+  hourlyBetVolume: number;
+}
+
+export interface QualityScoreResult {
+  qualityScore: number;
+  grade: string;
+}
+
 // ===== Notification Types =====
 export interface Notification {
   id: number;

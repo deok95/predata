@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback, useMemo, createContext, useContext } 
 import type { ReactNode } from 'react';
 import { memberApi, authApi, ApiError } from '@/lib/api';
 import { safeLocalStorage } from '@/lib/safeLocalStorage';
-import { clearAllAuthCookies } from '@/lib/cookieUtils';
+import { clearAllAuthCookies, setAuthCookies } from '@/lib/cookieUtils';
 import type { Member } from '@/types/api';
 
 const STORAGE_KEY = 'predataUser';
@@ -61,6 +61,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
         if (isGuestUser || token) {
           setUser(parsed);
+          if (!isGuestUser && token) {
+            setAuthCookies(parsed.role === 'ADMIN');
+          }
         } else {
           // 토큰 없는 실유저 = stale 데이터 → 삭제
           safeLocalStorage.removeItem(STORAGE_KEY);
@@ -101,6 +104,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const response = await memberApi.getById(memberId);
       if (response.success && response.data) {
         persistUser(response.data);
+        setAuthCookies(response.data.role === 'ADMIN');
         return response.data;
       }
     } catch {
