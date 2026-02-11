@@ -7,6 +7,7 @@ import org.springframework.data.domain.Pageable
 import org.springframework.data.jpa.repository.JpaRepository
 import org.springframework.data.jpa.repository.Lock
 import org.springframework.data.jpa.repository.Query
+import org.springframework.data.repository.query.Param
 import org.springframework.stereotype.Repository
 import jakarta.persistence.LockModeType
 import java.time.LocalDateTime
@@ -36,6 +37,12 @@ interface QuestionRepository : JpaRepository<Question, Long> {
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("SELECT q FROM Question q WHERE q.id = :id")
     fun findByIdWithLock(id: Long): Question?
+
+    @Query("SELECT q FROM Question q WHERE q.match IS NOT NULL AND (q.phase IS NULL OR q.phase IN ('UPCOMING', 'VOTING', 'BETTING'))")
+    fun findMatchQuestionsForPhaseCheck(): List<Question>
+
+    @Query("SELECT q FROM Question q WHERE q.match.id = :matchId")
+    fun findByMatchId(@Param("matchId") matchId: Long): List<Question>
 
     // Admin 질문 목록 조회 (페이지네이션 + 투표/베팅 수 집계)
     @Query("""

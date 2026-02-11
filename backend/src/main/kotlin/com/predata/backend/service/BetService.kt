@@ -8,6 +8,7 @@ import com.predata.backend.dto.BetRequest
 import com.predata.backend.repository.ActivityRepository
 import com.predata.backend.repository.MemberRepository
 import com.predata.backend.repository.QuestionRepository
+import com.predata.backend.sports.domain.QuestionPhase
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import java.time.LocalDateTime
@@ -18,7 +19,8 @@ class BetService(
     private val questionRepository: QuestionRepository,
     private val memberRepository: MemberRepository,
     private val bettingBatchService: BettingBatchService,
-    private val betRecordService: BetRecordService
+    private val betRecordService: BetRecordService,
+    private val bettingSuspensionService: BettingSuspensionService
 ) {
 
     /**
@@ -61,6 +63,23 @@ class BetService(
             return ActivityResponse(
                 success = false,
                 message = "베팅이 종료되었습니다."
+            )
+        }
+
+        // phase 체크: Match 연결 질문은 phase == BETTING 일 때만 허용
+        if (question.phase != null && question.phase != QuestionPhase.BETTING) {
+            return ActivityResponse(
+                success = false,
+                message = "현재 베팅 가능한 phase가 아닙니다. (현재: ${question.phase})"
+            )
+        }
+
+        // Match 연결 질문의 골 이벤트 베팅 정지 체크
+        val matchId = question.match?.id
+        if (matchId != null && bettingSuspensionService.isMatchBettingSuspended(matchId)) {
+            return ActivityResponse(
+                success = false,
+                message = "골 이벤트로 베팅이 일시 정지되었습니다. 잠시 후 다시 시도해주세요."
             )
         }
 

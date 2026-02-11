@@ -4,15 +4,43 @@ import com.predata.backend.domain.SportsMatch
 import com.predata.backend.domain.QuestionStatus
 import com.predata.backend.repository.QuestionRepository
 import com.predata.backend.repository.SportsMatchRepository
+import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import java.time.LocalDateTime
+import java.util.concurrent.ConcurrentHashMap
 
 @Service
 class BettingSuspensionService(
     private val sportsMatchRepository: SportsMatchRepository,
     private val questionRepository: QuestionRepository
 ) {
+
+    private val logger = LoggerFactory.getLogger(BettingSuspensionService::class.java)
+
+    // Match(sports domain) 기반 베팅 정지 추적 (matchId → suspendedUntil)
+    private val matchSuspensions = ConcurrentHashMap<Long, LocalDateTime>()
+
+    /**
+     * Match(sports domain) 기반 - 골 이벤트 시 30초 베팅 정지
+     */
+    fun suspendBettingForMatch(matchId: Long) {
+        val until = LocalDateTime.now().plusSeconds(30)
+        matchSuspensions[matchId] = until
+        logger.info("[BettingSuspension] matchId={} 베팅 30초 정지 (until={})", matchId, until)
+    }
+
+    /**
+     * Match(sports domain) 기반 - 베팅 정지 여부 확인
+     */
+    fun isMatchBettingSuspended(matchId: Long): Boolean {
+        val until = matchSuspensions[matchId] ?: return false
+        if (LocalDateTime.now().isAfter(until)) {
+            matchSuspensions.remove(matchId)
+            return false
+        }
+        return true
+    }
 
     /**
      * 스코어 변경 시 베팅 일시 중지 (30초)

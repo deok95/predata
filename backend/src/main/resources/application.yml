@@ -76,6 +76,10 @@ sports:
   football-data:
     api-key: ${FOOTBALL_DATA_API_KEY:}
     base-url: ${FOOTBALL_DATA_BASE_URL:https://api.football-data.org/v4}
+  scheduler:
+    sync-cron: "0 0 6 * * *"
+    live-poll-interval-ms: 60000
+    phase-check-interval-ms: 300000
 
 anthropic:
   api:
