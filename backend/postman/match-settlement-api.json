@@ -1,0 +1,88 @@
+{
+	"info": {
+		"_postman_id": "match-settlement-collection",
+		"name": "Match Settlement API",
+		"description": "경기 종료 → 자동 정산 연동 (feature/match-settlement)",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"variable": [
+		{
+			"key": "baseUrl",
+			"value": "http://localhost:8080",
+			"type": "string"
+		},
+		{
+			"key": "questionId",
+			"value": "1",
+			"type": "string"
+		}
+	],
+	"item": [
+		{
+			"name": "수동 정산 - YES 승",
+			"request": {
+				"method": "PUT",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"result\": \"YES\"\n}"
+				},
+				"url": {
+					"raw": "{{baseUrl}}/api/admin/questions/{{questionId}}/settle-manual",
+					"host": ["{{baseUrl}}"],
+					"path": ["api", "admin", "questions", "{{questionId}}", "settle-manual"]
+				},
+				"description": "홈팀 승리 → YES 정산 (어드민 수동)"
+			}
+		},
+		{
+			"name": "수동 정산 - NO 승",
+			"request": {
+				"method": "PUT",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"result\": \"NO\"\n}"
+				},
+				"url": {
+					"raw": "{{baseUrl}}/api/admin/questions/{{questionId}}/settle-manual",
+					"host": ["{{baseUrl}}"],
+					"path": ["api", "admin", "questions", "{{questionId}}", "settle-manual"]
+				},
+				"description": "원정팀 승리 → NO 정산 (어드민 수동)"
+			}
+		},
+		{
+			"name": "수동 정산 - DRAW 전액 환불",
+			"request": {
+				"method": "PUT",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"result\": \"DRAW\"\n}"
+				},
+				"url": {
+					"raw": "{{baseUrl}}/api/admin/questions/{{questionId}}/settle-manual",
+					"host": ["{{baseUrl}}"],
+					"path": ["api", "admin", "questions", "{{questionId}}", "settle-manual"]
+				},
+				"description": "무승부 → 전액 환불 (어드민 수동)"
+			}
+		}
+	]
+}

@@ -2,6 +2,7 @@ package com.predata.backend.sports.scheduler
 
 import com.predata.backend.sports.domain.Match
 import com.predata.backend.sports.domain.MatchStatus
+import com.predata.backend.sports.event.MatchCancelledEvent
 import com.predata.backend.sports.event.MatchFinishedEvent
 import com.predata.backend.sports.event.MatchGoalEvent
 import com.predata.backend.sports.provider.football.FootballDataProvider
@@ -133,6 +134,23 @@ class MatchSyncScheduler(
                             matchId = match.id!!,
                             homeScore = newHomeScore,
                             awayScore = newAwayScore
+                        )
+                    )
+                }
+
+                // POSTPONED/CANCELLED 전환 감지 → MatchCancelledEvent 발행
+                if (oldStatus != MatchStatus.POSTPONED && oldStatus != MatchStatus.CANCELLED
+                    && (newStatus == MatchStatus.POSTPONED || newStatus == MatchStatus.CANCELLED)
+                ) {
+                    logger.info(
+                        "[MatchSync] 경기 취소/연기: {} vs {} → {}",
+                        match.homeTeam, match.awayTeam, newStatus
+                    )
+                    eventPublisher.publishEvent(
+                        MatchCancelledEvent(
+                            source = this,
+                            matchId = match.id!!,
+                            matchStatus = newStatus
                         )
                     )
                 }

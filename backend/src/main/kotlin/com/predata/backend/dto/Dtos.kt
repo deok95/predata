@@ -155,6 +155,12 @@ data class SetQuestionResultRequest(
     val result: String // "YES" or "NO"
 )
 
+// 어드민 수동 정산 요청
+data class ManualSettleRequest(
+    @field:NotNull(message = "결과(YES/NO/DRAW)는 필수입니다.")
+    val result: String // "YES", "NO", "DRAW"
+)
+
 // ============================================================
 // Google OAuth DTOs
 // ============================================================

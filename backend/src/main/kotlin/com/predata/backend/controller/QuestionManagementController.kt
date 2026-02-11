@@ -2,6 +2,7 @@ package com.predata.backend.controller
 
 import com.predata.backend.domain.FinalResult
 import com.predata.backend.service.*
+import com.predata.backend.sports.service.MatchSettlementService
 import org.springframework.data.domain.Page
 import org.springframework.data.domain.PageRequest
 import org.springframework.data.domain.Sort
@@ -14,7 +15,8 @@ import org.springframework.web.bind.annotation.*
 @CrossOrigin(origins = ["http://localhost:3000"])
 class QuestionManagementController(
     private val questionManagementService: QuestionManagementService,
-    private val settlementService: SettlementService
+    private val settlementService: SettlementService,
+    private val matchSettlementService: MatchSettlementService
 ) {
 
     /**
@@ -196,6 +198,30 @@ class QuestionManagementController(
                     voterRewards = 0,
                     message = e.message ?: "결과 입력에 실패했습니다."
                 )
+            )
+        }
+    }
+
+    /**
+     * 어드민 수동 정산 (자동 정산 실패 시)
+     * PUT /api/admin/questions/{id}/settle-manual
+     * Request: { result: "YES" | "NO" | "DRAW" }
+     */
+    @PutMapping("/{id}/settle-manual")
+    fun settleManual(
+        @PathVariable id: Long,
+        @RequestBody request: com.predata.backend.dto.ManualSettleRequest
+    ): ResponseEntity<Map<String, Any>> {
+        return try {
+            val message = matchSettlementService.manualSettle(id, request.result)
+            ResponseEntity.ok(mapOf("success" to true, "questionId" to id, "message" to message))
+        } catch (e: IllegalArgumentException) {
+            ResponseEntity.badRequest().body(
+                mapOf("success" to false, "questionId" to id, "message" to (e.message ?: "수동 정산에 실패했습니다."))
+            )
+        } catch (e: IllegalStateException) {
+            ResponseEntity.status(HttpStatus.CONFLICT).body(
+                mapOf("success" to false, "questionId" to id, "message" to (e.message ?: "수동 정산에 실패했습니다."))
             )
         }
     }
