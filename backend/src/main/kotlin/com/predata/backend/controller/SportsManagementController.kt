@@ -1,11 +1,14 @@
 package com.predata.backend.controller
 
 import com.predata.backend.domain.SportsMatch
+import com.predata.backend.repository.QuestionRepository
 import com.predata.backend.repository.SportsMatchRepository
 import com.predata.backend.service.GenerationResult
 import com.predata.backend.service.QuestionAutoGenerationService
 import com.predata.backend.service.SportsSettlementResult
 import com.predata.backend.service.UpdateResult
+import com.predata.backend.sports.service.MatchQuestionGenerateResult
+import com.predata.backend.sports.service.MatchQuestionGeneratorService
 import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.*
 
@@ -14,7 +17,9 @@ import org.springframework.web.bind.annotation.*
 @CrossOrigin(origins = ["http://localhost:3000"])
 class SportsManagementController(
     private val questionAutoGenerationService: QuestionAutoGenerationService,
-    private val sportsMatchRepository: SportsMatchRepository
+    private val sportsMatchRepository: SportsMatchRepository,
+    private val matchQuestionGeneratorService: MatchQuestionGeneratorService,
+    private val questionRepository: QuestionRepository
 ) {
 
     /**
@@ -79,6 +84,38 @@ class SportsManagementController(
         val upcomingMatches = sportsMatchRepository.findByStatus("SCHEDULED")
         return ResponseEntity.ok(upcomingMatches)
     }
+
+    /**
+     * Match 연결 Question 목록 조회
+     * GET /api/admin/sports/questions
+     */
+    @GetMapping("/questions")
+    fun getMatchQuestions(): ResponseEntity<List<MatchQuestionView>> {
+        val questions = questionRepository.findAllMatchQuestions()
+        val views = questions.map { q ->
+            MatchQuestionView(
+                questionId = q.id!!,
+                title = q.title,
+                category = q.category,
+                status = q.status.name,
+                phase = q.phase?.name,
+                matchId = q.match?.id,
+                matchTime = q.match?.matchTime?.toString(),
+                createdAt = q.createdAt.toString()
+            )
+        }
+        return ResponseEntity.ok(views)
+    }
+
+    /**
+     * Match → Question 수동 생성 트리거 (테스트용)
+     * POST /api/admin/sports/generate-match-questions
+     */
+    @PostMapping("/generate-match-questions")
+    fun generateMatchQuestions(): ResponseEntity<MatchQuestionGenerateResult> {
+        val result = matchQuestionGeneratorService.generateQuestions()
+        return ResponseEntity.ok(result)
+    }
 }
 
 data class LiveMatchInfo(
@@ -91,4 +128,15 @@ data class LiveMatchInfo(
     val awayScore: Int,
     val matchDate: String,
     val status: String
+)
+
+data class MatchQuestionView(
+    val questionId: Long,
+    val title: String,
+    val category: String?,
+    val status: String,
+    val phase: String?,
+    val matchId: Long?,
+    val matchTime: String?,
+    val createdAt: String
 )

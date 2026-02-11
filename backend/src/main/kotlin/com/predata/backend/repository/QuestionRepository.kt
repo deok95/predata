@@ -44,6 +44,9 @@ interface QuestionRepository : JpaRepository<Question, Long> {
     @Query("SELECT q FROM Question q WHERE q.match.id = :matchId")
     fun findByMatchId(@Param("matchId") matchId: Long): List<Question>
 
+    @Query("SELECT q FROM Question q WHERE q.match IS NOT NULL ORDER BY q.createdAt DESC")
+    fun findAllMatchQuestions(): List<Question>
+
     // Admin 질문 목록 조회 (페이지네이션 + 투표/베팅 수 집계)
     @Query("""
         SELECT q.id as id,

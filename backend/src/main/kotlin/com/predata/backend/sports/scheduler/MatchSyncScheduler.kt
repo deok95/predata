@@ -9,6 +9,7 @@ import com.predata.backend.sports.provider.football.FootballDataProvider
 import com.predata.backend.sports.repository.LeagueRepository
 import com.predata.backend.sports.repository.MatchRepository
 import org.slf4j.LoggerFactory
+import com.predata.backend.sports.service.MatchQuestionGeneratorService
 import org.springframework.context.ApplicationEventPublisher
 import org.springframework.scheduling.annotation.Scheduled
 import org.springframework.stereotype.Component
@@ -20,7 +21,8 @@ class MatchSyncScheduler(
     private val footballDataProvider: FootballDataProvider,
     private val matchRepository: MatchRepository,
     private val leagueRepository: LeagueRepository,
-    private val eventPublisher: ApplicationEventPublisher
+    private val eventPublisher: ApplicationEventPublisher,
+    private val matchQuestionGeneratorService: MatchQuestionGeneratorService
 ) {
 
     private val logger = LoggerFactory.getLogger(MatchSyncScheduler::class.java)
@@ -66,6 +68,10 @@ class MatchSyncScheduler(
         }
 
         logger.info("[MatchSync] 동기화 완료 - 신규: ${inserted}건, 업데이트: ${updated}건")
+
+        // 동기화 후 Question 자동 생성
+        val genResult = matchQuestionGeneratorService.generateQuestions()
+        logger.info("[MatchSync] Question 자동 생성 - 신규: ${genResult.created}건, 스킵: ${genResult.skipped}건")
     }
 
     /**
