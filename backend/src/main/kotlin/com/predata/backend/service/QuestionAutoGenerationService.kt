@@ -68,12 +68,12 @@ class QuestionAutoGenerationService(
      * 경기 정보로 질문 생성 (실시간 베팅 지원)
      */
     private fun createQuestionFromMatch(match: SportsMatch): Question {
-        // 질문 제목 생성
+        // 질문 제목 생성 (리그명 포함)
         val title = when (match.sportType) {
-            "FOOTBALL" -> "Will ${match.homeTeam} beat ${match.awayTeam}?"
-            "BASKETBALL" -> "Will ${match.homeTeam} win against ${match.awayTeam}?"
-            "BASEBALL" -> "Will ${match.homeTeam} defeat ${match.awayTeam}?"
-            else -> "${match.homeTeam} vs ${match.awayTeam} - Who will win?"
+            "FOOTBALL" -> "[${match.leagueName}] Will ${match.homeTeam} beat ${match.awayTeam}?"
+            "BASKETBALL" -> "[${match.leagueName}] Will ${match.homeTeam} win against ${match.awayTeam}?"
+            "BASEBALL" -> "[${match.leagueName}] Will ${match.homeTeam} defeat ${match.awayTeam}?"
+            else -> "[${match.leagueName}] ${match.homeTeam} vs ${match.awayTeam} - Who will win?"
         }
         
         // 마감 시간: 경기 종료 시간 (실시간 베팅 허용)
@@ -143,8 +143,8 @@ class QuestionAutoGenerationService(
                     updatedCount++
                 }
                 
-                // API 호출 제한 방지 (30초 주기이므로 짧게)
-                Thread.sleep(300)
+                // API 호출 제한 방지 (다중 리그 동시 라이브 경기 대응)
+                Thread.sleep(400)
                 
             } catch (e: Exception) {
                 println("[AutoGen] ❌ 결과 업데이트 실패: ${match.homeTeam} vs ${match.awayTeam} - ${e.message}")

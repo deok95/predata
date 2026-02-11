@@ -47,6 +47,12 @@ data class Question(
     @Column(name = "no_bet_pool")
     var noBetPool: Long = 0,
 
+    @Column(name = "initial_yes_pool", nullable = false, columnDefinition = "BIGINT DEFAULT 500")
+    var initialYesPool: Long = 500,
+
+    @Column(name = "initial_no_pool", nullable = false, columnDefinition = "BIGINT DEFAULT 500")
+    var initialNoPool: Long = 500,
+
     @Enumerated(EnumType.STRING)
     @Column(name = "final_result")
     var finalResult: FinalResult = FinalResult.PENDING,

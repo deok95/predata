@@ -1,12 +1,7 @@
 package com.predata.backend.service
 
 import com.fasterxml.jackson.databind.ObjectMapper
-import com.predata.backend.domain.Question
-import com.predata.backend.domain.QuestionStatus
-import com.predata.backend.domain.QuestionType
-import com.predata.backend.domain.FinalResult
-import com.predata.backend.domain.ActivityType
-import com.predata.backend.domain.Choice
+import com.predata.backend.domain.*
 import com.predata.backend.dto.ClaudeApiRequest
 import com.predata.backend.dto.ClaudeMessage
 import com.predata.backend.repository.QuestionRepository
@@ -39,6 +34,11 @@ class QuestionLifecycleScheduler(
         const val CLAUDE_API_URL = "https://api.anthropic.com/v1/messages"
         const val CLAUDE_MODEL = "claude-sonnet-4-20250514"
         const val ANTHROPIC_VERSION = "2023-06-01"
+
+        const val TOTAL_INITIAL_LIQUIDITY = 1000L
+        const val MIN_VOTES_FOR_SIGNAL = 10        // 투표 기반 배당을 적용할 최소 투표 수
+        const val MIN_ODDS_RATIO = 0.10             // 최소 10%
+        const val MAX_ODDS_RATIO = 0.90             // 최대 90%
     }
 
     fun isDemoMode(): Boolean = apiKey.isBlank()
@@ -112,9 +112,14 @@ class QuestionLifecycleScheduler(
             try {
                 val locked = questionRepository.findByIdWithLock(question.id!!)
                 if (locked != null && locked.status == QuestionStatus.BREAK && locked.bettingStartAt.isBefore(now)) {
+                    // 투표 데이터 기반 조건부 초기 풀 설정
+                    seedInitialPools(locked)
                     locked.status = QuestionStatus.BETTING
                     questionRepository.save(locked)
-                    logger.info("[Lifecycle] 질문 #{} '{}' → BETTING (베팅 시작)", locked.id, locked.title)
+                    logger.info(
+                        "[Lifecycle] 질문 #{} '{}' → BETTING (초기 풀: YES={}, NO={})",
+                        locked.id, locked.title, locked.initialYesPool, locked.initialNoPool
+                    )
                 }
             } catch (e: Exception) {
                 logger.error("[Lifecycle] 질문 #{} BETTING 전환 실패: {}", question.id, e.message)
@@ -215,6 +220,42 @@ class QuestionLifecycleScheduler(
                 logger.error("[Lifecycle] 질문 #{} 자동 정산 실패: {}", question.id, e.message)
             }
         }
+    }
+
+    /**
+     * 조건부 초기 풀 설정
+     * - 투표 수가 충분하면 (>= MIN_VOTES_FOR_SIGNAL): 투표 YES/NO 비율로 초기 풀 설정
+     * - 투표 수가 부족하면: 균등 배분 (50:50 = 500:500)
+     * - 비율은 10%~90% 범위로 클램핑하여 극단적인 배당 방지
+     */
+    private fun seedInitialPools(question: Question) {
+        val votes = activityRepository.findByQuestionIdAndActivityType(question.id!!, ActivityType.VOTE)
+        val totalVotes = votes.size
+        val yesVotes = votes.count { it.choice == Choice.YES }
+        val noVotes = totalVotes - yesVotes
+
+        if (totalVotes >= MIN_VOTES_FOR_SIGNAL && yesVotes > 0 && noVotes > 0) {
+            // 투표 비율 기반 초기 풀 (클램핑 적용)
+            val yesRatio = (yesVotes.toDouble() / totalVotes).coerceIn(MIN_ODDS_RATIO, MAX_ODDS_RATIO)
+            question.initialYesPool = (TOTAL_INITIAL_LIQUIDITY * yesRatio).toLong()
+            question.initialNoPool = TOTAL_INITIAL_LIQUIDITY - question.initialYesPool
+            logger.info(
+                "[Lifecycle] 질문 #{}: 투표 기반 초기 배당 (투표 {}/{}, 비율 YES={:.1f}%)",
+                question.id, yesVotes, totalVotes, yesRatio * 100
+            )
+        } else {
+            // 투표 부족 → 균등 배분 (50.5 vs 50.5)
+            question.initialYesPool = TOTAL_INITIAL_LIQUIDITY / 2
+            question.initialNoPool = TOTAL_INITIAL_LIQUIDITY / 2
+            logger.info(
+                "[Lifecycle] 질문 #{}: 균등 초기 배당 (투표 {}건 < 최소 {}건)",
+                question.id, totalVotes, MIN_VOTES_FOR_SIGNAL
+            )
+        }
+
+        question.yesBetPool = question.initialYesPool
+        question.noBetPool = question.initialNoPool
+        question.totalBetPool = TOTAL_INITIAL_LIQUIDITY
     }
 
     /**

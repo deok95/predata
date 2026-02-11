@@ -23,6 +23,20 @@ interface BettingSuspension {
   remainingSeconds: number;
 }
 
+// 리그별 색상 매핑
+const leagueColors: Record<string, { text: string; bg: string; border: string }> = {
+  'EPL': { text: 'text-purple-500', bg: 'bg-purple-500', border: 'border-purple-500/30' },
+  'La Liga': { text: 'text-orange-500', bg: 'bg-orange-500', border: 'border-orange-500/30' },
+  'Serie A': { text: 'text-blue-500', bg: 'bg-blue-500', border: 'border-blue-500/30' },
+  'Bundesliga': { text: 'text-red-600', bg: 'bg-red-600', border: 'border-red-600/30' },
+  'Ligue 1': { text: 'text-green-500', bg: 'bg-green-500', border: 'border-green-500/30' },
+  'K-League': { text: 'text-teal-500', bg: 'bg-teal-500', border: 'border-teal-500/30' },
+  'UCL': { text: 'text-yellow-500', bg: 'bg-yellow-500', border: 'border-yellow-500/30' },
+};
+
+const getLeagueColor = (leagueName: string) =>
+  leagueColors[leagueName] || { text: 'text-red-500', bg: 'bg-red-500', border: 'border-red-500/30' };
+
 export default function LiveMatchesDashboard() {
   const { isDark } = useTheme();
   const [liveMatches, setLiveMatches] = useState<LiveMatch[]>([]);
@@ -145,9 +159,9 @@ export default function LiveMatchesDashboard() {
             >
               {/* 리그 정보 */}
               <div className="flex items-center gap-2 mb-3">
-                <Trophy size={16} className="text-red-500" />
-                <span className="text-xs font-bold text-red-500 uppercase tracking-wide">{match.leagueName}</span>
-                <span className="ml-auto px-2 py-1 bg-red-600 text-white text-xs font-bold rounded animate-pulse">
+                <Trophy size={16} className={getLeagueColor(match.leagueName).text} />
+                <span className={`text-xs font-bold uppercase tracking-wide ${getLeagueColor(match.leagueName).text}`}>{match.leagueName}</span>
+                <span className={`ml-auto px-2 py-1 ${getLeagueColor(match.leagueName).bg} text-white text-xs font-bold rounded animate-pulse`}>
                   LIVE
                 </span>
               </div>

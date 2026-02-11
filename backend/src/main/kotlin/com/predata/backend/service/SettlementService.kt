@@ -124,6 +124,7 @@ class SettlementService(
         var totalRewardPool = 0L
 
         // === 메모리 처리 1: 베팅 승자 배당금 지급 ===
+        val isYesWinning = finalResult == FinalResult.YES
         val winningBets = bets.filter { it.choice == winningChoice }
         winningBets.forEach { bet ->
             val member = membersMap[bet.memberId]
@@ -131,7 +132,10 @@ class SettlementService(
                 val payout = calculatePayout(
                     betAmount = bet.amount,
                     totalPool = question.totalBetPool,
-                    winningPool = if (finalResult == FinalResult.YES) question.yesBetPool else question.noBetPool
+                    winningPool = if (isYesWinning) question.yesBetPool else question.noBetPool,
+                    initialYesPool = question.initialYesPool,
+                    initialNoPool = question.initialNoPool,
+                    isYesWinning = isYesWinning
                 )
                 member.pointBalance += payout
                 totalWinners++
@@ -208,8 +212,10 @@ class SettlementService(
                 val member = membersMap[bet.memberId] ?: return@forEach
                 val isWinner = bet.choice == winningChoice
                 val payoutRatio = if (isWinner && bet.amount > 0) {
-                    calculatePayout(bet.amount, question.totalBetPool,
-                        if (finalResult == FinalResult.YES) question.yesBetPool else question.noBetPool
+                    calculatePayout(
+                        bet.amount, question.totalBetPool,
+                        if (isYesWinning) question.yesBetPool else question.noBetPool,
+                        question.initialYesPool, question.initialNoPool, isYesWinning
                     ).toDouble() / bet.amount.toDouble()
                 } else 0.0
                 badgeService.onSettlement(bet.memberId, isWinner, payoutRatio)
@@ -279,16 +285,20 @@ class SettlementService(
     /**
      * 배당금 계산
      * AMM 방식: (베팅 금액 / 실질 승리풀) * 실질 전체풀 * 0.99 (수수료 1%)
-     * 초기 유동성(하우스 머니)을 제외한 실제 베팅 금액만으로 계산
+     * 질문별 초기 유동성(하우스 머니)을 제외한 실제 베팅 금액만으로 계산
+     * 비대칭 초기 풀 지원 (투표 기반 조건부 배당)
      */
     private fun calculatePayout(
         betAmount: Long,
         totalPool: Long,
-        winningPool: Long
+        winningPool: Long,
+        initialYesPool: Long = QuestionManagementService.INITIAL_LIQUIDITY,
+        initialNoPool: Long = QuestionManagementService.INITIAL_LIQUIDITY,
+        isYesWinning: Boolean = true
     ): Long {
-        val initialLiquidity = QuestionManagementService.INITIAL_LIQUIDITY
-        val effectiveTotalPool = maxOf(0L, totalPool - initialLiquidity * 2)
-        val effectiveWinningPool = maxOf(0L, winningPool - initialLiquidity)
+        val effectiveTotalPool = maxOf(0L, totalPool - initialYesPool - initialNoPool)
+        val initialWinningPool = if (isYesWinning) initialYesPool else initialNoPool
+        val effectiveWinningPool = maxOf(0L, winningPool - initialWinningPool)
 
         if (effectiveWinningPool == 0L) return betAmount // 실질 승리풀이 없으면 원금 반환
 
@@ -316,11 +326,15 @@ class SettlementService(
             if (question != null && question.status == QuestionStatus.SETTLED) {
                 val finalResultChoice = if (question.finalResult == FinalResult.YES) Choice.YES else Choice.NO
                 val isWinner = bet.choice == finalResultChoice
+                val isYesWin = question.finalResult == FinalResult.YES
                 val payout = if (isWinner) {
                     calculatePayout(
                         betAmount = bet.amount,
                         totalPool = question.totalBetPool,
-                        winningPool = if (bet.choice == Choice.YES) question.yesBetPool else question.noBetPool
+                        winningPool = if (isYesWin) question.yesBetPool else question.noBetPool,
+                        initialYesPool = question.initialYesPool,
+                        initialNoPool = question.initialNoPool,
+                        isYesWinning = isYesWin
                     )
                 } else {
                     0L

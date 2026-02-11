@@ -14,22 +14,41 @@ import java.time.format.DateTimeFormatter
 @Service
 class SportsApiService(
     @Value("\${sports.api.key:}") private val apiKey: String,
-    @Value("\${sports.api.enabled:false}") private val apiEnabled: Boolean
+    @Value("\${sports.api.enabled:false}") private val apiEnabled: Boolean,
+    @Value("\${sports.api.rate-limit-delay-ms:500}") private val rateLimitDelayMs: Long,
+    @Value("\${sports.api.fetch-window-days:14}") private val fetchWindowDays: Long
 ) {
 
     private val restTemplate = RestTemplate()
     private val objectMapper = ObjectMapper()
-    
+
     // API-FOOTBALL 기본 URL
     private val footballApiUrl = "https://v3.football.api-sports.io"
-    
-    // 프리미어 리그만 가져오기
-    private val importantLeagues = mapOf(
-        "EPL" to 39  // Premier League (England)
+
+    /**
+     * 리그 설정 데이터 클래스
+     * 향후 다종목 확장 시 SportProvider 인터페이스로 추출 예정
+     */
+    data class LeagueConfig(
+        val displayName: String,
+        val apiLeagueId: Int,
+        val season: Int,
+        val matchDurationHours: Long = 2
+    )
+
+    // 지원 축구 리그 목록
+    private val footballLeagues = listOf(
+        LeagueConfig("EPL", 39, 2025),            // Premier League (England) - 2025-26 시즌
+        LeagueConfig("La Liga", 140, 2025),        // La Liga (Spain)
+        LeagueConfig("Serie A", 135, 2025),        // Serie A (Italy)
+        LeagueConfig("Bundesliga", 78, 2025),      // Bundesliga (Germany)
+        LeagueConfig("Ligue 1", 61, 2025),         // Ligue 1 (France)
+        LeagueConfig("K-League", 292, 2026),       // K-League 1 (South Korea) - 캘린더 연도
+        LeagueConfig("UCL", 2, 2025),              // UEFA Champions League
     )
 
     /**
-     * 다가오는 경기 가져오기 (향후 14일) - EPL 경기가 많지 않으므로 2주
+     * 다가오는 경기 가져오기 (설정된 기간 내) - 다중 리그 지원
      */
     fun fetchUpcomingMatches(): List<SportsMatch> {
         if (!apiEnabled || apiKey.isBlank()) {
@@ -39,21 +58,21 @@ class SportsApiService(
 
         val matches = mutableListOf<SportsMatch>()
         val today = LocalDateTime.now()
-        val nextWeek = today.plusDays(14)  // 2주로 확장
-        
+        val futureDate = today.plusDays(fetchWindowDays)
+
         val dateFrom = today.format(DateTimeFormatter.ISO_LOCAL_DATE)
-        val dateTo = nextWeek.format(DateTimeFormatter.ISO_LOCAL_DATE)
+        val dateTo = futureDate.format(DateTimeFormatter.ISO_LOCAL_DATE)
 
         try {
-            for ((leagueName, leagueId) in importantLeagues) {
-                println("[SportsAPI] Fetching matches for $leagueName (ID: $leagueId)")
-                
-                val url = "$footballApiUrl/fixtures?league=$leagueId&season=2026&from=$dateFrom&to=$dateTo"
-                
+            for ((index, league) in footballLeagues.withIndex()) {
+                println("[SportsAPI] Fetching matches for ${league.displayName} (ID: ${league.apiLeagueId}, Season: ${league.season})")
+
+                val url = "$footballApiUrl/fixtures?league=${league.apiLeagueId}&season=${league.season}&from=$dateFrom&to=$dateTo"
+
                 val headers = org.springframework.http.HttpHeaders()
                 headers.set("x-rapidapi-key", apiKey)
                 headers.set("x-rapidapi-host", "v3.football.api-sports.io")
-                
+
                 val entity = org.springframework.http.HttpEntity<String>(headers)
                 val response = restTemplate.exchange(
                     url,
@@ -64,14 +83,18 @@ class SportsApiService(
 
                 val jsonNode = objectMapper.readTree(response.body)
                 val fixtures = jsonNode.get("response")
-                
+
                 if (fixtures != null && fixtures.isArray) {
                     for (fixture in fixtures) {
-                        matches.add(parseFixtureToMatch(fixture, leagueName))
+                        matches.add(parseFixtureToMatch(fixture, league.displayName))
                     }
+                    println("[SportsAPI] ${league.displayName}: ${fixtures.size()}건 가져옴")
                 }
-                
-                // EPL만 가져오므로 대기 불필요
+
+                // 다중 리그 API 호출 간 rate limit 준수 (마지막 리그 이후에는 대기 불필요)
+                if (index < footballLeagues.size - 1) {
+                    Thread.sleep(rateLimitDelayMs)
+                }
             }
         } catch (e: HttpClientErrorException) {
             println("[SportsAPI] API 호출 실패: ${e.message}")
@@ -79,6 +102,7 @@ class SportsApiService(
             println("[SportsAPI] 오류 발생: ${e.message}")
         }
 
+        println("[SportsAPI] 총 ${matches.size}건의 경기를 가져왔습니다.")
         return matches
     }
 

@@ -49,6 +49,8 @@ class QuestionManagementService(
             totalBetPool = INITIAL_LIQUIDITY * 2,
             yesBetPool = INITIAL_LIQUIDITY,
             noBetPool = INITIAL_LIQUIDITY,
+            initialYesPool = INITIAL_LIQUIDITY,
+            initialNoPool = INITIAL_LIQUIDITY,
             finalResult = FinalResult.PENDING,
             expiredAt = expiredAt,
             createdAt = LocalDateTime.now()
@@ -185,6 +187,8 @@ class QuestionManagementService(
             totalBetPool = INITIAL_LIQUIDITY * 2,
             yesBetPool = INITIAL_LIQUIDITY,
             noBetPool = INITIAL_LIQUIDITY,
+            initialYesPool = INITIAL_LIQUIDITY,
+            initialNoPool = INITIAL_LIQUIDITY,
             finalResult = FinalResult.PENDING,
             expiredAt = bettingEndAt,
             createdAt = now

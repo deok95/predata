@@ -106,16 +106,17 @@ class BetSellService(
             )
         }
 
-        // 4. 환불 금액 계산 (AMM 공식)
-        val winningPool = when (originalBet.choice) {
-            com.predata.backend.domain.Choice.YES -> question.yesBetPool
-            com.predata.backend.domain.Choice.NO -> question.noBetPool
-        }
+        // 4. 환불 금액 계산 (AMM 공식, 질문별 초기 풀 사용)
+        val isYesChoice = originalBet.choice == com.predata.backend.domain.Choice.YES
+        val winningPool = if (isYesChoice) question.yesBetPool else question.noBetPool
 
         val refundAmount = calculateRefund(
             betAmount = originalBet.amount,
             totalPool = question.totalBetPool,
-            winningPool = winningPool
+            winningPool = winningPool,
+            initialYesPool = question.initialYesPool,
+            initialNoPool = question.initialNoPool,
+            isYesChoice = isYesChoice
         )
 
         // 환불 금액 검증
@@ -182,14 +183,19 @@ class BetSellService(
     /**
      * 환불 금액 계산 (AMM 공식)
      * SettlementService.calculatePayout과 동일한 로직 사용
+     * 비대칭 초기 풀 지원 (투표 기반 조건부 배당)
      */
     private fun calculateRefund(
         betAmount: Long,
         totalPool: Long,
-        winningPool: Long
+        winningPool: Long,
+        initialYesPool: Long = INITIAL_LIQUIDITY,
+        initialNoPool: Long = INITIAL_LIQUIDITY,
+        isYesChoice: Boolean = true
     ): Long {
-        val effectiveTotalPool = maxOf(0L, totalPool - INITIAL_LIQUIDITY * 2)
-        val effectiveWinningPool = maxOf(0L, winningPool - INITIAL_LIQUIDITY)
+        val effectiveTotalPool = maxOf(0L, totalPool - initialYesPool - initialNoPool)
+        val initialChoicePool = if (isYesChoice) initialYesPool else initialNoPool
+        val effectiveWinningPool = maxOf(0L, winningPool - initialChoicePool)
 
         if (effectiveWinningPool == 0L) return betAmount
 

@@ -308,6 +308,8 @@ class QuestionGeneratorService(
             totalBetPool = INITIAL_LIQUIDITY * 2,
             yesBetPool = INITIAL_LIQUIDITY,
             noBetPool = INITIAL_LIQUIDITY,
+            initialYesPool = INITIAL_LIQUIDITY,
+            initialNoPool = INITIAL_LIQUIDITY,
             finalResult = FinalResult.PENDING,
             expiredAt = bettingEndAt,
             createdAt = now
