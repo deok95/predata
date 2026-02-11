@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, Suspense } from 'react';
+import { useEffect, useState, useRef, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Loader2 } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
@@ -10,8 +10,19 @@ function GoogleCallbackContent() {
   const searchParams = useSearchParams();
   const { loginById } = useAuth();
   const [error, setError] = useState<string | null>(null);
+  const isProcessed = useRef(false);
 
   useEffect(() => {
+    // 중복 실행 방지
+    if (isProcessed.current) return;
+    isProcessed.current = true;
+
+    // 이미 로그인된 상태면 콜백 재처리 방지
+    if (localStorage.getItem('token')) {
+      router.replace('/');
+      return;
+    }
+
     const handleCallback = async () => {
       // URL에서 파라미터 추출
       const token = searchParams.get('token');
@@ -32,8 +43,8 @@ function GoogleCallbackContent() {
           // AuthProvider를 통해 로그인 처리
           await loginById(parseInt(memberId));
 
-          // 홈으로 redirect
-          router.push('/');
+          // 홈으로 redirect — replace로 콜백 URL을 히스토리에서 제거
+          router.replace('/');
         } catch (err) {
           setError('로그인 처리 중 오류가 발생했습니다.');
         }

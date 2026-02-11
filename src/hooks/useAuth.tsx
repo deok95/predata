@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback, useMemo, createContext, useContext } 
 import type { ReactNode } from 'react';
 import { memberApi, authApi, ApiError } from '@/lib/api';
 import { safeLocalStorage } from '@/lib/safeLocalStorage';
+import { clearAllAuthCookies } from '@/lib/cookieUtils';
 import type { Member } from '@/types/api';
 
 const STORAGE_KEY = 'predataUser';
@@ -49,12 +50,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const isGuest = useMemo(() => checkIsGuest(user), [user]);
 
-  // 초기 로드: localStorage에서 세션 복원
+  // 초기 로드: localStorage에서 세션 복원 + 토큰 유효성 검증
   useEffect(() => {
     const saved = safeLocalStorage.getItem(STORAGE_KEY);
     if (saved) {
       try {
-        setUser(JSON.parse(saved));
+        const parsed = JSON.parse(saved) as Member;
+        const isGuestUser = parsed.id < 0 || (parsed.email?.endsWith('@predata.demo') ?? false);
+        const token = safeLocalStorage.getItem('token');
+
+        if (isGuestUser || token) {
+          setUser(parsed);
+        } else {
+          // 토큰 없는 실유저 = stale 데이터 → 삭제
+          safeLocalStorage.removeItem(STORAGE_KEY);
+          safeLocalStorage.removeItem('memberId');
+        }
       } catch {
         safeLocalStorage.removeItem(STORAGE_KEY);
       }
@@ -181,6 +192,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     safeLocalStorage.removeItem(STORAGE_KEY);
     safeLocalStorage.removeItem('token');
     safeLocalStorage.removeItem('memberId');
+    clearAllAuthCookies();
+    window.location.href = '/';
   }, []);
 
   const refreshUser = useCallback(async () => {

@@ -91,6 +91,18 @@ async function apiRequest<T>(
     }
 
     if (!response.ok) {
+      // 401 글로벌 핸들러: 인증 만료 시 자동 로그아웃
+      if (response.status === 401 && typeof window !== 'undefined') {
+        const { clearAllAuthCookies } = await import('@/lib/cookieUtils');
+        localStorage.removeItem('predataUser');
+        localStorage.removeItem('token');
+        localStorage.removeItem('memberId');
+        clearAllAuthCookies();
+        if (window.location.pathname !== '/') {
+          window.location.href = '/';
+        }
+      }
+
       throw new ApiError(
         response.status,
         data.message || `HTTP ${response.status}: ${response.statusText}`,

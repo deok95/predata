@@ -90,8 +90,8 @@ function GoogleCompleteContent() {
         localStorage.setItem('token', result.token);
         localStorage.setItem('memberId', result.memberId.toString());
 
-        // callback 페이지로 redirect
-        router.push(`/auth/google/callback?token=${result.token}&memberId=${result.memberId}`);
+        // callback 페이지로 redirect — replace로 complete URL을 히스토리에서 제거
+        router.replace(`/auth/google/callback?token=${result.token}&memberId=${result.memberId}`);
       } else {
         setError(result.message || '회원가입에 실패했습니다.');
       }

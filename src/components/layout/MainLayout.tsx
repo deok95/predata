@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useEffect } from 'react';
 import Sidebar from '@/components/layout/Sidebar';
 import AppHeader from '@/components/layout/AppHeader';
 import LoginModal from '@/components/LoginModal';
@@ -8,10 +8,26 @@ import { RegisterModalProvider } from '@/components/RegisterModal';
 import { ToastProvider } from '@/components/ui/Toast';
 import { useAuth } from '@/hooks/useAuth';
 import { useTheme } from '@/hooks/useTheme';
+import { safeLocalStorage } from '@/lib/safeLocalStorage';
 
 export default function MainLayout({ children }: { children: React.ReactNode }) {
   const { user, isLoading, isAuthenticated, logout } = useAuth();
   const { isDark } = useTheme();
+
+  // bfcache 복원 감지: 로그아웃 후 뒤로가기 시 stale state 방지
+  useEffect(() => {
+    const handlePageShow = (event: PageTransitionEvent) => {
+      if (event.persisted) {
+        const token = safeLocalStorage.getItem('token');
+        const savedUser = safeLocalStorage.getItem('predataUser');
+        if (!token && !savedUser) {
+          window.location.reload();
+        }
+      }
+    };
+    window.addEventListener('pageshow', handlePageShow);
+    return () => window.removeEventListener('pageshow', handlePageShow);
+  }, []);
 
   if (isLoading) {
     return (
