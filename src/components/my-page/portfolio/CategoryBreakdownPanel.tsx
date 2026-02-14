@@ -80,7 +80,7 @@ export default function CategoryBreakdownPanel({
                     </span>
                     <span className={`text-sm font-black ${profitColor}`}>
                       {cat.profit >= 0 ? '+' : ''}
-                      {cat.profit.toLocaleString()}P
+                      {'$'}{cat.profit.toLocaleString()}
                     </span>
                   </div>
                 </div>
@@ -94,7 +94,7 @@ export default function CategoryBreakdownPanel({
                 <div className="flex justify-between text-xs text-slate-400">
                   <span>{t('portfolio.winRate')}: {cat.winRate}%</span>
                   <span>
-                    {t('portfolio.invested')}: {cat.invested.toLocaleString()}P
+                    {t('portfolio.invested')}: {'$'}{cat.invested.toLocaleString()}
                   </span>
                 </div>
               </div>

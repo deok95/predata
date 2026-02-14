@@ -13,7 +13,8 @@ class OrderMatchingService(
     private val orderRepository: OrderRepository,
     private val tradeRepository: TradeRepository,
     private val memberRepository: MemberRepository,
-    private val questionRepository: QuestionRepository
+    private val questionRepository: QuestionRepository,
+    private val transactionHistoryService: TransactionHistoryService
 ) {
 
     /**
@@ -40,10 +41,10 @@ class OrderMatchingService(
         }
 
         val totalCost = request.amount
-        if (member.pointBalance < totalCost) {
+        if (member.usdcBalance < BigDecimal(totalCost)) {
             return CreateOrderResponse(
                 success = false,
-                message = "포인트가 부족합니다. (보유: ${member.pointBalance}, 필요: $totalCost)"
+                message = "잔액이 부족합니다. (보유: ${member.usdcBalance}, 필요: $totalCost)"
             )
         }
 
@@ -68,9 +69,18 @@ class OrderMatchingService(
             )
         }
 
-        // 3. 포인트 차감 (예치)
-        member.pointBalance -= totalCost
+        // 3. USDC 차감 (예치)
+        member.usdcBalance = member.usdcBalance.subtract(BigDecimal(totalCost))
         memberRepository.save(member)
+
+        transactionHistoryService.record(
+            memberId = request.memberId,
+            type = "BET",
+            amount = BigDecimal(totalCost).negate(),
+            balanceAfter = member.usdcBalance,
+            description = "지정가 주문 - Question #${request.questionId} ${request.side}",
+            questionId = request.questionId
+        )
 
         // 4. 주문 생성
         val order = Order(
@@ -204,8 +214,17 @@ class OrderMatchingService(
         val refundAmount = order.remainingAmount
         val member = memberRepository.findById(memberId).orElse(null)
         if (member != null) {
-            member.pointBalance += refundAmount
+            member.usdcBalance = member.usdcBalance.add(BigDecimal(refundAmount))
             memberRepository.save(member)
+
+            transactionHistoryService.record(
+                memberId = memberId,
+                type = "SETTLEMENT",
+                amount = BigDecimal(refundAmount),
+                balanceAfter = member.usdcBalance,
+                description = "주문 취소 환불 - Order #$orderId",
+                questionId = order.questionId
+            )
         }
 
         order.status = OrderStatus.CANCELLED

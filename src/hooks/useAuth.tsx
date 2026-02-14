@@ -6,6 +6,7 @@ import { memberApi, authApi, ApiError } from '@/lib/api';
 import { safeLocalStorage } from '@/lib/safeLocalStorage';
 import { clearAllAuthCookies, setAuthCookies } from '@/lib/cookieUtils';
 import type { Member } from '@/types/api';
+import { useDisconnect } from 'wagmi';
 
 const STORAGE_KEY = 'predataUser';
 
@@ -47,6 +48,7 @@ function checkIsGuest(user: Member | null): boolean {
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<Member | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const { disconnect } = useDisconnect();
 
   const isGuest = useMemo(() => checkIsGuest(user), [user]);
 
@@ -90,7 +92,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       tier: 'BRONZE',
       tierWeight: 1.0,
       accuracyScore: 0,
-      pointBalance: 0,
+      usdcBalance: 0,
+      hasVotingPass: false,
       totalPredictions: 0,
       correctPredictions: 0,
       createdAt: new Date().toISOString(),
@@ -197,8 +200,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     safeLocalStorage.removeItem('token');
     safeLocalStorage.removeItem('memberId');
     clearAllAuthCookies();
+
+    // 지갑 연결 해제
+    if (disconnect) {
+      disconnect();
+    }
+
     window.location.href = '/';
-  }, []);
+  }, [disconnect]);
 
   const refreshUser = useCallback(async () => {
     if (!user || checkIsGuest(user)) return;

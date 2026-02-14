@@ -11,6 +11,7 @@ import com.predata.backend.dto.CompleteGoogleRegistrationRequest
 import com.predata.backend.repository.MemberRepository
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.stereotype.Service
+import java.math.BigDecimal
 
 @Service
 class GoogleOAuthService(
@@ -92,7 +93,7 @@ class GoogleOAuthService(
                 jobCategory = request.jobCategory,
                 ageGroup = request.ageGroup,
                 tier = "BRONZE",
-                pointBalance = 10000,  // 가입 보너스
+                usdcBalance = BigDecimal.ZERO,  // USDC 시스템: 초기 잔액 없음
                 role = "USER"
             )
             val saved = memberRepository.save(newMember)
@@ -150,7 +151,7 @@ class GoogleOAuthService(
                 jobCategory = request.jobCategory,
                 ageGroup = request.ageGroup,
                 tier = "BRONZE",
-                pointBalance = 10000,  // 가입 보너스
+                usdcBalance = BigDecimal.ZERO,  // USDC 시스템: 초기 잔액 없음
                 role = "USER"
             )
             val saved = memberRepository.save(newMember)

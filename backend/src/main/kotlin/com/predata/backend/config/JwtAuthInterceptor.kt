@@ -41,9 +41,20 @@ class JwtAuthInterceptor(
             return false
         }
 
-        request.setAttribute(ATTR_MEMBER_ID, jwtUtil.getMemberId(claims))
-        request.setAttribute(ATTR_EMAIL, jwtUtil.getEmail(claims))
-        request.setAttribute(ATTR_ROLE, jwtUtil.getRole(claims))
+        // Extract claims with NPE protection
+        try {
+            val memberId = jwtUtil.getMemberId(claims)
+            val email = jwtUtil.getEmail(claims)
+            val role = jwtUtil.getRole(claims)
+
+            request.setAttribute(ATTR_MEMBER_ID, memberId)
+            request.setAttribute(ATTR_EMAIL, email)
+            request.setAttribute(ATTR_ROLE, role)
+        } catch (e: Exception) {
+            // Handle malformed JWT (missing subject, email, or role claims)
+            writeError(response, HttpStatus.UNAUTHORIZED, "INVALID_TOKEN", "토큰 형식이 올바르지 않습니다.")
+            return false
+        }
 
         return true
     }

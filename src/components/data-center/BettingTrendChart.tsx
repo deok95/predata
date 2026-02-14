@@ -101,7 +101,7 @@ export default function BettingTrendChart({ activities, isDark }: BettingTrendCh
                 fontWeight: 700,
                 fontSize: 12,
               }}
-              formatter={(value) => `${Number(value).toLocaleString()} P`}
+              formatter={(value) => `$${Number(value).toLocaleString()}`}
             />
             <Legend />
             <Area

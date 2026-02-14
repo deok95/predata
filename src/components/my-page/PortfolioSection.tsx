@@ -111,9 +111,9 @@ export default function PortfolioSection() {
           </>
         ) : summary ? (
           <>
-            <StatCard label={t('portfolio.totalInvested')} value={summary.totalInvested} suffix="P" icon={DollarSign} colorMode="neutral" isDark={isDark} />
-            <StatCard label={t('portfolio.totalReturns')} value={summary.totalReturns} suffix="P" icon={TrendingUp} colorMode="auto" isDark={isDark} />
-            <StatCard label={t('portfolio.netPnL')} value={summary.netProfit} suffix="P" icon={summary.netProfit >= 0 ? TrendingUp : TrendingDown} colorMode="auto" isDark={isDark} />
+            <StatCard label={t('portfolio.totalInvested')} value={summary.totalInvested} suffix="$" icon={DollarSign} colorMode="neutral" isDark={isDark} />
+            <StatCard label={t('portfolio.totalReturns')} value={summary.totalReturns} suffix="$" icon={TrendingUp} colorMode="auto" isDark={isDark} />
+            <StatCard label={t('portfolio.netPnL')} value={summary.netProfit} suffix="$" icon={summary.netProfit >= 0 ? TrendingUp : TrendingDown} colorMode="auto" isDark={isDark} />
             <StatCard label={t('portfolio.roi')} value={summary.roi} suffix="%" icon={Target} colorMode="auto" isDark={isDark} />
           </>
         ) : null}
@@ -126,7 +126,7 @@ export default function PortfolioSection() {
             { label: t('portfolio.winRate'), value: `${summary.winRate}%` },
             { label: t('portfolio.totalBets'), value: summary.totalBets },
             { label: t('portfolio.openBets'), value: summary.openBets, highlight: true },
-            { label: t('portfolio.balance'), value: `${summary.currentBalance.toLocaleString()}P` },
+            { label: t('portfolio.balance'), value: `$${summary.currentBalance.toLocaleString()}` },
           ].map((stat) => (
             <div
               key={stat.label}

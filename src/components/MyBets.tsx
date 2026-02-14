@@ -76,7 +76,7 @@ export default function MyBets({ memberId, onClose }: MyBetsProps) {
               <div className={`p-4 rounded-lg ${totalProfit >= 0 ? 'bg-green-50' : 'bg-red-50'}`}>
                 <p className="text-sm text-slate-600">총 수익</p>
                 <p className={`text-2xl font-bold ${totalProfit >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                  {totalProfit >= 0 ? '+' : ''}{totalProfit.toLocaleString()}P
+                  {totalProfit >= 0 ? '+' : ''}{'$'}{totalProfit.toLocaleString()}
                 </p>
               </div>
               <div className="bg-blue-50 p-4 rounded-lg">
@@ -126,18 +126,18 @@ export default function MyBets({ memberId, onClose }: MyBetsProps) {
                       <div className="flex gap-4">
                         <div>
                           <span className="text-slate-600">베팅액:</span>
-                          <span className="ml-1 font-semibold">{item.betAmount.toLocaleString()}P</span>
+                          <span className="ml-1 font-semibold">{'$'}{item.betAmount.toLocaleString()}</span>
                         </div>
                         <div>
                           <span className="text-slate-600">배당금:</span>
-                          <span className="ml-1 font-semibold">{item.payout.toLocaleString()}P</span>
+                          <span className="ml-1 font-semibold">{'$'}{item.payout.toLocaleString()}</span>
                         </div>
                       </div>
                       <div className={`flex items-center gap-1 font-bold ${
                         item.profit >= 0 ? 'text-green-600' : 'text-red-600'
                       }`}>
                         {item.profit >= 0 ? <TrendingUp size={16} /> : <TrendingDown size={16} />}
-                        {item.profit >= 0 ? '+' : ''}{item.profit.toLocaleString()}P
+                        {item.profit >= 0 ? '+' : ''}{'$'}{item.profit.toLocaleString()}
                       </div>
                     </div>
                   </div>

@@ -65,7 +65,7 @@ export default function DataCenterCard({ question }: DataCenterCardProps) {
         }`}>
           <div className="flex items-center gap-1 text-slate-400">
             <TrendingUp size={12} />
-            <span className="font-bold">{question.totalBetPool.toLocaleString()} P</span>
+            <span className="font-bold">{'$'}{question.totalBetPool.toLocaleString()}</span>
           </div>
           <div className="flex items-center gap-1 text-slate-400">
             <Users size={12} />

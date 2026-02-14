@@ -20,7 +20,8 @@ class SettlementService(
     private val tierService: TierService,
     private val rewardService: RewardService,
     private val blockchainService: BlockchainService,
-    private val badgeService: BadgeService
+    private val badgeService: BadgeService,
+    private val transactionHistoryService: TransactionHistoryService
 ) {
     private val logger = org.slf4j.LoggerFactory.getLogger(SettlementService::class.java)
 
@@ -133,7 +134,15 @@ class SettlementService(
                     totalPool = question.totalBetPool,
                     winningPool = if (finalResult == FinalResult.YES) question.yesBetPool else question.noBetPool
                 )
-                member.pointBalance += payout
+                member.usdcBalance = member.usdcBalance.add(BigDecimal(payout))
+                transactionHistoryService.record(
+                    memberId = bet.memberId,
+                    type = "SETTLEMENT",
+                    amount = BigDecimal(payout),
+                    balanceAfter = member.usdcBalance,
+                    description = "베팅 정산 승리 - Question #$questionId",
+                    questionId = questionId
+                )
                 totalWinners++
                 totalPayout += payout
             }
@@ -190,7 +199,17 @@ class SettlementService(
                             .multiply(weight)
                             .divide(totalWeight, 0, java.math.RoundingMode.DOWN)
                             .toLong()
-                        member.pointBalance += rewardAmount
+                        member.usdcBalance = member.usdcBalance.add(BigDecimal(rewardAmount))
+                        if (rewardAmount > 0) {
+                            transactionHistoryService.record(
+                                memberId = memberId,
+                                type = "SETTLEMENT",
+                                amount = BigDecimal(rewardAmount),
+                                balanceAfter = member.usdcBalance,
+                                description = "투표 보상 - Question #$questionId",
+                                questionId = questionId
+                            )
+                        }
                     }
                 }
             }
@@ -213,7 +232,7 @@ class SettlementService(
                     ).toDouble() / bet.amount.toDouble()
                 } else 0.0
                 badgeService.onSettlement(bet.memberId, isWinner, payoutRatio)
-                badgeService.onPointsChange(bet.memberId, member.pointBalance)
+                badgeService.onPointsChange(bet.memberId, member.usdcBalance.toLong())
             } catch (e: Exception) {
                 logger.warn("[Settlement] Badge 업데이트 실패 member={}: {}", bet.memberId, e.message)
             }

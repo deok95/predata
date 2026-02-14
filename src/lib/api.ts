@@ -11,7 +11,6 @@ import type {
   SettleQuestionRequest,
   BlockchainQuestion,
   DashboardData,
-  TicketStatus,
   GlobalStats,
   TierProgress,
   RewardSummary,
@@ -26,8 +25,10 @@ import type {
   AccuracyTrendPoint,
   ReferralStats,
   ReferralResult,
-  TicketPurchaseResponse,
-  TicketPurchaseHistory,
+  VotingPassPurchaseResponse,
+  PaymentVerifyResponse,
+  WithdrawResponse,
+  TransactionHistoryPage,
 } from '@/types/api';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080';
@@ -167,7 +168,8 @@ function mapMember(raw: any): Member {
     tier: raw.tier ?? 'BRONZE',
     tierWeight: raw.tierWeight ?? 1.0,
     accuracyScore: raw.accuracyScore ?? 0,
-    pointBalance: raw.pointBalance ?? 0,
+    usdcBalance: raw.usdcBalance ?? 0,
+    hasVotingPass: raw.hasVotingPass ?? false,
     totalPredictions: raw.totalPredictions ?? 0,
     correctPredictions: raw.correctPredictions ?? 0,
     role: raw.role ?? 'USER',
@@ -200,10 +202,14 @@ export const memberApi = {
     return { success: true, data: mapMember(raw) };
   },
 
-  getTickets: async (memberId: number): Promise<ApiResponse<TicketStatus>> => {
-    const raw = await apiRequest<any>(`/api/tickets/${memberId}`);
-    return { success: true, data: raw };
+  updateWalletAddress: async (walletAddress: string | null): Promise<ApiResponse<Member>> => {
+    const raw = await apiRequest<any>('/api/members/wallet', {
+      method: 'PUT',
+      body: JSON.stringify({ walletAddress }),
+    });
+    return { success: true, data: mapMember(raw) };
   },
+
 };
 
 // ===== Question API =====
@@ -605,19 +611,49 @@ export const referralApi = {
   },
 };
 
-// ===== Ticket API =====
-export const ticketApi = {
-  purchase: async (quantity: number): Promise<ApiResponse<TicketPurchaseResponse>> => {
-    const raw = await apiRequest<any>('/api/tickets/purchase', {
+// ===== Voting Pass API =====
+export const votingPassApi = {
+  purchase: async (memberId: number): Promise<ApiResponse<VotingPassPurchaseResponse>> => {
+    const raw = await apiRequest<any>('/api/voting-pass/purchase', {
       method: 'POST',
-      body: JSON.stringify({ quantity }),
+      body: JSON.stringify({ memberId }),
     });
     return { success: true, data: raw };
   },
+};
 
-  getHistory: async (memberId: number): Promise<ApiResponse<TicketPurchaseHistory[]>> => {
-    const raw = await apiRequest<any[]>(`/api/tickets/history/${memberId}`);
-    return { success: true, data: Array.isArray(raw) ? raw : [] };
+// ===== Payment API =====
+export const paymentApi = {
+  verifyDeposit: async (memberId: number, txHash: string, amount: number, fromAddress?: string): Promise<PaymentVerifyResponse> => {
+    return apiRequest<PaymentVerifyResponse>('/api/payments/verify-deposit', {
+      method: 'POST',
+      body: JSON.stringify({ memberId, txHash, amount, fromAddress }),
+    });
+  },
+
+  withdraw: async (memberId: number, amount: number, walletAddress: string): Promise<WithdrawResponse> => {
+    return apiRequest<WithdrawResponse>('/api/payments/withdraw', {
+      method: 'POST',
+      body: JSON.stringify({ memberId, amount, walletAddress }),
+    });
+  },
+};
+
+// ===== Transaction History API =====
+export const transactionApi = {
+  getMyTransactions: async (
+    memberId: number,
+    type?: string,
+    page: number = 0,
+    size: number = 20
+  ): Promise<TransactionHistoryPage> => {
+    const params = new URLSearchParams({
+      memberId: memberId.toString(),
+      page: page.toString(),
+      size: size.toString(),
+    });
+    if (type) params.set('type', type);
+    return apiRequest<TransactionHistoryPage>(`/api/transactions/my?${params.toString()}`);
   },
 };
 
@@ -641,7 +677,9 @@ export const api = {
   notification: notificationApi,
   portfolio: portfolioApi,
   referral: referralApi,
-  ticket: ticketApi,
+  votingPass: votingPassApi,
+  payment: paymentApi,
+  transaction: transactionApi,
 };
 
 export default api;

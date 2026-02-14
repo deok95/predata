@@ -37,7 +37,7 @@ export default function AdminPanel({ questionId, questionTitle, onClose, onSettl
           `✅ 정산 완료!\n\n` +
           `총 베팅: ${response.data.totalBets}건\n` +
           `승자: ${response.data.totalWinners}명\n` +
-          `총 배당금: ${response.data.totalPayout.toLocaleString()}P`
+          `총 배당금: $${response.data.totalPayout.toLocaleString()}`
         );
         onSettled();
         setTimeout(() => onClose(), 2000);

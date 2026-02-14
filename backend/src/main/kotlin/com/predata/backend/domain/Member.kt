@@ -48,8 +48,8 @@ data class Member(
     @Column(name = "correct_predictions")
     var correctPredictions: Int = 0, // 정확한 예측 횟수
 
-    @Column(name = "point_balance")
-    var pointBalance: Long = 0,
+    @Column(name = "usdc_balance", precision = 18, scale = 6)
+    var usdcBalance: BigDecimal = BigDecimal.ZERO,
 
     @Column(length = 20)
     var role: String = "USER",  // USER 또는 ADMIN
@@ -60,6 +60,10 @@ data class Member(
 
     @Column(name = "referred_by")
     var referredBy: Long? = null,
+
+    // === 투표 패스 ===
+    @Column(name = "has_voting_pass", nullable = false, columnDefinition = "BOOLEAN NOT NULL DEFAULT FALSE")
+    var hasVotingPass: Boolean = false,
 
     // === 어뷰징 방지 ===
     @Column(name = "is_banned")

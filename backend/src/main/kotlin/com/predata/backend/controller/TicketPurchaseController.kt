@@ -1,51 +1,39 @@
 package com.predata.backend.controller
 
-import com.predata.backend.service.*
+import com.predata.backend.service.VotingPassPurchaseResponse
+import com.predata.backend.service.VotingPassService
 import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.*
 
 @RestController
-@RequestMapping("/api/tickets")
-@CrossOrigin(origins = ["http://localhost:3000"])
-class TicketPurchaseController(
-    private val ticketPurchaseService: TicketPurchaseService
+@RequestMapping("/api/voting-pass")
+@CrossOrigin(origins = ["http://localhost:3000", "http://localhost:3001"])
+class VotingPassController(
+    private val votingPassService: VotingPassService
 ) {
 
     /**
-     * 티켓 구매
-     * POST /api/tickets/purchase
+     * 투표 패스 구매
+     * POST /api/voting-pass/purchase
      */
     @PostMapping("/purchase")
-    fun purchaseTickets(@RequestBody request: TicketPurchaseRequest): ResponseEntity<TicketPurchaseResponse> {
+    fun purchaseVotingPass(@RequestBody request: VotingPassPurchaseRequest): ResponseEntity<VotingPassPurchaseResponse> {
         return try {
-            val response = ticketPurchaseService.purchaseTickets(request.memberId, request.quantity)
+            val response = votingPassService.purchaseVotingPass(request.memberId)
             ResponseEntity.ok(response)
         } catch (e: IllegalArgumentException) {
             ResponseEntity.badRequest().body(
-                TicketPurchaseResponse(
+                VotingPassPurchaseResponse(
                     success = false,
-                    purchasedQuantity = 0,
-                    totalCost = 0,
-                    remainingTickets = 0,
-                    remainingPoints = 0,
-                    message = e.message ?: "티켓 구매에 실패했습니다."
+                    hasVotingPass = false,
+                    remainingBalance = 0.0,
+                    message = e.message ?: "투표 패스 구매에 실패했습니다."
                 )
             )
         }
     }
-
-    /**
-     * 티켓 구매 내역
-     * GET /api/tickets/history/{memberId}
-     */
-    @GetMapping("/history/{memberId}")
-    fun getPurchaseHistory(@PathVariable memberId: Long): ResponseEntity<List<TicketPurchaseHistory>> {
-        val history = ticketPurchaseService.getPurchaseHistory(memberId)
-        return ResponseEntity.ok(history)
-    }
 }
 
-data class TicketPurchaseRequest(
-    val memberId: Long,
-    val quantity: Int
+data class VotingPassPurchaseRequest(
+    val memberId: Long
 )

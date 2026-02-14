@@ -7,6 +7,8 @@ import { useToast } from '@/components/ui/Toast';
 import { useAuth } from '@/hooks/useAuth';
 import { useRegisterModal } from '@/components/RegisterModal';
 import { bettingApi, orderApi, ApiError } from '@/lib/api';
+import { BET_MIN_USDC, BET_MAX_USDC } from '@/lib/contracts';
+import DepositModal from '@/components/payment/DepositModal';
 import type { Question, Member } from '@/types/api';
 
 interface TradingPanelProps {
@@ -28,6 +30,7 @@ export default function TradingPanel({ question, user, onTradeComplete, votedCho
   const [orderType, setOrderType] = useState<'market' | 'limit'>('market');
   const [limitPrice, setLimitPrice] = useState('');
   const [loading, setLoading] = useState(false);
+  const [showDepositModal, setShowDepositModal] = useState(false);
 
   const yesOdds = question.totalBetPool > 0
     ? Math.round((question.yesBetPool / question.totalBetPool) * 100)
@@ -36,6 +39,18 @@ export default function TradingPanel({ question, user, onTradeComplete, votedCho
   const handleTrade = async () => {
     if (!tradeAmount || parseFloat(tradeAmount) <= 0) {
       showToast('금액을 입력해주세요', 'error');
+      return;
+    }
+
+    const amt = parseFloat(tradeAmount);
+    if (amt < BET_MIN_USDC || amt > BET_MAX_USDC) {
+      showToast(`베팅 금액은 ${BET_MIN_USDC}~${BET_MAX_USDC} $ 범위여야 합니다.`, 'error');
+      return;
+    }
+
+    // 잔액 부족 시 충전 모달
+    if (user.usdcBalance < amt) {
+      setShowDepositModal(true);
       return;
     }
 
@@ -107,7 +122,7 @@ export default function TradingPanel({ question, user, onTradeComplete, votedCho
         if (result.filledAmount === Number(tradeAmount)) {
           showToast('주문이 완전 체결되었습니다!');
         } else if (result.filledAmount > 0) {
-          showToast(`부분 체결: ${result.filledAmount}/${tradeAmount} P`);
+          showToast(`부분 체결: ${result.filledAmount}/${tradeAmount} $`);
         } else {
           showToast('주문이 오더북에 등록되었습니다.');
         }
@@ -393,10 +408,10 @@ export default function TradingPanel({ question, user, onTradeComplete, votedCho
                 : 'bg-slate-50 border-slate-200 text-slate-900 focus:border-indigo-500'
             }`}
           />
-          <span className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 font-bold">P</span>
+          <span className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 font-bold">$</span>
         </div>
         <div className="flex space-x-2 mt-3">
-          {[10, 50, 100, 500].map(amt => (
+          {[1, 5, 10, 50].map(amt => (
             <button
               key={amt}
               onClick={() => setTradeAmount(amt.toString())}
@@ -412,7 +427,7 @@ export default function TradingPanel({ question, user, onTradeComplete, votedCho
         <div className={`rounded-2xl p-4 mb-6 ${isDark ? 'bg-indigo-950/20 border border-indigo-900/30' : 'bg-indigo-50'}`}>
           <div className="flex justify-between text-sm mb-1">
             <span className="text-slate-500">{activeTab === 'buy' ? '예상 수익' : '헤지 수익'}</span>
-            <span className="font-bold text-indigo-600">{estimatedProfit} P</span>
+            <span className="font-bold text-indigo-600">{'$'}{estimatedProfit}</span>
           </div>
           <div className="flex justify-between text-sm">
             <span className="text-slate-500">예상 수익률</span>
@@ -446,6 +461,8 @@ export default function TradingPanel({ question, user, onTradeComplete, votedCho
           {loading ? '처리 중...' : orderType === 'limit' ? `Place ${selectedOutcome} Limit Order` : activeTab === 'buy' ? `Buy ${selectedOutcome}` : `Sell ${selectedOutcome}`}
         </button>
       )}
+
+      <DepositModal isOpen={showDepositModal} onClose={() => setShowDepositModal(false)} />
     </div>
   );
 }

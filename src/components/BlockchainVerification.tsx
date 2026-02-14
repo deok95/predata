@@ -76,16 +76,16 @@ export default function BlockchainVerification({ questionId }: { questionId: num
             <div className="flex justify-between">
               <span className="text-gray-400">Total Pool:</span>
               <span className="text-green-400 font-bold">
-                {onChainData.totalBetPool?.toLocaleString()}P
+                {'$'}{onChainData.totalBetPool?.toLocaleString()}
               </span>
             </div>
             <div className="flex justify-between">
               <span className="text-gray-400">YES Pool:</span>
-              <span className="text-blue-400">{onChainData.yesBetPool?.toLocaleString()}P</span>
+              <span className="text-blue-400">{'$'}{onChainData.yesBetPool?.toLocaleString()}</span>
             </div>
             <div className="flex justify-between">
               <span className="text-gray-400">NO Pool:</span>
-              <span className="text-red-400">{onChainData.noBetPool?.toLocaleString()}P</span>
+              <span className="text-red-400">{'$'}{onChainData.noBetPool?.toLocaleString()}</span>
             </div>
             <div className="flex justify-between">
               <span className="text-gray-400">Settled:</span>

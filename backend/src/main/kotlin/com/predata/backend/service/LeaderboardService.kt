@@ -29,7 +29,7 @@ class LeaderboardService(
                     accuracyPercentage = accuracy,
                     totalPredictions = member.totalPredictions,
                     correctPredictions = member.correctPredictions,
-                    pointBalance = member.pointBalance
+                    usdcBalance = member.usdcBalance.toLong()
                 )
             }
     }
@@ -57,7 +57,7 @@ class LeaderboardService(
             accuracyPercentage = accuracy,
             totalPredictions = member.totalPredictions,
             correctPredictions = member.correctPredictions,
-            pointBalance = member.pointBalance
+            usdcBalance = member.usdcBalance.toLong()
         )
     }
 
@@ -78,5 +78,5 @@ data class LeaderboardEntry(
     val accuracyPercentage: Double,
     val totalPredictions: Int,
     val correctPredictions: Int,
-    val pointBalance: Long
+    val usdcBalance: Long
 )

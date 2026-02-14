@@ -84,7 +84,7 @@ class MemberController(
             jobCategory = request.jobCategory,
             ageGroup = request.ageGroup,
             tierWeight = BigDecimal("1.00"),
-            pointBalance = 10000, // 초기 포인트
+            usdcBalance = BigDecimal.ZERO, // USDC 시스템: 초기 잔액 없음
             signupIp = clientIp,
             lastIp = clientIp
         )
@@ -133,6 +133,44 @@ class MemberController(
             ResponseEntity.notFound().build()
         }
     }
+
+    /**
+     * 지갑 주소 연결/변경
+     * PUT /api/members/wallet
+     */
+    @PutMapping("/wallet")
+    fun updateWalletAddress(
+        @Valid @RequestBody request: UpdateWalletRequest,
+        httpRequest: HttpServletRequest
+    ): ResponseEntity<Any> {
+        val memberId = httpRequest.getAttribute("authenticatedMemberId") as? Long
+            ?: return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(mapOf("message" to "로그인이 필요합니다."))
+
+        val member = memberRepository.findById(memberId)
+            .orElseThrow { IllegalArgumentException("회원을 찾을 수 없습니다.") }
+
+        // 지갑 주소 형식 검증
+        if (request.walletAddress != null && !request.walletAddress.matches(Regex("^0x[a-fA-F0-9]{40}$"))) {
+            return ResponseEntity.badRequest().body(mapOf("message" to "유효하지 않은 지갑 주소입니다."))
+        }
+
+        // 이미 다른 유저가 사용 중인 지갑인지 확인
+        if (request.walletAddress != null) {
+            val existingMember = memberRepository.findByWalletAddress(request.walletAddress)
+            if (existingMember.isPresent && existingMember.get().id != memberId) {
+                return ResponseEntity.status(HttpStatus.CONFLICT)
+                    .body(mapOf("message" to "이미 다른 사용자가 사용 중인 지갑입니다."))
+            }
+        }
+
+        // 지갑 주소 업데이트
+        member.walletAddress = request.walletAddress
+        val updated = memberRepository.save(member)
+
+        logger.info("지갑 주소 업데이트: memberId=$memberId, walletAddress=${request.walletAddress}")
+
+        return ResponseEntity.ok(MemberResponse.from(updated))
+    }
 }
 
 /**
@@ -155,6 +193,13 @@ data class CreateMemberRequest(
 )
 
 /**
+ * DTO: 지갑 주소 업데이트 요청
+ */
+data class UpdateWalletRequest(
+    val walletAddress: String?
+)
+
+/**
  * DTO: 회원 응답
  */
 data class MemberResponse(
@@ -166,8 +211,9 @@ data class MemberResponse(
     val ageGroup: Int,
     val tier: String,
     val tierWeight: Double,
-    val pointBalance: Long,
-    val role: String
+    val usdcBalance: BigDecimal,
+    val role: String,
+    val hasVotingPass: Boolean
 ) {
     companion object {
         fun from(member: Member): MemberResponse {
@@ -180,8 +226,9 @@ data class MemberResponse(
                 ageGroup = member.ageGroup ?: 0,
                 tier = member.tier,
                 tierWeight = member.tierWeight.toDouble(),
-                pointBalance = member.pointBalance,
-                role = member.role
+                usdcBalance = member.usdcBalance,
+                role = member.role,
+                hasVotingPass = member.hasVotingPass
             )
         }
     }

@@ -5,7 +5,6 @@ import com.predata.backend.domain.ActivityType
 import com.predata.backend.service.VoteService
 import com.predata.backend.service.BetService
 import com.predata.backend.service.QuestionService
-import com.predata.backend.service.TicketService
 import com.predata.backend.service.SettlementService
 import com.predata.backend.domain.FinalResult
 import com.predata.backend.repository.ActivityRepository
@@ -24,7 +23,6 @@ class ActivityController(
     private val betService: BetService,
     private val betSellService: com.predata.backend.service.BetSellService,
     private val questionService: QuestionService,
-    private val ticketService: TicketService,
     private val settlementService: SettlementService,
     private val bettingSuspensionService: com.predata.backend.service.BettingSuspensionService,
     private val memberRepository: MemberRepository,
@@ -163,21 +161,6 @@ class ActivityController(
         val questionStatus = com.predata.backend.domain.QuestionStatus.valueOf(status.uppercase())
         val questions = questionService.getQuestionsByStatus(questionStatus)
         return ResponseEntity.ok(questions)
-    }
-
-    /**
-     * 남은 티켓 조회
-     */
-    @GetMapping("/tickets/{memberId}")
-    fun getTicketStatus(@PathVariable memberId: Long): ResponseEntity<TicketStatusResponse> {
-        val ticket = ticketService.getOrCreateTodayTicket(memberId)
-        
-        return ResponseEntity.ok(
-            TicketStatusResponse(
-                remainingCount = ticket.remainingCount,
-                resetDate = ticket.resetDate.toString()
-            )
-        )
     }
 
     /**

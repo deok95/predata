@@ -144,7 +144,7 @@ export default function MarketCard({ question, votedChoice }: MarketCardProps) {
           </div>
           <div className="flex justify-between text-xs">
             <span className="text-slate-400">거래량</span>
-            <span className="font-bold">{question.totalBetPool.toLocaleString()} P</span>
+            <span className="font-bold">{'$'}{question.totalBetPool.toLocaleString()}</span>
           </div>
         </div>
 

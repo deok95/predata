@@ -71,6 +71,14 @@ anthropic:
   api:
     key: ${ANTHROPIC_API_KEY:}
 
+# Polygon USDC 결제 시스템
+polygon:
+  rpc-url: ${POLYGON_RPC_URL:https://rpc-amoy.polygon.technology}
+  receiver-wallet: ${RECEIVER_WALLET:0xd65834BDfaeEA4539a5cEa715deebD7A899C9dAD}
+  usdc-contract: ${USDC_CONTRACT_ADDRESS:0x8D298060d7D9C4C5Eb45c96FD61ecCEEDE020B05}
+  chain-id: ${POLYGON_CHAIN_ID:80002}  # Amoy=80002, Mainnet=137
+  sender-private-key: ${SENDER_PRIVATE_KEY:1e8b9a5b19e2fd5b1e25a9b14a3e960e7a2bf9d092ede09d2509a845932549ad}  # 출금용 서버 지갑 프라이빗 키
+
 logging:
   level:
     com.predata.backend: DEBUG

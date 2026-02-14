@@ -184,7 +184,7 @@ export default function OrderBook({ questionId, yesPercent, totalPool }: OrderBo
       <div className={`flex justify-between mt-4 pt-4 border-t text-xs ${isDark ? 'border-slate-800' : 'border-slate-100'}`}>
         <span className="text-slate-400">Total Liquidity</span>
         <span className={`font-bold ${isDark ? 'text-white' : 'text-slate-900'}`}>
-          {(hasApiData ? totalLiquidity : totalPool).toLocaleString()} P
+          {'$'}{(hasApiData ? totalLiquidity : totalPool).toLocaleString()}
         </span>
       </div>
     </div>

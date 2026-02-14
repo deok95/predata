@@ -79,7 +79,7 @@ class RewardService(
                     .divide(totalWeight, 0, RoundingMode.DOWN)
                     .toLong()
 
-                member.pointBalance += rewardAmount
+                member.usdcBalance = member.usdcBalance.add(BigDecimal(rewardAmount))
                 updatedMembers.add(member)
 
                 distributedRewards.add(
@@ -122,7 +122,7 @@ class RewardService(
 
         return TotalRewardResponse(
             memberId = memberId,
-            currentBalance = member.pointBalance,
+            currentBalance = member.usdcBalance.toLong(),
             totalVotes = votes.size,
             tier = member.tier,
             tierWeight = member.tierWeight.toDouble(),

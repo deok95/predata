@@ -116,7 +116,7 @@ export default function BettingOverviewPanel({ question, betDistribution, activi
           <div className="flex items-center gap-3 text-xs">
             <span className="font-bold text-emerald-500">{stats.avgYesBet.toLocaleString()}</span>
             <span className="font-bold text-rose-500">{stats.avgNoBet.toLocaleString()}</span>
-            <span className={`font-black ${isDark ? 'text-white' : 'text-slate-900'}`}>{stats.avgBet.toLocaleString()} P</span>
+            <span className={`font-black ${isDark ? 'text-white' : 'text-slate-900'}`}>{'$'}{stats.avgBet.toLocaleString()}</span>
           </div>
         </div>
 
@@ -126,7 +126,7 @@ export default function BettingOverviewPanel({ question, betDistribution, activi
             <Trophy size={14} className="text-amber-500" />
             <span className={`text-xs font-bold ${isDark ? 'text-slate-300' : 'text-slate-600'}`}>최대 베팅</span>
           </div>
-          <span className={`text-xs font-black ${isDark ? 'text-white' : 'text-slate-900'}`}>{stats.maxBet.toLocaleString()} P</span>
+          <span className={`text-xs font-black ${isDark ? 'text-white' : 'text-slate-900'}`}>{'$'}{stats.maxBet.toLocaleString()}</span>
         </div>
 
         {/* Participation rate */}

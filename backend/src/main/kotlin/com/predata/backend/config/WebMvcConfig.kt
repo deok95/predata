@@ -31,7 +31,8 @@ class WebMvcConfig(
                 "/api/badges/**",            // 배지 정보 (공개)
                 "/api/tiers/**",             // 티어 정보 (공개)
                 "/api/betting/suspension/**", // 베팅 정지 정보 (공개)
-                "/api/members/**"            // 회원 조회 (공개, /me는 컨트롤러에서 JWT 검증)
+                "/api/members/**",           // 회원 조회 (공개, /me는 컨트롤러에서 JWT 검증)
+                "/api/payments/**"           // 결제 API (테스트용 임시 제외)
             )
 
         // 3. Admin 권한 체크 (관리자 경로만)

@@ -87,7 +87,7 @@ export default function ProbabilityChart({ yesPercent, totalPool, yesPool, noPoo
         </div>
         <div className="text-right">
           <p className="text-xs text-slate-400 uppercase font-bold mb-1">Pool</p>
-          <span className={`font-bold text-lg ${isDark ? 'text-white' : 'text-slate-900'}`}>{totalPool.toLocaleString()} P</span>
+          <span className={`font-bold text-lg ${isDark ? 'text-white' : 'text-slate-900'}`}>{'$'}{totalPool.toLocaleString()}</span>
         </div>
       </div>
 
@@ -168,14 +168,14 @@ export default function ProbabilityChart({ yesPercent, totalPool, yesPool, noPoo
       <div className="grid grid-cols-2 gap-4 mt-6">
         <div className={`p-4 rounded-2xl ${isDark ? 'bg-emerald-950/20' : 'bg-emerald-50'}`}>
           <p className="text-xs font-bold text-emerald-500 mb-1">Yes Pool</p>
-          <p className={`text-lg font-black ${isDark ? 'text-white' : 'text-slate-900'}`}>{yesPool.toLocaleString()} P</p>
+          <p className={`text-lg font-black ${isDark ? 'text-white' : 'text-slate-900'}`}>{'$'}{yesPool.toLocaleString()}</p>
           <p className="text-[10px] text-slate-400 mt-0.5">
             {totalPool > 0 ? ((yesPool / totalPool) * 100).toFixed(1) : '0'}% of total
           </p>
         </div>
         <div className={`p-4 rounded-2xl ${isDark ? 'bg-rose-950/20' : 'bg-rose-50'}`}>
           <p className="text-xs font-bold text-rose-500 mb-1">No Pool</p>
-          <p className={`text-lg font-black ${isDark ? 'text-white' : 'text-slate-900'}`}>{noPool.toLocaleString()} P</p>
+          <p className={`text-lg font-black ${isDark ? 'text-white' : 'text-slate-900'}`}>{'$'}{noPool.toLocaleString()}</p>
           <p className="text-[10px] text-slate-400 mt-0.5">
             {totalPool > 0 ? ((noPool / totalPool) * 100).toFixed(1) : '0'}% of total
           </p>

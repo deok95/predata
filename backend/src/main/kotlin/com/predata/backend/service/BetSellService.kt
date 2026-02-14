@@ -18,7 +18,8 @@ import java.time.LocalDateTime
 class BetSellService(
     private val activityRepository: ActivityRepository,
     private val questionRepository: QuestionRepository,
-    private val memberRepository: MemberRepository
+    private val memberRepository: MemberRepository,
+    private val transactionHistoryService: TransactionHistoryService
 ) {
 
     companion object {
@@ -147,9 +148,18 @@ class BetSellService(
 
         questionRepository.save(question)
 
-        // 6. 포인트 환불
-        member.pointBalance += refundAmount
+        // 6. USDC 환불
+        member.usdcBalance = member.usdcBalance.add(BigDecimal(refundAmount))
         memberRepository.save(member)
+
+        transactionHistoryService.record(
+            memberId = request.memberId,
+            type = "SETTLEMENT",
+            amount = BigDecimal(refundAmount),
+            balanceAfter = member.usdcBalance,
+            description = "베팅 판매 환불 - Question #${originalBet.questionId}",
+            questionId = originalBet.questionId
+        )
 
         // 7. BET_SELL 활동 기록 생성
         val sellActivity = Activity(

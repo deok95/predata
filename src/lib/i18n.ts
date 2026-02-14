@@ -56,7 +56,7 @@ const translations: Record<Locale, Record<string, string>> = {
     'trade.vote': '투표',
     'trade.bet': '베팅',
     'trade.amount': '금액',
-    'trade.tickets': '투표 티켓',
+    'trade.tickets': '투표 패스',
 
     // My Page
     'myPage.title': '마이페이지',
@@ -74,9 +74,9 @@ const translations: Record<Locale, Record<string, string>> = {
     'noti.unread': '읽지 않음',
 
     // Tickets
-    'ticket.title': '투표 티켓 구매',
+    'ticket.title': '투표 패스 구매',
     'ticket.buy': '구매하기',
-    'ticket.price': '티켓 1장 = 10P',
+    'ticket.price': '투표 패스 = $10',
 
     // Settlement
     'settlement.title': '정산 이력',
@@ -114,7 +114,7 @@ const translations: Record<Locale, Record<string, string>> = {
     'header.lightMode': '라이트 모드로 전환',
     'header.darkMode': '다크 모드로 전환',
     'header.faucetClaimed': '내일 다시 수령 가능',
-    'header.faucetClaim': '일일 100P 보상 받기',
+    'header.faucetClaim': '일일 $100 보상 받기',
 
     // Time
     'time.justNow': '방금',
@@ -263,7 +263,7 @@ const translations: Record<Locale, Record<string, string>> = {
     'referral.totalRewards': '총 보상',
     'referral.refereeList': '초대 내역',
     'referral.noReferrals': '아직 초대한 친구가 없습니다',
-    'referral.inviteDesc': '친구를 초대하면 양쪽 모두 500P를 받아요!',
+    'referral.inviteDesc': '친구를 초대하면 양쪽 모두 $500를 받아요!',
     'referral.codeLabel': '추천 코드 (선택)',
 
     // Portfolio
@@ -475,7 +475,7 @@ const translations: Record<Locale, Record<string, string>> = {
 
     // User Profile
     'profile.wallet': '지갑',
-    'profile.pointBalance': '포인트 잔액',
+    'profile.usdcBalance': '잔액',
     'profile.accuracy': '정확도',
     'profile.totalPredictions': '총 예측',
     'profile.job': '직업',
@@ -506,7 +506,7 @@ const translations: Record<Locale, Record<string, string>> = {
     'betHistory.inProgress': '진행 중',
     'betHistory.completed': '완료',
     'betHistory.result': '결과:',
-    'betHistory.bet': 'P 베팅',
+    'betHistory.bet': '베팅',
     'betHistory.empty': '아직 베팅 내역이 없습니다.',
 
     // Dispute History
@@ -521,14 +521,33 @@ const translations: Record<Locale, Record<string, string>> = {
     'dispute.loss': '패배',
 
     // Ticket Shop
-    'ticketShop.title': '투표 티켓 구매',
-    'ticketShop.price': '티켓 1장 = {price}P',
+    'ticketShop.title': '투표 패스',
+    'ticketShop.price': '투표 패스 = $10',
     'ticketShop.total': '합계',
     'ticketShop.buying': '구매 중...',
-    'ticketShop.buyBtn': '{qty}장 구매하기',
-    'ticketShop.bought': '투표 티켓 {qty}장을 구매했습니다!',
-    'ticketShop.failed': '티켓 구매에 실패했습니다.',
-    'ticketShop.errBalance': '포인트가 부족하거나 서버 오류가 발생했습니다.',
+    'ticketShop.buyBtn': '투표 패스 구매 ($10)',
+    'ticketShop.bought': '투표 패스를 구매했습니다!',
+    'ticketShop.failed': '투표 패스 구매에 실패했습니다.',
+    'ticketShop.errBalance': '잔액이 부족하거나 서버 오류가 발생했습니다.',
+    'ticketShop.insufficientBalance': '잔액이 부족합니다. 충전해주세요.',
+
+    // Transaction History
+    'txHistory.title': '거래 내역',
+    'txHistory.all': '전체',
+    'txHistory.deposit': '충전',
+    'txHistory.bet': '베팅',
+    'txHistory.settlement': '정산',
+    'txHistory.withdraw': '출금',
+    'txHistory.votingPass': '투표패스',
+    'txHistory.empty': '거래 내역이 없습니다.',
+    'txHistory.loading': '로딩 중...',
+    'txHistory.balance': '잔액',
+    'txHistory.prev': '이전',
+    'txHistory.next': '다음',
+
+    // My Page Tabs
+    'myPage.betHistory': '베팅 내역',
+    'myPage.transactionHistory': '거래 내역',
 
     // My Bets Modal
     'myBets.title': '내 베팅 내역',
@@ -720,7 +739,7 @@ const translations: Record<Locale, Record<string, string>> = {
     'trade.vote': 'Vote',
     'trade.bet': 'Bet',
     'trade.amount': 'Amount',
-    'trade.tickets': 'Vote Tickets',
+    'trade.tickets': 'Voting Pass',
 
     // My Page
     'myPage.title': 'My Page',
@@ -738,9 +757,9 @@ const translations: Record<Locale, Record<string, string>> = {
     'noti.unread': 'Unread',
 
     // Tickets
-    'ticket.title': 'Buy Vote Tickets',
+    'ticket.title': 'Buy Voting Pass',
     'ticket.buy': 'Purchase',
-    'ticket.price': '1 ticket = 10P',
+    'ticket.price': 'Voting Pass = $10',
 
     // Settlement
     'settlement.title': 'Settlement History',
@@ -778,7 +797,7 @@ const translations: Record<Locale, Record<string, string>> = {
     'header.lightMode': 'Switch to light mode',
     'header.darkMode': 'Switch to dark mode',
     'header.faucetClaimed': 'Claimable again tomorrow',
-    'header.faucetClaim': 'Claim daily 100P reward',
+    'header.faucetClaim': 'Claim daily $100 reward',
 
     // Time
     'time.justNow': 'Just now',
@@ -927,7 +946,7 @@ const translations: Record<Locale, Record<string, string>> = {
     'referral.totalRewards': 'Total Rewards',
     'referral.refereeList': 'Referral History',
     'referral.noReferrals': 'No referrals yet',
-    'referral.inviteDesc': 'Invite friends and both get 500P!',
+    'referral.inviteDesc': 'Invite friends and both get $500!',
     'referral.codeLabel': 'Referral Code (optional)',
 
     // Portfolio
@@ -1139,7 +1158,7 @@ const translations: Record<Locale, Record<string, string>> = {
 
     // User Profile
     'profile.wallet': 'Wallet',
-    'profile.pointBalance': 'Point Balance',
+    'profile.usdcBalance': 'Balance',
     'profile.accuracy': 'Accuracy',
     'profile.totalPredictions': 'Total Predictions',
     'profile.job': 'Occupation',
@@ -1170,7 +1189,7 @@ const translations: Record<Locale, Record<string, string>> = {
     'betHistory.inProgress': 'Active',
     'betHistory.completed': 'Completed',
     'betHistory.result': 'Result:',
-    'betHistory.bet': 'P bet',
+    'betHistory.bet': 'bet',
     'betHistory.empty': 'No bet history yet.',
 
     // Dispute History
@@ -1185,14 +1204,33 @@ const translations: Record<Locale, Record<string, string>> = {
     'dispute.loss': 'Loss',
 
     // Ticket Shop
-    'ticketShop.title': 'Buy Vote Tickets',
-    'ticketShop.price': '1 Ticket = {price}P',
+    'ticketShop.title': 'Voting Pass',
+    'ticketShop.price': 'Voting Pass = $10',
     'ticketShop.total': 'Total',
     'ticketShop.buying': 'Purchasing...',
-    'ticketShop.buyBtn': 'Buy {qty} Tickets',
-    'ticketShop.bought': 'Purchased {qty} vote tickets!',
-    'ticketShop.failed': 'Ticket purchase failed.',
-    'ticketShop.errBalance': 'Insufficient points or server error.',
+    'ticketShop.buyBtn': 'Buy Voting Pass ($10)',
+    'ticketShop.bought': 'Voting pass purchased!',
+    'ticketShop.failed': 'Voting pass purchase failed.',
+    'ticketShop.errBalance': 'Insufficient balance or server error.',
+    'ticketShop.insufficientBalance': 'Insufficient balance. Please deposit.',
+
+    // Transaction History
+    'txHistory.title': 'Transaction History',
+    'txHistory.all': 'All',
+    'txHistory.deposit': 'Deposit',
+    'txHistory.bet': 'Bet',
+    'txHistory.settlement': 'Settlement',
+    'txHistory.withdraw': 'Withdraw',
+    'txHistory.votingPass': 'Voting Pass',
+    'txHistory.empty': 'No transactions yet.',
+    'txHistory.loading': 'Loading...',
+    'txHistory.balance': 'Balance',
+    'txHistory.prev': 'Previous',
+    'txHistory.next': 'Next',
+
+    // My Page Tabs
+    'myPage.betHistory': 'Bet History',
+    'myPage.transactionHistory': 'Transaction History',
 
     // My Bets Modal
     'myBets.title': 'My Bet History',

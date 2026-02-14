@@ -1,118 +1,147 @@
 'use client';
 
-import { useState, useMemo } from 'react';
-import { Ticket, Plus, Minus, ShoppingCart } from 'lucide-react';
+import { useState } from 'react';
+import { ShieldCheck, Loader2 } from 'lucide-react';
 import { useTheme } from '@/hooks/useTheme';
-import { useToast } from '@/components/ui/Toast';
-import { ticketApi } from '@/lib/api';
 import { useAuth } from '@/hooks/useAuth';
-import { useI18n } from '@/lib/i18n';
+import { votingPassApi } from '@/lib/api';
+import { VOTING_PASS_PRICE } from '@/lib/contracts';
+import DepositModal from '@/components/payment/DepositModal';
+import type { Member } from '@/types/api';
 
-interface TicketShopProps {
-  memberId: number;
+interface VotingPassShopProps {
+  user: Member;
 }
 
-const TICKET_PRICE = 10; // 10P per ticket
-
-export default function TicketShop({ memberId }: TicketShopProps) {
-  const { t } = useI18n();
+export default function TicketShop({ user }: VotingPassShopProps) {
   const { isDark } = useTheme();
-
-  const TICKET_PACKAGES = useMemo(() => [
-    { qty: 5, label: t('ticketShop.tickets').replace('{n}', '5'), discount: 0 },
-    { qty: 10, label: t('ticketShop.tickets').replace('{n}', '10'), discount: 5 },
-    { qty: 25, label: t('ticketShop.tickets').replace('{n}', '25'), discount: 10 },
-    { qty: 50, label: t('ticketShop.tickets').replace('{n}', '50'), discount: 15 },
-  ], [t]);
-  const { showToast } = useToast();
   const { refreshUser } = useAuth();
-  const [quantity, setQuantity] = useState(5);
-  const [loading, setLoading] = useState(false);
-
-  const totalCost = quantity * TICKET_PRICE;
+  const [isLoading, setIsLoading] = useState(false);
+  const [message, setMessage] = useState<string | null>(null);
+  const [showDeposit, setShowDeposit] = useState(false);
+  const [showConfirm, setShowConfirm] = useState(false);
 
   const handlePurchase = async () => {
-    if (loading) return;
-    setLoading(true);
+    if (user.hasVotingPass) return;
+    setIsLoading(true);
+    setMessage(null);
+    setShowConfirm(false);
     try {
-      const res = await ticketApi.purchase(quantity);
-      if (res.success) {
-        showToast(t('ticketShop.bought').replace('{qty}', String(quantity)), 'success');
+      const res = await votingPassApi.purchase(user.id);
+      if (res.success && res.data?.success) {
+        setMessage('투표 패스를 구매했습니다!');
         await refreshUser();
       } else {
-        showToast(t('ticketShop.purchaseFail'), 'error');
+        setMessage(res.data?.message || '구매에 실패했습니다.');
       }
-    } catch {
-      showToast(t('ticketShop.purchaseError'), 'error');
+    } catch (e: any) {
+      setMessage(e?.message || '구매에 실패했습니다.');
     } finally {
-      setLoading(false);
+      setIsLoading(false);
     }
   };
 
   return (
     <div className={`p-6 rounded-3xl border ${isDark ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-100'}`}>
       <div className="flex items-center gap-3 mb-5">
-        <div className="w-10 h-10 rounded-xl bg-indigo-600 flex items-center justify-center">
-          <Ticket size={20} className="text-white" />
+        <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${user.hasVotingPass ? 'bg-emerald-600' : 'bg-indigo-600'}`}>
+          <ShieldCheck size={20} className="text-white" />
         </div>
         <div>
-          <h3 className={`font-black text-lg ${isDark ? 'text-white' : 'text-slate-900'}`}>{t('ticketShop.title')}</h3>
-          <p className="text-xs text-slate-400">{t('ticketShop.pricePerTicket').replace('{price}', String(TICKET_PRICE))}</p>
+          <h3 className={`font-black text-lg ${isDark ? 'text-white' : 'text-slate-900'}`}>투표 패스</h3>
+          <p className="text-xs text-slate-400">
+            {user.hasVotingPass ? '무제한 투표 가능' : `$${VOTING_PASS_PRICE} 일회성 구매`}
+          </p>
         </div>
       </div>
 
-      <div className="grid grid-cols-2 gap-2 mb-5">
-        {TICKET_PACKAGES.map((pkg) => (
-          <button
-            key={pkg.qty}
-            onClick={() => setQuantity(pkg.qty)}
-            className={`p-3 rounded-xl text-center transition-all border-2 ${
-              quantity === pkg.qty
-                ? 'border-indigo-600 bg-indigo-600/10'
-                : isDark ? 'border-slate-700 hover:border-slate-600' : 'border-slate-100 hover:border-slate-200'
-            }`}
-          >
-            <p className={`font-black text-sm ${quantity === pkg.qty ? 'text-indigo-600' : isDark ? 'text-white' : 'text-slate-900'}`}>
-              {pkg.label}
-            </p>
-            <p className="text-[10px] text-slate-400">
-              {pkg.qty * TICKET_PRICE}P
-              {pkg.discount > 0 && <span className="text-emerald-500 ml-1">-{pkg.discount}%</span>}
-            </p>
-          </button>
-        ))}
-      </div>
-
-      <div className={`flex items-center justify-between p-4 rounded-xl mb-4 ${isDark ? 'bg-slate-800' : 'bg-slate-50'}`}>
-        <div className="flex items-center gap-3">
-          <button
-            onClick={() => setQuantity(Math.max(1, quantity - 1))}
-            className={`w-8 h-8 rounded-lg flex items-center justify-center transition-all ${isDark ? 'bg-slate-700 hover:bg-slate-600' : 'bg-white hover:bg-slate-100 border border-slate-200'}`}
-          >
-            <Minus size={14} />
-          </button>
-          <span className={`font-black text-lg w-10 text-center ${isDark ? 'text-white' : 'text-slate-900'}`}>{quantity}</span>
-          <button
-            onClick={() => setQuantity(Math.min(100, quantity + 1))}
-            className={`w-8 h-8 rounded-lg flex items-center justify-center transition-all ${isDark ? 'bg-slate-700 hover:bg-slate-600' : 'bg-white hover:bg-slate-100 border border-slate-200'}`}
-          >
-            <Plus size={14} />
-          </button>
+      {user.hasVotingPass ? (
+        <div className={`p-4 rounded-xl text-center ${isDark ? 'bg-emerald-900/30 border border-emerald-800' : 'bg-emerald-50 border border-emerald-200'}`}>
+          <p className="text-emerald-500 font-bold text-sm">투표 패스 보유 중</p>
+          <p className="text-xs text-slate-400 mt-1">모든 투표에서 무제한 투표 가능</p>
         </div>
-        <div className="text-right">
-          <p className="text-xs text-slate-400">{t('ticketShop.total')}</p>
-          <p className="font-black text-indigo-600">{totalCost.toLocaleString()} P</p>
-        </div>
-      </div>
+      ) : (
+        <>
+          <div className={`rounded-xl p-4 mb-4 ${isDark ? 'bg-slate-800' : 'bg-slate-50'}`}>
+            <div className="flex justify-between items-center">
+              <span className="text-sm text-slate-400">투표 패스 가격</span>
+              <span className="text-xl font-black text-indigo-600">${VOTING_PASS_PRICE}</span>
+            </div>
+            <p className="text-xs text-slate-400 mt-2">구매 시 모든 투표에서 무제한 투표 가능</p>
+          </div>
 
-      <button
-        onClick={handlePurchase}
-        disabled={loading}
-        className="w-full py-3.5 rounded-xl font-bold text-sm bg-indigo-600 text-white hover:bg-indigo-700 disabled:opacity-50 transition-all flex items-center justify-center gap-2 active:scale-[0.98]"
-      >
-        <ShoppingCart size={16} />
-        {loading ? t('ticketShop.purchasing') : t('ticketShop.buyBtn').replace('{qty}', String(quantity))}
-      </button>
+          {user.usdcBalance < VOTING_PASS_PRICE ? (
+            <>
+              <button
+                onClick={() => setShowDeposit(true)}
+                className="w-full py-3.5 rounded-xl font-bold text-sm bg-amber-600 text-white hover:bg-amber-700 transition-all flex items-center justify-center gap-2 active:scale-[0.98]"
+              >
+                잔액이 부족합니다. 충전해주세요
+              </button>
+              <DepositModal isOpen={showDeposit} onClose={() => setShowDeposit(false)} />
+            </>
+          ) : (
+            <button
+              onClick={() => setShowConfirm(true)}
+              disabled={isLoading}
+              className="w-full py-3.5 rounded-xl font-bold text-sm bg-indigo-600 text-white hover:bg-indigo-700 transition-all flex items-center justify-center gap-2 active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {isLoading ? (
+                <><Loader2 size={16} className="animate-spin" /> 구매 중...</>
+              ) : (
+                `$${VOTING_PASS_PRICE} 투표 패스 구매`
+              )}
+            </button>
+          )}
+        </>
+      )}
+
+      {message && (
+        <p className={`text-xs mt-3 text-center ${message.includes('실패') ? 'text-rose-400' : 'text-emerald-400'}`}>
+          {message}
+        </p>
+      )}
+
+      {/* 구매 확인 모달 */}
+      {showConfirm && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={() => setShowConfirm(false)}>
+          <div
+            className={`max-w-sm w-full rounded-2xl p-6 ${isDark ? 'bg-slate-900 border border-slate-800' : 'bg-white'} shadow-2xl`}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="text-center mb-6">
+              <div className={`w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4 ${isDark ? 'bg-indigo-500/10' : 'bg-indigo-50'}`}>
+                <ShieldCheck size={32} className="text-indigo-600" />
+              </div>
+              <h3 className={`text-xl font-black mb-2 ${isDark ? 'text-white' : 'text-slate-900'}`}>투표 패스 구매</h3>
+              <p className={`text-sm ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
+                ${VOTING_PASS_PRICE}를 사용하여 투표 패스를 구매하시겠습니까?
+              </p>
+              <p className="text-xs text-slate-400 mt-2">
+                구매 후 모든 투표에서 무제한으로 투표할 수 있습니다.
+              </p>
+            </div>
+
+            <div className="flex gap-2">
+              <button
+                onClick={() => setShowConfirm(false)}
+                className={`flex-1 py-3 rounded-xl font-bold text-sm transition-all ${
+                  isDark ? 'bg-slate-800 text-slate-300 hover:bg-slate-700' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+                }`}
+              >
+                취소
+              </button>
+              <button
+                onClick={handlePurchase}
+                disabled={isLoading}
+                className="flex-1 py-3 rounded-xl font-bold text-sm bg-indigo-600 text-white hover:bg-indigo-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {isLoading ? '구매 중...' : '구매하기'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
