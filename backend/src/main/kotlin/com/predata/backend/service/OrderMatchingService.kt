@@ -83,14 +83,8 @@ class OrderMatchingService(
             )
         }
 
-        // 주문 비용 = 수량 × 가격
-        val totalCost = BigDecimal(request.amount).multiply(request.price)
-        if (member.usdcBalance < totalCost) {
-            return CreateOrderResponse(
-                success = false,
-                message = "잔액이 부족합니다. (보유: ${member.usdcBalance}, 필요: $totalCost)"
-            )
-        }
+        // 3. 주문 타입 결정
+        val orderType = request.orderType ?: OrderType.LIMIT  // 기본값: LIMIT
 
         // 2. 질문 상태 확인
         val question = questionRepository.findByIdWithLock(request.questionId)
@@ -133,22 +127,6 @@ class OrderMatchingService(
             )
         }
 
-        // 리스크 가드: 주문 금액 한도 체크
-        val orderValueCheck = riskGuardService.checkOrderValueLimit(totalCost.toDouble())
-        if (!orderValueCheck.passed) {
-            auditService.log(
-                memberId = memberId,
-                action = com.predata.backend.domain.AuditAction.RISK_LIMIT_EXCEEDED,
-                entityType = "ORDER",
-                entityId = null,
-                detail = orderValueCheck.message
-            )
-            return CreateOrderResponse(
-                success = false,
-                message = orderValueCheck.message!!
-            )
-        }
-
         // 리스크 가드: 서킷 브레이커 체크
         val circuitCheck = riskGuardService.checkCircuitBreaker(request.questionId)
         if (!circuitCheck.passed) {
@@ -164,9 +142,6 @@ class OrderMatchingService(
                 message = circuitCheck.message!!
             )
         }
-
-        // 3. 주문 타입 결정
-        val orderType = request.orderType ?: OrderType.LIMIT  // 기본값: LIMIT
 
         // 4. MARKET 주문일 경우 상대 오더북의 최우선 가격으로 체결
         val orderPrice = if (orderType == OrderType.MARKET) {
@@ -191,6 +166,31 @@ class OrderMatchingService(
             BigDecimal.ONE.subtract(oppositePrice)  // 역가격 계산
         } else {
             request.price
+        }
+
+        // 주문 비용 = 수량 × 실제 주문가 (MARKET은 체결가 기준)
+        val totalCost = BigDecimal(request.amount).multiply(orderPrice)
+        if (member.usdcBalance < totalCost) {
+            return CreateOrderResponse(
+                success = false,
+                message = "잔액이 부족합니다. (보유: ${member.usdcBalance}, 필요: $totalCost)"
+            )
+        }
+
+        // 리스크 가드: 주문 금액 한도 체크
+        val orderValueCheck = riskGuardService.checkOrderValueLimit(totalCost.toDouble())
+        if (!orderValueCheck.passed) {
+            auditService.log(
+                memberId = memberId,
+                action = com.predata.backend.domain.AuditAction.RISK_LIMIT_EXCEEDED,
+                entityType = "ORDER",
+                entityId = null,
+                detail = orderValueCheck.message
+            )
+            return CreateOrderResponse(
+                success = false,
+                message = orderValueCheck.message!!
+            )
         }
 
         // 5. USDC 차감 (예치) - MARKET 주문 검증 후 차감

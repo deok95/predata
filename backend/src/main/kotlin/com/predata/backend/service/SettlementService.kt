@@ -33,6 +33,80 @@ class SettlementService(
     companion object {
         private const val DISPUTE_HOURS = 0L // 테스트용: 이의제기 기간 없음 (즉시 확정)
         // TODO: 실제 운영에서는 24L로 변경
+        private const val AUTO_SETTLE_MIN_CONFIDENCE = 0.99
+    }
+
+    /**
+     * 자동정산 Auto-first + Fail-safe 구현
+     * 7가지 조건 체크:
+     * 1. marketType == VERIFIABLE
+     * 2. result, sourcePayload, sourceUrl, confidence 모두 non-null
+     * 3. confidence >= 0.99
+     * 4. 소스가 최종 상태 확인 (경기 FINISHED / 종가 확정)
+     * 5. 30초 간격 2회 조회 일치 (TODO)
+     * 6. idempotency: questionId + result + sourcePayloadHash로 중복 정산 방지 (TODO)
+     * 7. AuditLog에 정산 이벤트 기록 후 finalize
+     */
+    @Transactional
+    fun autoSettleWithVerification(questionId: Long): SettlementResult? {
+        val question = questionRepository.findByIdWithLock(questionId)
+            ?: throw IllegalArgumentException("질문을 찾을 수 없습니다.")
+
+        // 1. marketType == VERIFIABLE 체크
+        if (question.marketType != com.predata.backend.domain.MarketType.VERIFIABLE) {
+            logger.info("[AutoSettle] 질문 #{} VERIFIABLE이 아님, 수동 정산 대기", questionId)
+            return null
+        }
+
+        // ResolutionAdapter를 통해 결과 조회
+        val resolutionResult = try {
+            resolutionAdapterRegistry.resolve(question)
+        } catch (e: Exception) {
+            logger.error("[AutoSettle] 질문 #{} 결과 조회 실패: {}", questionId, e.message)
+            return null
+        }
+
+        // 2. result, sourcePayload, sourceUrl, confidence 모두 non-null 체크
+        val result = resolutionResult.result
+        val sourcePayload = resolutionResult.sourcePayload
+        val sourceUrl = resolutionResult.sourceUrl
+        val confidence = resolutionResult.confidence
+
+        if (result == null || sourcePayload == null || sourceUrl == null || confidence == null) {
+            logger.info("[AutoSettle] 질문 #{} 결과 불완전 (result={}, confidence={}), 재시도 대기", questionId, result, confidence)
+            return null
+        }
+
+        // 3. confidence >= 0.99 체크
+        if (confidence < AUTO_SETTLE_MIN_CONFIDENCE) {
+            logger.info("[AutoSettle] 질문 #{} confidence 부족 ({}), 수동 정산 대기", questionId, confidence)
+            return null
+        }
+
+        // 4. 소스가 최종 상태 확인 (sourcePayload에서 status 체크)
+        if (!sourcePayload.contains("FINISHED")) {
+            logger.info("[AutoSettle] 질문 #{} 소스 미확정 상태, 재시도 대기", questionId)
+            return null
+        }
+
+        // TODO: 5. 30초 간격 2회 조회 일치 (캐시 구현 필요)
+        // TODO: 6. idempotency 체크 (중복 정산 방지)
+
+        // 7. AuditLog 기록 및 자동 정산 실행
+        logger.info("[AutoSettle] 질문 #{} 자동 정산 조건 충족, finalize 실행", questionId)
+        auditService.log(
+            memberId = null,
+            action = com.predata.backend.domain.AuditAction.SETTLE,
+            entityType = "QUESTION",
+            entityId = questionId,
+            detail = "Auto-settlement verified: ${result.name}, confidence=$confidence"
+        )
+
+        // 정산 시작
+        initiateSettlement(questionId, result, sourceUrl)
+
+        // 즉시 확정
+        return finalizeSettlement(questionId, skipDeadlineCheck = true)
     }
 
     /**
@@ -54,8 +128,15 @@ class SettlementService(
         // ResolutionAdapter를 통해 자동 정산
         val resolutionResult = resolutionAdapterRegistry.resolve(question)
 
+        // 결과가 미확정이면 정산 시작 불가
+        val finalResult = resolutionResult.result
+            ?: throw IllegalStateException("정산 결과가 아직 확정되지 않았습니다.")
+        if (finalResult == FinalResult.PENDING) {
+            throw IllegalStateException("정산 결과가 아직 확정되지 않았습니다.")
+        }
+
         // 기존 메서드 재사용
-        return initiateSettlement(questionId, resolutionResult.result, resolutionResult.sourceUrl)
+        return initiateSettlement(questionId, finalResult, resolutionResult.sourceUrl)
     }
 
     /**
@@ -140,6 +221,9 @@ class SettlementService(
         }
 
         val finalResult = question.finalResult
+        if (finalResult == FinalResult.PENDING) {
+            throw IllegalStateException("최종 결과가 확정되지 않아 정산을 확정할 수 없습니다.")
+        }
         val policy = settlementPolicyFactory.getPolicy(question.type)
         val winningChoice = policy.determineWinningChoice(finalResult)
 

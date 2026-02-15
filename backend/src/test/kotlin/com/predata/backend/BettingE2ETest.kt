@@ -122,6 +122,7 @@ class BettingE2ETest {
         )
         val orderBResult = orderMatchingService.createOrder(memberB.id!!, orderBRequest)
         assertTrue(orderBResult.success, "회원B의 주문이 성공해야 합니다")
+        val initialBalanceA = memberRepository.findById(memberA.id!!).orElseThrow().usdcBalance
 
         // When: 회원A가 YES 시장가 주문 (역가격 0.60으로 매칭)
         val orderARequest = CreateOrderRequest(
@@ -136,6 +137,11 @@ class BettingE2ETest {
         // Then: 주문 체결 확인
         assertTrue(orderAResult.success, "회원A의 시장가 주문이 성공해야 합니다")
         assertEquals(50, orderAResult.filledAmount, "50수량이 체결되어야 합니다")
+
+        // 시장가 주문 비용 차감 확인 (50 * 0.60 = 30.00)
+        val finalBalanceA = memberRepository.findById(memberA.id!!).orElseThrow().usdcBalance
+        val expectedBalanceA = initialBalanceA.subtract(BigDecimal("30.00"))
+        assertEquals(0, expectedBalanceA.compareTo(finalBalanceA), "시장가 주문 비용이 정확히 차감되어야 합니다")
 
         // Position 확인
         val positionA = positionRepository.findByMemberIdAndQuestionIdAndSide(

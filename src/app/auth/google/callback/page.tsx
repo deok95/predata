@@ -30,8 +30,24 @@ function GoogleCallbackContent() {
     }
 
     const handleCallback = async () => {
-      const token = tokenParam;
-      const memberId = memberIdParam;
+      // URL fragment (#token=xxx)에서 토큰 읽기 (보안 강화)
+      let token = tokenParam;
+      let memberId = memberIdParam;
+
+      // Fragment에서 토큰 파싱 시도 (우선순위)
+      if (typeof window !== 'undefined' && window.location.hash) {
+        const hash = window.location.hash.substring(1); // # 제거
+        const hashParams = new URLSearchParams(hash);
+        const hashToken = hashParams.get('token');
+        const hashMemberId = hashParams.get('memberId');
+
+        if (hashToken && hashMemberId) {
+          token = hashToken;
+          memberId = hashMemberId;
+          // fragment 파라미터 제거 (보안)
+          window.history.replaceState(null, '', window.location.pathname + window.location.search);
+        }
+      }
 
       if (errorParam) {
         // 에러 코드별 사용자 친화적 메시지 매핑

@@ -26,6 +26,19 @@ class SportsResolutionAdapter : ResolutionAdapter {
         val resolutionSource = question.resolutionSource
             ?: throw IllegalArgumentException("스포츠 정산을 위한 resolutionSource가 없습니다.")
 
+        // resolveAt 체크: 경기 종료 시간이 지나지 않았으면 null 반환
+        val resolveAt = question.resolveAt
+        if (resolveAt != null && java.time.LocalDateTime.now().isBefore(resolveAt)) {
+            // 경기 미종료: 자동 정산 불가
+            return ResolutionResult(
+                result = null,
+                sourcePayload = null,
+                sourceUrl = null,
+                confidence = 0.0
+            )
+        }
+
+        // TODO: 실제 football-data.org API 호출
         // 현재는 stub 구현: sourcePayload에 더미 데이터 저장
         val dummyApiResponse = """
             {
@@ -41,14 +54,15 @@ class SportsResolutionAdapter : ResolutionAdapter {
         """.trimIndent()
 
         // TODO: 실제 resolutionRule 파싱 및 결과 판정 로직 구현
-        // 현재는 더미로 YES 반환
+        // 현재는 더미로 결과 반환 (confidence < 0.99로 설정하여 자동 정산 비활성화)
+        // 실제 API 연동 후 confidence = 1.0으로 변경
         val result = FinalResult.YES
 
         return ResolutionResult(
             result = result,
             sourcePayload = dummyApiResponse,
             sourceUrl = "https://api.football-data.org/v4/matches/${resolutionSource}",
-            confidence = 1.0
+            confidence = 0.95  // 실제 API 연동 전까지는 자동 정산 비활성화
         )
     }
 }

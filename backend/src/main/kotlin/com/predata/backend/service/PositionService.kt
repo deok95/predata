@@ -3,6 +3,7 @@ package com.predata.backend.service
 import com.predata.backend.domain.OrderSide
 import com.predata.backend.domain.MarketPosition
 import com.predata.backend.repository.PositionRepository
+import org.springframework.dao.DataIntegrityViolationException
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import java.math.BigDecimal
@@ -30,35 +31,13 @@ class PositionService(
         qty: BigDecimal,
         price: BigDecimal
     ): MarketPosition {
-        val existingPosition = positionRepository.findByMemberIdAndQuestionIdAndSide(
-            memberId, questionId, side
-        )
+        val existingPosition = positionRepository.findByMemberIdAndQuestionIdAndSide(memberId, questionId, side)
+        if (existingPosition != null) {
+            return updatePosition(existingPosition, qty, price, memberId, side)
+        }
 
-        return if (existingPosition != null) {
-            // 가중평균으로 업데이트
-            val totalQty = existingPosition.quantity.add(qty)
-            val totalCost = existingPosition.quantity.multiply(existingPosition.avgPrice)
-                .add(qty.multiply(price))
-            val newAvgPrice = totalCost.divide(totalQty, 2, RoundingMode.HALF_UP)
-
-            existingPosition.quantity = totalQty
-            existingPosition.avgPrice = newAvgPrice
-            existingPosition.updatedAt = LocalDateTime.now()
-
-            val savedPosition = positionRepository.save(existingPosition)
-
-            // Audit log: 포지션 업데이트
-            auditService.log(
-                memberId = memberId,
-                action = com.predata.backend.domain.AuditAction.POSITION_UPDATE,
-                entityType = "POSITION",
-                entityId = savedPosition.id,
-                detail = "Position updated: ${side} qty=${totalQty} avgPrice=${newAvgPrice}"
-            )
-
-            savedPosition
-        } else {
-            // 새 포지션 생성
+        // 신규 insert 경합 시 UNIQUE 충돌이 날 수 있으므로 1회 재조회 후 update로 복구
+        return try {
             val newPosition = MarketPosition(
                 memberId = memberId,
                 questionId = questionId,
@@ -68,8 +47,6 @@ class PositionService(
                 settled = false
             )
             val savedPosition = positionRepository.save(newPosition)
-
-            // Audit log: 포지션 생성
             auditService.log(
                 memberId = memberId,
                 action = com.predata.backend.domain.AuditAction.POSITION_UPDATE,
@@ -77,9 +54,38 @@ class PositionService(
                 entityId = savedPosition.id,
                 detail = "Position created: ${side} qty=${qty} avgPrice=${price}"
             )
-
             savedPosition
+        } catch (e: DataIntegrityViolationException) {
+            val concurrentPosition = positionRepository.findByMemberIdAndQuestionIdAndSide(memberId, questionId, side)
+                ?: throw e
+            updatePosition(concurrentPosition, qty, price, memberId, side)
         }
+    }
+
+    private fun updatePosition(
+        position: MarketPosition,
+        qty: BigDecimal,
+        price: BigDecimal,
+        memberId: Long,
+        side: OrderSide
+    ): MarketPosition {
+        val totalQty = position.quantity.add(qty)
+        val totalCost = position.quantity.multiply(position.avgPrice).add(qty.multiply(price))
+        val newAvgPrice = totalCost.divide(totalQty, 2, RoundingMode.HALF_UP)
+
+        position.quantity = totalQty
+        position.avgPrice = newAvgPrice
+        position.updatedAt = LocalDateTime.now()
+
+        val savedPosition = positionRepository.save(position)
+        auditService.log(
+            memberId = memberId,
+            action = com.predata.backend.domain.AuditAction.POSITION_UPDATE,
+            entityType = "POSITION",
+            entityId = savedPosition.id,
+            detail = "Position updated: ${side} qty=${totalQty} avgPrice=${newAvgPrice}"
+        )
+        return savedPosition
     }
 
     /**
@@ -119,17 +125,36 @@ class PositionService(
     /**
      * PnL을 포함한 포지션 조회
      * - currentMidPrice를 기반으로 unrealizedPnL 계산
+     * - N+1 문제 해결: questionId IN 쿼리 및 price 배치 조회
      */
     fun getPositionsWithPnL(memberId: Long): List<com.predata.backend.dto.PositionResponse> {
         val positions = positionRepository.findByMemberId(memberId)
-        return positions.map { position ->
-            val question = questionRepository.findById(position.questionId).orElse(null)
-            val priceInfo = orderBookService.getPriceInfo(position.questionId)
-            val currentMidPrice = priceInfo.midPrice
+        if (positions.isEmpty()) return emptyList()
 
-            // PnL = (currentMidPrice - avgPrice) * quantity
+        // 1. questionId 배치 조회 (N+1 해결)
+        val questionIds = positions.map { it.questionId }.distinct()
+        val questionsMap = questionRepository.findAllById(questionIds).associateBy { it.id }
+
+        // 2. mid-price 배치 조회 (캐시 또는 배치 조회)
+        val priceInfoMap = questionIds.associateWith { questionId ->
+            orderBookService.getPriceInfo(questionId)
+        }
+
+        return positions.map { position ->
+            val question = questionsMap[position.questionId]
+            val priceInfo = priceInfoMap[position.questionId]
+            val currentMidPrice = priceInfo?.midPrice
+
+            // PnL 계산
+            // YES: unrealizedPnL = (currentMidPrice - avgPrice) * quantity
+            // NO: unrealizedPnL = ((1 - currentMidPrice) - avgPrice) * quantity
             val unrealizedPnL = if (currentMidPrice != null) {
-                (currentMidPrice.subtract(position.avgPrice)).multiply(position.quantity)
+                val effectivePrice = if (position.side == OrderSide.YES) {
+                    currentMidPrice
+                } else {
+                    BigDecimal.ONE.subtract(currentMidPrice)
+                }
+                (effectivePrice.subtract(position.avgPrice)).multiply(position.quantity)
             } else {
                 BigDecimal.ZERO
             }

@@ -143,33 +143,36 @@ class QuestionLifecycleScheduler(
                 val locked = questionRepository.findByIdWithLock(question.id!!)
                 if (locked != null && locked.status == QuestionStatus.BETTING && locked.bettingEndAt.isBefore(now)) {
 
-                    // 어댑터 기반 자동 정산 (OPINION, VERIFIABLE 모두 통합)
+                    // Auto-first + Fail-safe 자동 정산 시도
                     try {
-                        val settlementResult = settlementService.initiateSettlementAuto(locked.id!!)
-                        logger.info(
-                            "[Lifecycle] 질문 #{} '{}' (타입: {}) → 어댑터 기반 자동 정산 완료 (결과: {})",
-                            locked.id,
-                            locked.title,
-                            locked.type,
-                            settlementResult.finalResult
-                        )
-                        logger.info("[Lifecycle] 정산 메시지: {}", settlementResult.message)
-
-                        // 즉시 배당금 지급
-                        val finalResult = settlementService.finalizeSettlement(
-                            questionId = locked.id!!,
-                            skipDeadlineCheck = true
-                        )
-                        logger.info("[Lifecycle] 배당금 지급 완료: 승자 {}명, 총 배당금 {}P", finalResult.totalWinners, finalResult.totalPayout)
+                        val settlementResult = settlementService.autoSettleWithVerification(locked.id!!)
+                        if (settlementResult != null) {
+                            // 자동 정산 성공
+                            logger.info(
+                                "[Lifecycle] 질문 #{} '{}' → Auto-first 자동 정산 완료 (결과: {})",
+                                locked.id,
+                                locked.title,
+                                settlementResult.finalResult
+                            )
+                            logger.info("[Lifecycle] 배당금 지급 완료: 승자 {}명, 총 배당금 {}P", settlementResult.totalWinners, settlementResult.totalPayout)
+                        } else {
+                            // 자동 정산 조건 미충족 → 수동 정산 대기
+                            logger.info(
+                                "[Lifecycle] 질문 #{} '{}' → 자동 정산 조건 미충족, 수동 정산 대기 (재시도 예정)",
+                                locked.id,
+                                locked.title
+                            )
+                            // TODO: 재시도 큐에 등록 (최대 3회, 간격 5분)
+                        }
                     } catch (settlementError: Exception) {
                         logger.error(
-                            "[Lifecycle] 질문 #{} 어댑터 기반 정산 실패: {}",
+                            "[Lifecycle] 질문 #{} 자동 정산 실패: {}",
                             locked.id,
                             settlementError.message
                         )
-                        // 실패 시 수동 정산 대기 상태로 설정
-                        locked.status = QuestionStatus.SETTLED
-                        questionRepository.save(locked)
+                        // 실패 시 수동 정산 대기 (SETTLED 강제 마킹 제거)
+                        logger.warn("[Lifecycle] 질문 #{} 수동 정산 필요 - 관리자 확인 요망", locked.id)
+                        // TODO: 관리자 알림 로직 추가
                     }
                 }
             } catch (e: Exception) {
@@ -265,8 +268,6 @@ class QuestionLifecycleScheduler(
             logger.info("[Lifecycle] 배당금 지급 완료: 승자 {}명, 총 배당금 {}P", finalResult.totalWinners, finalResult.totalPayout)
         } catch (e: Exception) {
             logger.error("[Lifecycle] VERIFIABLE 질문 #{} 정산 실패: {}", question.id, e.message)
-            question.status = QuestionStatus.SETTLED
-            questionRepository.save(question)
         }
     }
 
@@ -290,8 +291,6 @@ class QuestionLifecycleScheduler(
             logger.info("[Lifecycle] 배당금 지급 완료: 승자 {}명, 총 배당금 {}P", finalResult.totalWinners, finalResult.totalPayout)
         } catch (e: Exception) {
             logger.error("[Lifecycle] 질문 #{} 자동 정산 실패: {}", question.id, e.message)
-            question.status = QuestionStatus.SETTLED
-            questionRepository.save(question)
         }
     }
 

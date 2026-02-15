@@ -74,7 +74,8 @@ class OAuth2LoginSuccessHandler(
             val encodedName = URLEncoder.encode(name ?: "", StandardCharsets.UTF_8)
             "$frontendUrl/auth/google/complete?googleId=$googleId&email=$encodedEmail&name=$encodedName"
         } else {
-            "$frontendUrl/auth/google/callback?token=$token&memberId=$memberId"
+            // JWT를 URL fragment로 전달 (보안 강화)
+            "$frontendUrl/auth/google/callback#token=$token&memberId=$memberId"
         }
         response.sendRedirect(redirectUrl)
     }

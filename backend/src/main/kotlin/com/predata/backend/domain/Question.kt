@@ -74,7 +74,7 @@ data class Question(
     var disputeDeadline: LocalDateTime? = null,
 
     @Column(name = "expired_at", nullable = false)
-    val expiredAt: LocalDateTime,
+    var expiredAt: LocalDateTime,
 
     @Column(name = "created_at", nullable = false, updatable = false)
     val createdAt: LocalDateTime = LocalDateTime.now()

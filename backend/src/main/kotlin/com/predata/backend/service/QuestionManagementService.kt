@@ -91,6 +91,7 @@ class QuestionManagementService(
             if (newExpiredAt.isBefore(LocalDateTime.now())) {
                 throw IllegalArgumentException("마감일은 현재 시간 이후여야 합니다.")
             }
+            question.expiredAt = newExpiredAt
         }
 
         val saved = questionRepository.save(question)

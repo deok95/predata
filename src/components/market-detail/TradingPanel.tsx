@@ -110,20 +110,25 @@ export default function TradingPanel({ question, user, onTradeComplete, votedCho
 
     setLoading(true);
     try {
+      const orderSide = activeTab === 'buy'
+        ? selectedOutcome
+        : (selectedOutcome === 'YES' ? 'NO' : 'YES');
+
       const result = await orderApi.createOrder({
         questionId: question.id,
-        side: selectedOutcome,
+        side: orderSide,
         price: parseFloat(limitPrice),
         amount: Number(tradeAmount),
       });
 
       if (result.success) {
+        const actionLabel = activeTab === 'buy' ? '매수' : '매도(헤지)';
         if (result.filledAmount === Number(tradeAmount)) {
-          showToast('주문이 완전 체결되었습니다!');
+          showToast(`${actionLabel} 주문이 완전 체결되었습니다!`);
         } else if (result.filledAmount > 0) {
-          showToast(`부분 체결: ${result.filledAmount}/${tradeAmount} $`);
+          showToast(`${actionLabel} 부분 체결: ${result.filledAmount}/${tradeAmount} $`);
         } else {
-          showToast('주문이 오더북에 등록되었습니다.');
+          showToast(`${actionLabel} 주문이 오더북에 등록되었습니다.`);
         }
         setTradeAmount('');
         setLimitPrice('');
@@ -463,7 +468,11 @@ export default function TradingPanel({ question, user, onTradeComplete, votedCho
               : 'bg-orange-500 text-white shadow-orange-500/20 hover:bg-orange-600'
           }`}
         >
-          {loading ? '처리 중...' : orderType === 'limit' ? `Place ${selectedOutcome} Limit Order` : activeTab === 'buy' ? `Buy ${selectedOutcome}` : `Sell ${selectedOutcome}`}
+          {loading ? '처리 중...' : orderType === 'limit'
+            ? (activeTab === 'buy'
+              ? `Place ${selectedOutcome} Limit Order`
+              : `Place ${selectedOutcome} Sell Hedge Order`)
+            : activeTab === 'buy' ? `Buy ${selectedOutcome}` : `Sell ${selectedOutcome}`}
         </button>
       )}
 
