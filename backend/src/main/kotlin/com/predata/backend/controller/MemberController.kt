@@ -26,30 +26,29 @@ class MemberController(
     private val logger = LoggerFactory.getLogger(MemberController::class.java)
 
     /**
-     * 이메일로 회원 조회
-     * GET /api/members/by-email?email=test@example.com
+     * ❌ REMOVED: /by-email 엔드포인트 제거 (보안상 위험)
+     *
+     * 이유:
+     * 1. 인증 없이 이메일로 회원 정보 조회 가능 (프라이버시 침해)
+     * 2. 사용자 열거(enumeration) 공격에 취약
+     * 3. GDPR 위반 가능성
+     * 4. 프론트엔드에서 미사용 (loginWithEmail 함수 정의되었으나 호출 안 됨)
+     *
+     * 대안:
+     * - Admin이 필요한 경우: Admin 전용 컨트롤러로 이동 + AdminAuthInterceptor 적용
+     * - 일반 사용자: /api/members/me 사용 (JWT 인증 필요)
      */
-    @GetMapping("/by-email")
-    fun getMemberByEmail(@RequestParam email: String): ResponseEntity<MemberResponse> {
-        val member = memberRepository.findByEmail(email)
-        
-        return if (member.isPresent) {
-            ResponseEntity.ok(MemberResponse.from(member.get()))
-        } else {
-            ResponseEntity.notFound().build()
-        }
-    }
 
     /**
-     * 지갑 주소로 회원 조회
+     * 지갑 주소로 회원 조회 (공개 정보만)
      * GET /api/members/by-wallet?address=0x1234...
      */
     @GetMapping("/by-wallet")
-    fun getMemberByWallet(@RequestParam address: String): ResponseEntity<MemberResponse> {
+    fun getMemberByWallet(@RequestParam address: String): ResponseEntity<PublicMemberResponse> {
         val member = memberRepository.findByWalletAddress(address)
-        
+
         return if (member.isPresent) {
-            ResponseEntity.ok(MemberResponse.from(member.get()))
+            ResponseEntity.ok(PublicMemberResponse.from(member.get()))
         } else {
             ResponseEntity.notFound().build()
         }
@@ -114,15 +113,17 @@ class MemberController(
     }
 
     /**
-     * 회원 정보 조회 (ID로)
+     * 회원 정보 조회 (ID로) - 공개 정보만 반환
      * GET /api/members/{id}
+     *
+     * ⚠️ 보안: 이메일, 잔액, 역할 등 민감 정보는 제외됨
      */
     @GetMapping("/{id}")
-    fun getMember(@PathVariable id: Long): ResponseEntity<MemberResponse> {
+    fun getMember(@PathVariable id: Long): ResponseEntity<PublicMemberResponse> {
         val member = memberRepository.findById(id)
 
         return if (member.isPresent) {
-            ResponseEntity.ok(MemberResponse.from(member.get()))
+            ResponseEntity.ok(PublicMemberResponse.from(member.get()))
         } else {
             ResponseEntity.notFound().build()
         }
@@ -194,7 +195,38 @@ data class UpdateWalletRequest(
 )
 
 /**
- * DTO: 회원 응답
+ * DTO: 공개 회원 정보 (민감 정보 제외)
+ * 용도: /members/{id}, /members/by-wallet 등 인증 없는 공개 API
+ */
+data class PublicMemberResponse(
+    val memberId: Long,
+    val walletAddress: String?,
+    val countryCode: String,
+    val tier: String,
+    val tierWeight: Double,
+    val hasVotingPass: Boolean
+    // ❌ email 제외 (프라이버시)
+    // ❌ usdcBalance 제외 (금융 정보)
+    // ❌ role 제외 (보안)
+    // ❌ jobCategory, ageGroup 제외 (개인정보)
+) {
+    companion object {
+        fun from(member: Member): PublicMemberResponse {
+            return PublicMemberResponse(
+                memberId = member.id ?: 0,
+                walletAddress = member.walletAddress,
+                countryCode = member.countryCode,
+                tier = member.tier,
+                tierWeight = member.tierWeight.toDouble(),
+                hasVotingPass = member.hasVotingPass
+            )
+        }
+    }
+}
+
+/**
+ * DTO: 인증된 회원 정보 (전체 정보)
+ * 용도: /members/me (JWT 인증 필수)
  */
 data class MemberResponse(
     val memberId: Long,

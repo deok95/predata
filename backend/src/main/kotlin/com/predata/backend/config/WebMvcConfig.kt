@@ -18,21 +18,31 @@ class WebMvcConfig(
         registry.addInterceptor(rateLimitInterceptor)
             .addPathPatterns("/api/**")
 
-        // 2. JWT 인증 (인증 필요한 경로만)
+        // 2. JWT 인증 (화이트리스트 방식: 공개 API만 명시적으로 제외, 나머지는 모두 인증 필요)
         registry.addInterceptor(jwtAuthInterceptor)
             .addPathPatterns("/api/**")
             .excludePathPatterns(
-                "/api/auth/**",              // 인증 API (로그인, 회원가입 등)
-                "/api/health",               // 헬스체크
-                "/api/questions/**",         // 질문 조회 (공개)
-                "/api/leaderboard/**",       // 리더보드 (공개)
-                "/api/analytics/**",         // 분석 데이터 (공개)
-                "/api/blockchain/**",        // 블록체인 데이터 (공개)
-                "/api/badges/**",            // 배지 정보 (공개)
-                "/api/tiers/**",             // 티어 정보 (공개)
-                "/api/betting/suspension/**", // 베팅 정지 정보 (공개)
-                "/api/members/**",           // 회원 조회 (공개, /me는 컨트롤러에서 JWT 검증)
-                "/api/payments/**"           // 결제 API (테스트용 임시 제외)
+                // 인증/회원가입
+                "/api/auth/**",
+                "/api/members",              // POST: 회원가입만 공개
+
+                // 공개 조회 API
+                "/api/health",
+                "/api/questions/**",         // 질문 조회
+                "/api/leaderboard/**",       // 리더보드
+                "/api/analytics/**",         // 분석 데이터
+                "/api/blockchain/**",        // 블록체인 데이터
+                "/api/badges/**",            // 배지 정보
+                "/api/tiers/**",             // 티어 정보
+                "/api/betting/suspension/**", // 베팅 정지 정보
+
+                // 공개 회원 조회 (ID/지갑 기반만)
+                "/api/members/*",            // GET /members/{id} - 숫자 ID 조회
+                "/api/members/by-wallet"     // GET /members/by-wallet - 지갑 주소로 조회
+
+                // ❌ /api/members/by-email 제거 (보안상 위험)
+                // ❌ /api/payments/** 제거 (인증 필수)
+                // ✅ /api/members/me 인증 필요 (JWT 인터셉터가 처리)
             )
 
         // 3. Admin 권한 체크 (관리자 경로만)
