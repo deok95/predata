@@ -105,13 +105,13 @@ export default function ProbabilityChart({
       </div>
 
       {/* Chart */}
-      <div className="mt-6" style={{ height: 240 }}>
+      <div className="mt-6" style={{ width: '100%', minHeight: 240 }}>
         {loading ? (
           <div className="flex items-center justify-center h-full">
             <div className="text-slate-400 text-sm">Loading chart...</div>
           </div>
         ) : (
-          <ResponsiveContainer width="100%" height="100%">
+          <ResponsiveContainer width="100%" height={240} minWidth={300} minHeight={240}>
             <LineChart data={chartData}>
               <defs>
                 <linearGradient id="colorProbability" x1="0" y1="0" x2="0" y2="1">
@@ -141,7 +141,7 @@ export default function ProbabilityChart({
                 tick={{ fill: isDark ? '#64748b' : '#94a3b8', fontSize: 10 }}
               />
               <Tooltip
-                formatter={(value: number | undefined) => value !== undefined ? `${value.toFixed(1)}%` : 'N/A'}
+                formatter={(value: any) => typeof value === 'number' ? `${value.toFixed(1)}%` : String(value ?? '')}
                 contentStyle={{
                   backgroundColor: isDark ? '#1e293b' : '#ffffff',
                   border: `1px solid ${isDark ? '#334155' : '#e2e8f0'}`,

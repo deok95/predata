@@ -13,6 +13,11 @@ export const memberApi = {
     return { success: true, data: mapMember(raw) };
   },
 
+  getMe: async (): Promise<ApiResponse<Member>> => {
+    const raw = await apiRequest<Record<string, unknown>>('/api/members/me');
+    return { success: true, data: mapMember(raw) };
+  },
+
   getById: async (id: number): Promise<ApiResponse<Member>> => {
     const raw = await apiRequest<Record<string, unknown>>(`/api/members/${id}`);
     return { success: true, data: mapMember(raw) };

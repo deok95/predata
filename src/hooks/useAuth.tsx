@@ -104,7 +104,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const loginById = useCallback(async (memberId: number) => {
     setIsLoading(true);
     try {
-      const response = await memberApi.getById(memberId);
+      const response = await memberApi.getMe();
       if (response.success && response.data) {
         persistUser(response.data);
         setAuthCookies(response.data.role === 'ADMIN');
@@ -212,7 +212,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const refreshUser = useCallback(async () => {
     if (!user || checkIsGuest(user)) return;
     try {
-      const response = await memberApi.getById(user.id);
+      const response = await memberApi.getMe();
       if (response.success && response.data) {
         persistUser(response.data);
       }
