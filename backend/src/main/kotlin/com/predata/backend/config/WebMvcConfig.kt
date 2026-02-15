@@ -37,11 +37,12 @@ class WebMvcConfig(
                 "/api/betting/suspension/**", // 베팅 정지 정보
 
                 // 공개 회원 조회 (ID/지갑 기반만)
-                "/api/members/*",            // GET /members/{id} - 숫자 ID 조회
+                // /api/members/{id} - JwtAuthInterceptor에서 숫자 ID만 제외 처리
                 "/api/members/by-wallet"     // GET /members/by-wallet - 지갑 주소로 조회
 
                 // ❌ /api/members/by-email 제거 (보안상 위험)
                 // ❌ /api/payments/** 제거 (인증 필수)
+                // ❌ /api/members/* 제거 (/api/members/me는 인증 필수)
                 // ✅ /api/members/me 인증 필요 (JWT 인터셉터가 처리)
             )
 

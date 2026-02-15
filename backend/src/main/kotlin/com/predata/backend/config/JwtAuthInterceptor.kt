@@ -33,6 +33,11 @@ class JwtAuthInterceptor(
             return true
         }
 
+        // GET /api/members/{숫자ID} 패턴만 인증 제외 (me, by-email 등은 인증 필요)
+        if (request.method == "GET" && request.requestURI.matches(Regex("^/api/members/\\d+$"))) {
+            return true
+        }
+
         val authHeader = request.getHeader("Authorization")
         if (authHeader == null || !authHeader.startsWith("Bearer ")) {
             writeError(response, HttpStatus.UNAUTHORIZED, "UNAUTHORIZED", "인증이 필요합니다.")
