@@ -16,10 +16,18 @@ class OAuth2LoginFailureHandler : AuthenticationFailureHandler {
         response: HttpServletResponse,
         exception: AuthenticationException
     ) {
+        // authorization_request_not_found: OAuth state 세션 유실 (서버 재시작 등)
+        val errorCode = if (exception.message?.contains("authorization_request_not_found") == true) {
+            "session_expired"
+        } else {
+            "oauth_failed"
+        }
+
         val errorMessage = URLEncoder.encode(
-            exception.message ?: "Google 로그인에 실패했습니다",
+            if (errorCode == "session_expired") "로그인을 다시 시도해주세요" else "Google 로그인에 실패했습니다",
             StandardCharsets.UTF_8
         )
-        response.sendRedirect("http://localhost:3000/auth/google/callback?error=$errorMessage")
+
+        response.sendRedirect("http://localhost:3000/auth/google/callback?error=$errorCode&message=$errorMessage")
     }
 }

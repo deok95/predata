@@ -4,6 +4,7 @@ import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
 import org.springframework.security.config.annotation.web.builders.HttpSecurity
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity
+import org.springframework.security.config.http.SessionCreationPolicy
 import org.springframework.security.web.SecurityFilterChain
 
 @Configuration
@@ -17,6 +18,10 @@ class SecurityConfig(
     fun filterChain(http: HttpSecurity): SecurityFilterChain {
         http
             .csrf { it.disable() }  // REST API는 CSRF 불필요
+            .sessionManagement { session ->
+                // OAuth2 로그인 시 state 저장을 위해 세션 허용
+                session.sessionCreationPolicy(SessionCreationPolicy.IF_REQUIRED)
+            }
             .authorizeHttpRequests { auth ->
                 auth.anyRequest().permitAll()  // 기존 JWT 인터셉터가 인증 처리
             }

@@ -28,9 +28,17 @@ function GoogleCallbackContent() {
       const token = searchParams.get('token');
       const memberId = searchParams.get('memberId');
       const errorParam = searchParams.get('error');
+      const messageParam = searchParams.get('message');
 
       if (errorParam) {
-        setError(decodeURIComponent(errorParam));
+        // OAuth 세션 유실 시 사용자 친화적 메시지
+        if (errorParam === 'session_expired' || errorParam.includes('authorization_request_not_found')) {
+          setError('세션이 만료되었습니다. 다시 로그인해주세요.');
+        } else {
+          setError(messageParam ? decodeURIComponent(messageParam) : decodeURIComponent(errorParam));
+        }
+        // URL 정리 (에러 파라미터 제거)
+        router.replace('/auth/google/callback');
         return;
       }
 
