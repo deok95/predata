@@ -42,6 +42,12 @@ data class Member(
     @Column(name = "tier_weight", precision = 3, scale = 2)
     var tierWeight: BigDecimal = BigDecimal("1.00"),
 
+    @Column(name = "level", nullable = false, columnDefinition = "INT NOT NULL DEFAULT 1")
+    var level: Int = 1, // 레벨 (1~5, 보상 가중치 계산용)
+
+    @Column(name = "point_balance", precision = 18, scale = 6, nullable = false, columnDefinition = "DECIMAL(18,6) NOT NULL DEFAULT 0.000000")
+    var pointBalance: BigDecimal = BigDecimal.ZERO, // 포인트 잔액 (리워드 수령)
+
     @Column(name = "accuracy_score")
     var accuracyScore: Int = 0, // 정확도 점수 (누적)
 

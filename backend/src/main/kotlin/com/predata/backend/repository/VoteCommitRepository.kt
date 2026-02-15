@@ -40,4 +40,10 @@ interface VoteCommitRepository : JpaRepository<VoteCommit, Long> {
      * 특정 질문의 특정 선택 투표 개수
      */
     fun countByQuestionIdAndRevealedChoice(questionId: Long, choice: Choice): Long
+
+    /**
+     * 질문 ID와 상태로 투표 조회 (memberId 오름차순 정렬)
+     * - 결정론적 계산을 위한 정렬 보장
+     */
+    fun findByQuestionIdAndStatusOrderByMemberIdAsc(questionId: Long, status: VoteCommitStatus): List<VoteCommit>
 }

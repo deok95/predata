@@ -29,7 +29,8 @@ class VoteCommitService(
     private val voteCommitRepository: VoteCommitRepository,
     private val questionRepository: QuestionRepository,
     private val memberRepository: MemberRepository,
-    private val votingConfig: com.predata.backend.config.VotingConfig
+    private val votingConfig: com.predata.backend.config.VotingConfig,
+    private val auditService: AuditService
 ) {
     private val logger = LoggerFactory.getLogger(VoteCommitService::class.java)
 
@@ -108,6 +109,15 @@ class VoteCommitService(
             val saved = voteCommitRepository.save(voteCommit)
             logger.info("Vote commit successful: memberId=$memberId, questionId=${request.questionId}")
 
+            // 감사 로그 기록
+            auditService.log(
+                memberId = memberId,
+                action = com.predata.backend.domain.AuditAction.VOTE_COMMIT,
+                entityType = "VoteCommit",
+                entityId = saved.id,
+                detail = "투표 커밋: questionId=${request.questionId}"
+            )
+
             VoteCommitResponse(
                 success = true,
                 message = "투표 커밋이 완료되었습니다.",
@@ -175,6 +185,15 @@ class VoteCommitService(
 
         voteCommitRepository.save(voteCommit)
         logger.info("Vote reveal successful: memberId=$memberId, questionId=${request.questionId}, choice=${request.choice}")
+
+        // 감사 로그 기록
+        auditService.log(
+            memberId = memberId,
+            action = com.predata.backend.domain.AuditAction.VOTE_REVEAL,
+            entityType = "VoteCommit",
+            entityId = voteCommit.id,
+            detail = "투표 공개: questionId=${request.questionId}, choice=${request.choice}"
+        )
 
         return VoteRevealResponse(
             success = true,
