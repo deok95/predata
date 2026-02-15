@@ -36,8 +36,14 @@ class BetService(
      */
     @Transactional
     fun bet(request: BetRequest, clientIp: String? = null): ActivityResponse {
+        // 0. memberId 검증
+        val memberId = request.memberId ?: return ActivityResponse(
+            success = false,
+            message = "회원 ID가 필요합니다."
+        )
+
         // 1. 멤버 조회 및 밴/잔액 확인
-        val member = memberRepository.findById(request.memberId)
+        val member = memberRepository.findById(memberId)
             .orElse(null) ?: return ActivityResponse(
                 success = false,
                 message = "회원을 찾을 수 없습니다."
@@ -92,7 +98,7 @@ class BetService(
         memberRepository.save(member)
 
         transactionHistoryService.record(
-            memberId = request.memberId,
+            memberId = memberId,
             type = "BET",
             amount = betAmount.negate(),
             balanceAfter = member.usdcBalance,
@@ -114,7 +120,7 @@ class BetService(
 
         // 5. 베팅 기록 저장 (IP 포함)
         val activity = Activity(
-            memberId = request.memberId,
+            memberId = memberId,
             questionId = request.questionId,
             activityType = ActivityType.BET,
             choice = request.choice,

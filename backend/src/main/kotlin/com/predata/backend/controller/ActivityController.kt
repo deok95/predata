@@ -36,11 +36,19 @@ class ActivityController(
      */
     @PostMapping("/vote")
     fun vote(@Valid @RequestBody request: VoteRequest, httpRequest: HttpServletRequest): ResponseEntity<ActivityResponse> {
+        // JWT에서 인증된 memberId 가져오기 (IDOR 방지)
+        val authenticatedMemberId = httpRequest.getAttribute(com.predata.backend.config.JwtAuthInterceptor.ATTR_MEMBER_ID) as? Long
+            ?: return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(
+                ActivityResponse(success = false, message = "인증이 필요합니다.")
+            )
+
         val clientIp = clientIpService.extractClientIp(httpRequest)
-        val response = voteService.vote(request, clientIp)
+        // request의 memberId는 무시하고 JWT의 memberId 사용
+        val safeRequest = request.copy(memberId = authenticatedMemberId)
+        val response = voteService.vote(safeRequest, clientIp)
 
         // IP 업데이트
-        if (response.success) clientIpService.updateMemberLastIp(request.memberId, clientIp)
+        if (response.success) clientIpService.updateMemberLastIp(authenticatedMemberId, clientIp)
 
         return if (response.success) {
             ResponseEntity.ok(response)
@@ -54,6 +62,12 @@ class ActivityController(
      */
     @PostMapping("/bet")
     fun bet(@Valid @RequestBody request: BetRequest, httpRequest: HttpServletRequest): ResponseEntity<ActivityResponse> {
+        // JWT에서 인증된 memberId 가져오기 (IDOR 방지)
+        val authenticatedMemberId = httpRequest.getAttribute(com.predata.backend.config.JwtAuthInterceptor.ATTR_MEMBER_ID) as? Long
+            ?: return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(
+                ActivityResponse(success = false, message = "인증이 필요합니다.")
+            )
+
         val clientIp = clientIpService.extractClientIp(httpRequest)
 
         // 1. 베팅 일시 중지 체크
@@ -67,11 +81,12 @@ class ActivityController(
             )
         }
 
-        // 2. 베팅 실행
-        val response = betService.bet(request, clientIp)
+        // 2. 베팅 실행 (request의 memberId는 무시하고 JWT의 memberId 사용)
+        val safeRequest = request.copy(memberId = authenticatedMemberId)
+        val response = betService.bet(safeRequest, clientIp)
 
         // IP 업데이트
-        if (response.success) clientIpService.updateMemberLastIp(request.memberId, clientIp)
+        if (response.success) clientIpService.updateMemberLastIp(authenticatedMemberId, clientIp)
 
         return if (response.success) {
             ResponseEntity.ok(response)
@@ -90,6 +105,12 @@ class ActivityController(
         @Valid @RequestBody request: SellBetRequest,
         httpRequest: HttpServletRequest
     ): ResponseEntity<SellBetResponse> {
+        // JWT에서 인증된 memberId 가져오기 (IDOR 방지)
+        val authenticatedMemberId = httpRequest.getAttribute(com.predata.backend.config.JwtAuthInterceptor.ATTR_MEMBER_ID) as? Long
+            ?: return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(
+                SellBetResponse(success = false, message = "인증이 필요합니다.")
+            )
+
         val clientIp = clientIpService.extractClientIp(httpRequest)
 
         // Path와 Body의 betId 일치 확인
@@ -102,10 +123,12 @@ class ActivityController(
             )
         }
 
-        val response = betSellService.sellBet(request, clientIp)
+        // request의 memberId는 무시하고 JWT의 memberId 사용
+        val safeRequest = request.copy(memberId = authenticatedMemberId)
+        val response = betSellService.sellBet(safeRequest, clientIp)
 
         if (response.success) {
-            clientIpService.updateMemberLastIp(request.memberId, clientIp)
+            clientIpService.updateMemberLastIp(authenticatedMemberId, clientIp)
         }
 
         return if (response.success) {
@@ -264,43 +287,6 @@ class ActivityController(
                 )
             )
         )
-    }
-
-    /**
-     * 정산 시작 (PENDING_SETTLEMENT)
-     * POST /api/questions/{id}/settle
-     */
-    @PostMapping("/questions/{id}/settle")
-    fun settleQuestion(
-        @PathVariable id: Long,
-        @RequestBody request: SettleQuestionRequest
-    ): ResponseEntity<Any> {
-        val finalResult = FinalResult.valueOf(request.finalResult)
-        val result = settlementService.initiateSettlement(id, finalResult, request.sourceUrl)
-        return ResponseEntity.ok(result)
-    }
-
-    /**
-     * 정산 확정 (SETTLED) — 배당금 분배 실행
-     * POST /api/questions/{id}/settle/finalize
-     */
-    @PostMapping("/questions/{id}/settle/finalize")
-    fun finalizeSettlement(
-        @PathVariable id: Long,
-        @RequestBody(required = false) request: FinalizeSettlementRequest?
-    ): ResponseEntity<Any> {
-        val result = settlementService.finalizeSettlement(id, request?.force ?: false)
-        return ResponseEntity.ok(result)
-    }
-
-    /**
-     * 정산 취소 (OPEN으로 복귀)
-     * POST /api/questions/{id}/settle/cancel
-     */
-    @PostMapping("/questions/{id}/settle/cancel")
-    fun cancelSettlement(@PathVariable id: Long): ResponseEntity<Any> {
-        val result = settlementService.cancelPendingSettlement(id)
-        return ResponseEntity.ok(result)
     }
 
     /**

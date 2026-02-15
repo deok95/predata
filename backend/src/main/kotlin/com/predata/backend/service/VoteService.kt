@@ -28,8 +28,14 @@ class VoteService(
      */
     @Transactional
     fun vote(request: VoteRequest, clientIp: String? = null): ActivityResponse {
-        // 0. 밴 체크
-        val member = memberRepository.findById(request.memberId).orElse(null)
+        // 0. memberId 검증
+        val memberId = request.memberId ?: return ActivityResponse(
+            success = false,
+            message = "회원 ID가 필요합니다."
+        )
+
+        // 1. 밴 체크
+        val member = memberRepository.findById(memberId).orElse(null)
         if (member != null && member.isBanned) {
             return ActivityResponse(
                 success = false,
@@ -69,7 +75,7 @@ class VoteService(
 
         // 3. 중복 투표 방지
         val alreadyVoted = activityRepository.existsByMemberIdAndQuestionIdAndActivityType(
-            request.memberId,
+            memberId,
             request.questionId,
             ActivityType.VOTE
         )
@@ -83,7 +89,7 @@ class VoteService(
 
         // 4. 투표 기록 저장 (IP 포함)
         val activity = Activity(
-            memberId = request.memberId,
+            memberId = memberId,
             questionId = request.questionId,
             activityType = ActivityType.VOTE,
             choice = request.choice,

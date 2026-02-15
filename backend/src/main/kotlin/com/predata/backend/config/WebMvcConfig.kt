@@ -28,7 +28,7 @@ class WebMvcConfig(
 
                 // 공개 조회 API
                 "/api/health",
-                "/api/questions/**",         // 질문 조회
+                // /api/questions/** - GET만 JwtAuthInterceptor에서 제외 처리
                 "/api/leaderboard/**",       // 리더보드
                 "/api/analytics/**",         // 분석 데이터
                 "/api/blockchain/**",        // 블록체인 데이터

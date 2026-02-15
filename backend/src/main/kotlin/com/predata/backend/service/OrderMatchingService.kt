@@ -14,7 +14,9 @@ class OrderMatchingService(
     private val tradeRepository: TradeRepository,
     private val memberRepository: MemberRepository,
     private val questionRepository: QuestionRepository,
-    private val transactionHistoryService: TransactionHistoryService
+    private val activityRepository: ActivityRepository,
+    private val transactionHistoryService: TransactionHistoryService,
+    private val bettingSuspensionService: BettingSuspensionService
 ) {
 
     /**
@@ -26,8 +28,23 @@ class OrderMatchingService(
      */
     @Transactional
     fun createOrder(request: CreateOrderRequest): CreateOrderResponse {
-        // 1. 회원 및 잔액 확인
-        val member = memberRepository.findById(request.memberId)
+        // 0. memberId 검증
+        val memberId = request.memberId ?: return CreateOrderResponse(
+            success = false,
+            message = "회원 ID가 필요합니다."
+        )
+
+        // 1. 베팅 일시 중지 체크 (쿨다운)
+        val suspensionStatus = bettingSuspensionService.isBettingSuspendedByQuestionId(request.questionId)
+        if (suspensionStatus.suspended) {
+            return CreateOrderResponse(
+                success = false,
+                message = "⚠️ 골 직후 베팅이 일시 중지되었습니다. ${suspensionStatus.remainingSeconds}초 후 재개됩니다."
+            )
+        }
+
+        // 2. 회원 및 잔액 확인
+        val member = memberRepository.findById(memberId)
             .orElse(null) ?: return CreateOrderResponse(
                 success = false,
                 message = "회원을 찾을 수 없습니다."
@@ -74,7 +91,7 @@ class OrderMatchingService(
         memberRepository.save(member)
 
         transactionHistoryService.record(
-            memberId = request.memberId,
+            memberId = memberId,
             type = "BET",
             amount = BigDecimal(totalCost).negate(),
             balanceAfter = member.usdcBalance,
@@ -84,7 +101,7 @@ class OrderMatchingService(
 
         // 4. 주문 생성
         val order = Order(
-            memberId = request.memberId,
+            memberId = memberId,
             questionId = request.questionId,
             orderType = OrderType.BUY,
             side = request.side,
@@ -147,6 +164,25 @@ class OrderMatchingService(
                 side = order.side
             )
             tradeRepository.save(trade)
+
+            // 정산 집계를 위해 양쪽 모두 Activity 레코드 생성
+            // Taker (주문자)
+            activityRepository.save(Activity(
+                memberId = order.memberId,
+                questionId = order.questionId,
+                activityType = ActivityType.BET,
+                choice = if (order.side == OrderSide.YES) Choice.YES else Choice.NO,
+                amount = fillAmount
+            ))
+
+            // Maker (상대방)
+            activityRepository.save(Activity(
+                memberId = counterOrder.memberId,
+                questionId = counterOrder.questionId,
+                activityType = ActivityType.BET,
+                choice = if (counterOrder.side == OrderSide.YES) Choice.YES else Choice.NO,
+                amount = fillAmount
+            ))
 
             // 주문 수량 업데이트
             order.remainingAmount -= fillAmount

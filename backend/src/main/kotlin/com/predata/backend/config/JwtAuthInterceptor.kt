@@ -28,6 +28,11 @@ class JwtAuthInterceptor(
     ): Boolean {
         if (request.method == "OPTIONS") return true
 
+        // GET /api/questions/** 패턴만 인증 제외 (POST/PUT/DELETE는 인증 필요)
+        if (request.method == "GET" && request.requestURI.matches(Regex("^/api/questions(/.*)?$"))) {
+            return true
+        }
+
         val authHeader = request.getHeader("Authorization")
         if (authHeader == null || !authHeader.startsWith("Bearer ")) {
             writeError(response, HttpStatus.UNAUTHORIZED, "UNAUTHORIZED", "인증이 필요합니다.")

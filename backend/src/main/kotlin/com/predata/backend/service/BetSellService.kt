@@ -35,8 +35,8 @@ class BetSellService(
      */
     @Transactional
     fun sellBet(request: SellBetRequest, clientIp: String? = null): SellBetResponse {
-        // 1. 베팅 조회 및 검증
-        val originalBet = activityRepository.findById(request.betId)
+        // 1. 베팅 조회 및 검증 (비관적 락으로 중복 판매 방지)
+        val originalBet = activityRepository.findByIdWithLock(request.betId)
             .orElse(null) ?: return SellBetResponse(
                 success = false,
                 message = "베팅을 찾을 수 없습니다."
@@ -58,7 +58,7 @@ class BetSellService(
             )
         }
 
-        // 중복 판매 확인
+        // 중복 판매 확인 (비관적 락 이후 체크)
         val alreadySold = activityRepository.findByParentBetIdAndActivityType(
             request.betId,
             ActivityType.BET_SELL
