@@ -28,7 +28,7 @@ class ResolutionAdapterRegistry(
         // resolutionSource 기반 특정 어댑터 선택 (예: stock://)
         if (resolutionSource != null) {
             adapters.forEach { adapter ->
-                if (adapter is StockResolutionAdapter && resolutionSource.startsWith("stock://")) {
+                if (adapter is StockResolutionAdapter && adapter.supportsSource(resolutionSource)) {
                     return adapter
                 }
             }

@@ -12,8 +12,12 @@ import org.springframework.stereotype.Component
 class StockResolutionAdapter : ResolutionAdapter {
 
     override fun supports(marketType: MarketType): Boolean {
-        // resolutionSource가 "stock://" 으로 시작할 때만 지원
-        return false // Registry에서 직접 체크하므로 여기서는 false
+        // VERIFIABLE 타입이면서 resolutionSource가 "stock://"으로 시작하는 경우 지원
+        return marketType == MarketType.VERIFIABLE
+    }
+
+    fun supportsSource(resolutionSource: String?): Boolean {
+        return resolutionSource?.startsWith("stock://") == true
     }
 
     override fun resolve(question: Question): ResolutionResult {

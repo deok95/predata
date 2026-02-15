@@ -30,7 +30,23 @@ class SettlementController(
     }
 
     /**
-     * 정산 시작 (PENDING_SETTLEMENT)
+     * 정산 시작 (자동 어댑터 기반)
+     * POST /api/admin/settlements/questions/{id}/settle-auto
+     */
+    @PostMapping("/api/admin/settlements/questions/{id}/settle-auto")
+    fun settleQuestionAuto(@PathVariable id: Long): ResponseEntity<Any> {
+        return try {
+            val result = settlementService.initiateSettlementAuto(id)
+            ResponseEntity.ok(result)
+        } catch (e: IllegalArgumentException) {
+            ResponseEntity.badRequest().body(mapOf("error" to (e.message ?: "정산 실패")))
+        } catch (e: IllegalStateException) {
+            ResponseEntity.status(HttpStatus.CONFLICT).body(mapOf("error" to (e.message ?: "정산 실패")))
+        }
+    }
+
+    /**
+     * 정산 시작 (수동 - PENDING_SETTLEMENT)
      * POST /api/admin/settlements/questions/{id}/settle
      */
     @PostMapping("/api/admin/settlements/questions/{id}/settle")

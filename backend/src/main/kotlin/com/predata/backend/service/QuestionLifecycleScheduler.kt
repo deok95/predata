@@ -143,56 +143,33 @@ class QuestionLifecycleScheduler(
                 val locked = questionRepository.findByIdWithLock(question.id!!)
                 if (locked != null && locked.status == QuestionStatus.BETTING && locked.bettingEndAt.isBefore(now)) {
 
-                    when (locked.type) {
-                        QuestionType.OPINION -> {
-                            // OPINION 타입: 투표 결과로 자동 정산
-                            try {
-                                val votes = activityRepository.findByQuestionIdAndActivityType(
-                                    locked.id!!,
-                                    ActivityType.VOTE
-                                )
+                    // 어댑터 기반 자동 정산 (OPINION, VERIFIABLE 모두 통합)
+                    try {
+                        val settlementResult = settlementService.initiateSettlementAuto(locked.id!!)
+                        logger.info(
+                            "[Lifecycle] 질문 #{} '{}' (타입: {}) → 어댑터 기반 자동 정산 완료 (결과: {})",
+                            locked.id,
+                            locked.title,
+                            locked.type,
+                            settlementResult.finalResult
+                        )
+                        logger.info("[Lifecycle] 정산 메시지: {}", settlementResult.message)
 
-                                val yesVotes = votes.count { it.choice == Choice.YES }
-                                val noVotes = votes.count { it.choice == Choice.NO }
-
-                                val result = if (yesVotes > noVotes) FinalResult.YES else FinalResult.NO
-
-                                val settlementResult = settlementService.initiateSettlement(
-                                    questionId = locked.id!!,
-                                    finalResult = result,
-                                    sourceUrl = "AUTO_SETTLEMENT_OPINION"
-                                )
-                                logger.info(
-                                    "[Lifecycle] OPINION 질문 #{} '{}' → 투표 결과로 자동 정산 (YES: {}, NO: {}, 결과: {})",
-                                    locked.id,
-                                    locked.title,
-                                    yesVotes,
-                                    noVotes,
-                                    result
-                                )
-                                logger.info("[Lifecycle] 정산 메시지: {}", settlementResult.message)
-
-                                // 즉시 배당금 지급
-                                val finalResult = settlementService.finalizeSettlement(
-                                    questionId = locked.id!!,
-                                    skipDeadlineCheck = true
-                                )
-                                logger.info("[Lifecycle] 배당금 지급 완료: 승자 {}명, 총 배당금 {}P", finalResult.totalWinners, finalResult.totalPayout)
-                            } catch (settlementError: Exception) {
-                                logger.error(
-                                    "[Lifecycle] OPINION 질문 #{} 정산 시작 실패: {}",
-                                    locked.id,
-                                    settlementError.message
-                                )
-                                locked.status = QuestionStatus.SETTLED
-                                questionRepository.save(locked)
-                            }
-                        }
-
-                        QuestionType.VERIFIABLE -> {
-                            // VERIFIABLE 타입: Claude API 또는 투표 결과로 자동 정산
-                            settleVerifiableQuestion(locked)
-                        }
+                        // 즉시 배당금 지급
+                        val finalResult = settlementService.finalizeSettlement(
+                            questionId = locked.id!!,
+                            skipDeadlineCheck = true
+                        )
+                        logger.info("[Lifecycle] 배당금 지급 완료: 승자 {}명, 총 배당금 {}P", finalResult.totalWinners, finalResult.totalPayout)
+                    } catch (settlementError: Exception) {
+                        logger.error(
+                            "[Lifecycle] 질문 #{} 어댑터 기반 정산 실패: {}",
+                            locked.id,
+                            settlementError.message
+                        )
+                        // 실패 시 수동 정산 대기 상태로 설정
+                        locked.status = QuestionStatus.SETTLED
+                        questionRepository.save(locked)
                     }
                 }
             } catch (e: Exception) {

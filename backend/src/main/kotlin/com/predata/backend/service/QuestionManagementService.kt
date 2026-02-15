@@ -43,6 +43,7 @@ class QuestionManagementService(
             categoryWeight = BigDecimal(request.categoryWeight ?: 1.0),
             status = QuestionStatus.VOTING,
             type = QuestionType.VERIFIABLE,
+            resolutionRule = "Legacy question - manual resolution",
             votingEndAt = votingEndAt,
             bettingStartAt = bettingStartAt,
             bettingEndAt = expiredAt,

@@ -1,6 +1,7 @@
 package com.predata.backend.controller
 
 import com.predata.backend.service.*
+import jakarta.validation.Valid
 import org.springframework.data.domain.Page
 import org.springframework.data.domain.PageRequest
 import org.springframework.data.domain.Sort
@@ -21,7 +22,7 @@ class QuestionManagementController(
      * Request: { title, type, category, votingDuration, bettingDuration }
      */
     @PostMapping
-    fun createQuestion(@RequestBody request: com.predata.backend.dto.AdminCreateQuestionRequest): ResponseEntity<QuestionCreationResponse> {
+    fun createQuestion(@Valid @RequestBody request: com.predata.backend.dto.AdminCreateQuestionRequest): ResponseEntity<QuestionCreationResponse> {
         return try {
             val response = questionManagementService.createQuestionWithDuration(request)
             ResponseEntity.status(HttpStatus.CREATED).body(response)
@@ -44,7 +45,7 @@ class QuestionManagementController(
      * POST /api/admin/questions/legacy
      */
     @PostMapping("/legacy")
-    fun createQuestionLegacy(@RequestBody request: CreateQuestionRequest): ResponseEntity<QuestionCreationResponse> {
+    fun createQuestionLegacy(@Valid @RequestBody request: CreateQuestionRequest): ResponseEntity<QuestionCreationResponse> {
         return try {
             val response = questionManagementService.createQuestion(request)
             ResponseEntity.status(HttpStatus.CREATED).body(response)
