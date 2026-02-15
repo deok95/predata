@@ -4,7 +4,6 @@ import com.predata.backend.domain.SportsMatch
 import com.predata.backend.repository.SportsMatchRepository
 import com.predata.backend.service.GenerationResult
 import com.predata.backend.service.QuestionAutoGenerationService
-import com.predata.backend.service.SportsSettlementResult
 import com.predata.backend.service.UpdateResult
 import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.*
@@ -34,16 +33,6 @@ class SportsManagementController(
     @PostMapping("/update-results")
     fun manualUpdateResults(): ResponseEntity<UpdateResult> {
         val result = questionAutoGenerationService.updateFinishedMatches()
-        return ResponseEntity.ok(result)
-    }
-
-    /**
-     * 수동으로 자동 정산 실행
-     * POST /api/admin/sports/settle
-     */
-    @PostMapping("/settle")
-    fun manualSettle(): ResponseEntity<SportsSettlementResult> {
-        val result = questionAutoGenerationService.autoSettleSportsQuestions()
         return ResponseEntity.ok(result)
     }
 

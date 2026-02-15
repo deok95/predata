@@ -3,9 +3,8 @@
 -- Date: 2026-02-09
 
 ALTER TABLE members
-ADD COLUMN google_id VARCHAR(255) UNIQUE NULL
+ADD COLUMN IF NOT EXISTS google_id VARCHAR(255) UNIQUE NULL
 AFTER email;
 
 -- Add index for faster lookups
-ALTER TABLE members
-ADD INDEX idx_google_id (google_id);
+CREATE INDEX IF NOT EXISTS idx_google_id ON members(google_id);
