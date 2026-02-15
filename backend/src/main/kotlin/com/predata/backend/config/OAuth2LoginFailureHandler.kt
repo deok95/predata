@@ -2,6 +2,7 @@ package com.predata.backend.config
 
 import jakarta.servlet.http.HttpServletRequest
 import jakarta.servlet.http.HttpServletResponse
+import org.springframework.beans.factory.annotation.Value
 import org.springframework.security.core.AuthenticationException
 import org.springframework.security.web.authentication.AuthenticationFailureHandler
 import org.springframework.stereotype.Component
@@ -9,7 +10,10 @@ import java.net.URLEncoder
 import java.nio.charset.StandardCharsets
 
 @Component
-class OAuth2LoginFailureHandler : AuthenticationFailureHandler {
+class OAuth2LoginFailureHandler(
+    @Value("\${app.frontend-url:http://localhost:3000}")
+    private val frontendUrl: String
+) : AuthenticationFailureHandler {
 
     override fun onAuthenticationFailure(
         request: HttpServletRequest,
@@ -20,7 +24,7 @@ class OAuth2LoginFailureHandler : AuthenticationFailureHandler {
         val errorCode = if (exception.message?.contains("authorization_request_not_found") == true) {
             "session_expired"
         } else {
-            "oauth_failed"
+            "login_failed"
         }
 
         val errorMessage = URLEncoder.encode(
@@ -28,6 +32,6 @@ class OAuth2LoginFailureHandler : AuthenticationFailureHandler {
             StandardCharsets.UTF_8
         )
 
-        response.sendRedirect("http://localhost:3000/auth/google/callback?error=$errorCode&message=$errorMessage")
+        response.sendRedirect("$frontendUrl/auth/google/callback?error=$errorCode&message=$errorMessage")
     }
 }

@@ -3,10 +3,10 @@ import { apiRequest } from './core';
 import { mapMember } from './mappers';
 
 export const memberApi = {
-  getByEmail: async (email: string): Promise<ApiResponse<Member>> => {
-    const raw = await apiRequest<Record<string, unknown>>(`/api/members/by-email?email=${encodeURIComponent(email)}`);
-    return { success: true, data: mapMember(raw) };
-  },
+  /**
+   * ❌ REMOVED: getByEmail - 백엔드 엔드포인트 제거됨 (보안상 위험)
+   * 대안: /api/members/me 사용 (JWT 인증 필요)
+   */
 
   getByWallet: async (address: string): Promise<ApiResponse<Member>> => {
     const raw = await apiRequest<Record<string, unknown>>(`/api/members/by-wallet?address=${address}`);

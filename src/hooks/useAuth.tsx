@@ -23,8 +23,7 @@ export interface AuthState {
       jobCategory?: string;
       ageGroup?: number;
     }
-  ) => Promise<{ success: boolean; needsAdditionalInfo?: boolean }>;
-  loginWithEmail: (email: string) => Promise<{ member: Member | null; isNew: boolean }>;
+  ) => Promise<{ success: boolean; needsAdditionalInfo?: boolean; error?: string }>;
   loginById: (memberId: number) => Promise<Member | null>;
   register: (data: {
     email: string;
@@ -83,6 +82,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     safeLocalStorage.setItem(STORAGE_KEY, JSON.stringify(member));
   }, []);
 
+  // logout을 먼저 선언하여 TDZ 방지 (loginById, refreshUser에서 참조)
+  const logout = useCallback(() => {
+    setUser(null);
+    safeLocalStorage.removeItem(STORAGE_KEY);
+    safeLocalStorage.removeItem('token');
+    safeLocalStorage.removeItem('memberId');
+    clearAllAuthCookies();
+
+    // 지갑 연결 해제
+    if (disconnect) {
+      disconnect();
+    }
+
+    window.location.href = '/';
+  }, [disconnect]);
+
   // 게스트: 로컬 전용 (백엔드 등록 없음, 조회만 가능)
   const loginAsGuest = useCallback(() => {
     const guestMember: Member = {
@@ -100,21 +115,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     };
     persistUser(guestMember);
   }, [persistUser]);
-
-  const logout = useCallback(() => {
-    setUser(null);
-    safeLocalStorage.removeItem(STORAGE_KEY);
-    safeLocalStorage.removeItem('token');
-    safeLocalStorage.removeItem('memberId');
-    clearAllAuthCookies();
-
-    // 지갑 연결 해제
-    if (disconnect) {
-      disconnect();
-    }
-
-    window.location.href = '/';
-  }, [disconnect]);
 
   const loginById = useCallback(async (memberId: number) => {
     setIsLoading(true);
@@ -157,7 +157,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
         if (response.token && response.memberId) {
           // JWT 토큰 저장 및 사용자 정보 조회
-          await loginById(response.memberId);
+          const member = await loginById(response.memberId);
+          if (!member) {
+            // getMe() 실패 → 로그아웃 및 에러 반환
+            logout();
+            return { success: false, error: "사용자 정보를 불러올 수 없습니다" };
+          }
           return { success: true };
         }
       }
@@ -171,25 +176,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     } finally {
       setIsLoading(false);
     }
-  }, [loginById]);
-
-  const loginWithEmail = useCallback(async (email: string) => {
-    setIsLoading(true);
-    try {
-      const response = await memberApi.getByEmail(email);
-      if (response.success && response.data) {
-        persistUser(response.data);
-        return { member: response.data, isNew: false };
-      }
-    } catch (error) {
-      if (error instanceof ApiError && error.status === 404) {
-        return { member: null, isNew: true };
-      }
-    } finally {
-      setIsLoading(false);
-    }
-    return { member: null, isNew: false };
-  }, [persistUser]);
+  }, [loginById, logout]);
 
   const register = useCallback(async (data: {
     email: string;
@@ -248,7 +235,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       isGuest,
       loginAsGuest,
       loginWithGoogle,
-      loginWithEmail,
       loginById,
       register,
       logout,

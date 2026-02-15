@@ -31,11 +31,14 @@ function GoogleCallbackContent() {
       const messageParam = searchParams.get('message');
 
       if (errorParam) {
-        // OAuth 세션 유실 시 사용자 친화적 메시지
+        // 에러 코드별 사용자 친화적 메시지 매핑
         if (errorParam === 'session_expired' || errorParam.includes('authorization_request_not_found')) {
           setError('세션이 만료되었습니다. 다시 로그인해주세요.');
+        } else if (errorParam === 'login_failed') {
+          setError('로그인에 실패했습니다. 다시 시도해주세요.');
         } else {
-          setError(messageParam ? decodeURIComponent(messageParam) : decodeURIComponent(errorParam));
+          // 기타 에러 (내부 메시지 노출 방지)
+          setError(messageParam ? decodeURIComponent(messageParam) : '로그인 중 오류가 발생했습니다.');
         }
         // URL 정리 (에러 파라미터 제거)
         router.replace('/auth/google/callback');
