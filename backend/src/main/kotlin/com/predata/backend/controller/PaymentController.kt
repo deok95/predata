@@ -1,8 +1,10 @@
 package com.predata.backend.controller
 
+import com.predata.backend.config.JwtAuthInterceptor
 import com.predata.backend.service.PaymentVerificationService
 import com.predata.backend.service.WithdrawalService
 import com.predata.backend.service.WithdrawResponse
+import jakarta.servlet.http.HttpServletRequest
 import org.slf4j.LoggerFactory
 import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.*
@@ -22,11 +24,17 @@ class PaymentController(
      * POST /api/payments/verify-deposit
      */
     @PostMapping("/verify-deposit")
-    fun verifyDeposit(@RequestBody request: VerifyDepositRequest): ResponseEntity<Any> {
+    fun verifyDeposit(
+        @RequestBody request: VerifyDepositRequest,
+        httpRequest: HttpServletRequest
+    ): ResponseEntity<Any> {
         return try {
-            log.info("충전 검증 요청: memberId=${request.memberId}, txHash=${request.txHash}, amount=${request.amount}, fromAddress=${request.fromAddress}")
+            val authenticatedMemberId = httpRequest.getAttribute(JwtAuthInterceptor.ATTR_MEMBER_ID) as? Long
+                ?: throw IllegalArgumentException("인증 정보를 찾을 수 없습니다.")
+
+            log.info("충전 검증 요청: memberId=$authenticatedMemberId, txHash=${request.txHash}, amount=${request.amount}, fromAddress=${request.fromAddress}")
             val result = paymentVerificationService.verifyDeposit(
-                memberId = request.memberId,
+                memberId = authenticatedMemberId,
                 txHash = request.txHash,
                 amount = BigDecimal(request.amount.toString()),
                 fromAddress = request.fromAddress
@@ -46,11 +54,17 @@ class PaymentController(
      * POST /api/payments/withdraw
      */
     @PostMapping("/withdraw")
-    fun withdraw(@RequestBody request: WithdrawRequest): ResponseEntity<Any> {
+    fun withdraw(
+        @RequestBody request: WithdrawRequest,
+        httpRequest: HttpServletRequest
+    ): ResponseEntity<Any> {
         return try {
-            log.info("출금 요청: memberId=${request.memberId}, amount=${request.amount}, wallet=${request.walletAddress}")
+            val authenticatedMemberId = httpRequest.getAttribute(JwtAuthInterceptor.ATTR_MEMBER_ID) as? Long
+                ?: throw IllegalArgumentException("인증 정보를 찾을 수 없습니다.")
+
+            log.info("출금 요청: memberId=$authenticatedMemberId, amount=${request.amount}, wallet=${request.walletAddress}")
             val result = withdrawalService.withdraw(
-                memberId = request.memberId,
+                memberId = authenticatedMemberId,
                 amount = BigDecimal(request.amount.toString()),
                 walletAddress = request.walletAddress
             )
@@ -76,15 +90,14 @@ class PaymentController(
 }
 
 // ===== Request DTOs =====
+// memberId는 JWT에서 추출하므로 DTO에서 제거
 data class VerifyDepositRequest(
-    val memberId: Long,
     val txHash: String,
     val amount: Double,
     val fromAddress: String? = null
 )
 
 data class WithdrawRequest(
-    val memberId: Long,
     val amount: Double,
     val walletAddress: String
 )

@@ -12,6 +12,9 @@ data class Member(
     @Column(name = "member_id")
     val id: Long? = null,
 
+    @Version
+    var version: Long? = null,
+
     @Column(nullable = false, unique = true)
     val email: String,
 

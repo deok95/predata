@@ -3,8 +3,10 @@ package com.predata.backend.service
 import com.predata.backend.domain.PaymentTransaction
 import com.predata.backend.repository.MemberRepository
 import com.predata.backend.repository.PaymentTransactionRepository
+import jakarta.persistence.OptimisticLockException
 import org.slf4j.LoggerFactory
 import org.springframework.beans.factory.annotation.Value
+import org.springframework.orm.ObjectOptimisticLockingFailureException
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import org.web3j.crypto.Credentials
@@ -38,8 +40,34 @@ class WithdrawalService(
         const val USDC_DECIMALS = 6
     }
 
-    @Transactional
     fun withdraw(memberId: Long, amount: BigDecimal, walletAddress: String): WithdrawResponse {
+        var retries = 3
+        while (retries > 0) {
+            try {
+                return withdrawInternal(memberId, amount, walletAddress)
+            } catch (e: OptimisticLockException) {
+                retries--
+                if (retries == 0) {
+                    log.error("낙관적 락 재시도 실패: memberId=$memberId", e)
+                    throw IllegalArgumentException("잔액 업데이트에 실패했습니다. 다시 시도해주세요.")
+                }
+                log.warn("낙관적 락 충돌 발생, 재시도 중... (남은 시도: $retries)")
+                Thread.sleep(100)
+            } catch (e: ObjectOptimisticLockingFailureException) {
+                retries--
+                if (retries == 0) {
+                    log.error("낙관적 락 재시도 실패: memberId=$memberId", e)
+                    throw IllegalArgumentException("잔액 업데이트에 실패했습니다. 다시 시도해주세요.")
+                }
+                log.warn("낙관적 락 충돌 발생, 재시도 중... (남은 시도: $retries)")
+                Thread.sleep(100)
+            }
+        }
+        throw IllegalArgumentException("출금 처리에 실패했습니다.")
+    }
+
+    @Transactional
+    private fun withdrawInternal(memberId: Long, amount: BigDecimal, walletAddress: String): WithdrawResponse {
         // 1. 회원 조회 + 밴 체크
         val member = memberRepository.findById(memberId)
             .orElseThrow { IllegalArgumentException("회원을 찾을 수 없습니다.") }
@@ -93,26 +121,42 @@ class WithdrawalService(
             throw IllegalArgumentException("USDC 전송에 실패했습니다: ${e.message}")
         }
 
-        // 9. 결제 기록 저장
+        // 9. 트랜잭션 receipt 확인 및 상태 결정
+        val txStatus = verifyTransactionReceipt(txHash)
+        val paymentStatus = if (txStatus) "CONFIRMED" else "FAILED"
+
+        // 10. 트랜잭션 실패 시 잔액 복구
+        if (!txStatus) {
+            member.usdcBalance = member.usdcBalance.add(amount)
+            memberRepository.save(member)
+            log.error("USDC 전송 트랜잭션 실패, 잔액 복구: memberId=$memberId, amount=$amount, txHash=$txHash")
+        }
+
+        // 11. 결제 기록 저장
         val payment = PaymentTransaction(
             memberId = memberId,
             txHash = txHash,
             amount = amount,
             type = "WITHDRAWAL",
-            status = "CONFIRMED"
+            status = paymentStatus
         )
         paymentTransactionRepository.save(payment)
 
-        transactionHistoryService.record(
-            memberId = memberId,
-            type = "WITHDRAW",
-            amount = amount.negate(),
-            balanceAfter = member.usdcBalance,
-            description = "USDC 출금",
-            txHash = txHash
-        )
-
-        log.info("출금 완료: memberId=$memberId, amount=\$$amount, wallet=$walletAddress, txHash=$txHash")
+        // 12. 성공 시에만 거래 내역 기록
+        if (txStatus) {
+            transactionHistoryService.record(
+                memberId = memberId,
+                type = "WITHDRAW",
+                amount = amount.negate(),
+                balanceAfter = member.usdcBalance,
+                description = "USDC 출금",
+                txHash = txHash
+            )
+            log.info("출금 완료: memberId=$memberId, amount=\$$amount, wallet=$walletAddress, txHash=$txHash")
+        } else {
+            log.error("출금 트랜잭션 실패: memberId=$memberId, amount=\$$amount, wallet=$walletAddress, txHash=$txHash")
+            throw IllegalArgumentException("블록체인 트랜잭션이 실패했습니다. 잔액이 복구되었습니다.")
+        }
 
         return WithdrawResponse(
             success = true,
@@ -121,6 +165,32 @@ class WithdrawalService(
             newBalance = member.usdcBalance.toDouble(),
             message = "\$${amount} 출금이 완료되었습니다."
         )
+    }
+
+    /**
+     * 트랜잭션 receipt 확인 및 성공 여부 반환
+     */
+    private fun verifyTransactionReceipt(txHash: String): Boolean {
+        return try {
+            // 트랜잭션이 블록에 포함될 때까지 대기 (최대 30초)
+            var attempts = 30
+            while (attempts > 0) {
+                val receipt = web3j.ethGetTransactionReceipt(txHash).send()
+                if (receipt.transactionReceipt.isPresent) {
+                    val txReceipt = receipt.transactionReceipt.get()
+                    val success = txReceipt.status == "0x1"
+                    log.info("트랜잭션 receipt 확인: txHash=$txHash, status=${txReceipt.status}, success=$success")
+                    return success
+                }
+                Thread.sleep(1000)
+                attempts--
+            }
+            log.warn("트랜잭션 receipt 확인 시간 초과: txHash=$txHash")
+            false
+        } catch (e: Exception) {
+            log.error("트랜잭션 receipt 확인 실패: txHash=$txHash", e)
+            false
+        }
     }
 
     private fun sendUSDC(toAddress: String, amount: BigDecimal): String {

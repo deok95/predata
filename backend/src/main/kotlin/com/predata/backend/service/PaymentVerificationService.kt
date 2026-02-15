@@ -3,8 +3,10 @@ package com.predata.backend.service
 import com.predata.backend.domain.PaymentTransaction
 import com.predata.backend.repository.MemberRepository
 import com.predata.backend.repository.PaymentTransactionRepository
+import jakarta.persistence.OptimisticLockException
 import org.slf4j.LoggerFactory
 import org.springframework.beans.factory.annotation.Value
+import org.springframework.orm.ObjectOptimisticLockingFailureException
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import org.web3j.abi.EventEncoder
@@ -47,20 +49,54 @@ class PaymentVerificationService(
     /**
      * 잔액 충전 트랜잭션 검증
      */
-    @Transactional
     fun verifyDeposit(memberId: Long, txHash: String, amount: BigDecimal, fromAddress: String? = null): PaymentVerifyResponse {
+        var retries = 3
+        while (retries > 0) {
+            try {
+                return verifyDepositInternal(memberId, txHash, amount, fromAddress)
+            } catch (e: OptimisticLockException) {
+                retries--
+                if (retries == 0) {
+                    log.error("낙관적 락 재시도 실패: memberId=$memberId", e)
+                    throw IllegalArgumentException("잔액 업데이트에 실패했습니다. 다시 시도해주세요.")
+                }
+                log.warn("낙관적 락 충돌 발생, 재시도 중... (남은 시도: $retries)")
+                Thread.sleep(100)
+            } catch (e: ObjectOptimisticLockingFailureException) {
+                retries--
+                if (retries == 0) {
+                    log.error("낙관적 락 재시도 실패: memberId=$memberId", e)
+                    throw IllegalArgumentException("잔액 업데이트에 실패했습니다. 다시 시도해주세요.")
+                }
+                log.warn("낙관적 락 충돌 발생, 재시도 중... (남은 시도: $retries)")
+                Thread.sleep(100)
+            }
+        }
+        throw IllegalArgumentException("충전 처리에 실패했습니다.")
+    }
+
+    @Transactional
+    private fun verifyDepositInternal(memberId: Long, txHash: String, amount: BigDecimal, fromAddress: String? = null): PaymentVerifyResponse {
         // 1. 회원 조회
         val member = memberRepository.findById(memberId)
             .orElseThrow { IllegalArgumentException("회원을 찾을 수 없습니다.") }
 
-        // 2. 지갑 주소 검증 (DB에 등록된 지갑 주소와 일치해야 함)
-        if (fromAddress != null && member.walletAddress != null) {
-            if (!fromAddress.equals(member.walletAddress, ignoreCase = true)) {
-                throw IllegalArgumentException("등록된 지갑 주소와 일치하지 않습니다. 마이페이지에서 지갑을 연결해주세요.")
-            }
+        // 2. fromAddress 필수 검증
+        if (fromAddress.isNullOrBlank()) {
+            throw IllegalArgumentException("발신 지갑 주소(fromAddress)는 필수입니다.")
         }
 
-        // 3. 중복 검증 방지
+        // 3. DB에 등록된 지갑 주소 확인
+        if (member.walletAddress == null) {
+            throw IllegalArgumentException("등록된 지갑 주소가 없습니다. 마이페이지에서 지갑을 먼저 연결해주세요.")
+        }
+
+        // 4. 지갑 주소 검증 (DB에 등록된 지갑 주소와 일치해야 함)
+        if (!fromAddress.equals(member.walletAddress, ignoreCase = true)) {
+            throw IllegalArgumentException("등록된 지갑 주소와 일치하지 않습니다. (등록: ${member.walletAddress}, 요청: $fromAddress)")
+        }
+
+        // 5. 중복 검증 방지
         if (paymentTransactionRepository.existsByTxHash(txHash)) {
             throw IllegalArgumentException("이미 처리된 트랜잭션입니다: $txHash")
         }
@@ -71,10 +107,10 @@ class PaymentVerificationService(
 
         val expectedAmountRaw = amount.multiply(BigDecimal.TEN.pow(USDC_DECIMALS)).toBigInteger()
 
-        // 4. 온체인 트랜잭션 검증
-        val verifiedAmount = verifyOnChainTransfer(txHash, expectedAmountRaw)
+        // 6. 온체인 트랜잭션 검증 (실제 from 주소도 검증)
+        val verifiedAmount = verifyOnChainTransfer(txHash, expectedAmountRaw, fromAddress)
 
-        // 5. 결제 기록 저장
+        // 7. 결제 기록 저장
         val payment = PaymentTransaction(
             memberId = memberId,
             txHash = txHash,
@@ -84,7 +120,7 @@ class PaymentVerificationService(
         )
         paymentTransactionRepository.save(payment)
 
-        // 6. 잔액 충전
+        // 8. 잔액 충전
         member.usdcBalance = member.usdcBalance.add(amount)
         memberRepository.save(member)
 
@@ -109,9 +145,9 @@ class PaymentVerificationService(
     }
 
     /**
-     * Polygon 체인에서 USDC Transfer 트랜잭션 검증
+     * Polygon 체인에서 USDC Transfer 트랜잭션 검증 (발신 주소 포함)
      */
-    fun verifyOnChainTransfer(txHash: String, expectedAmountRaw: BigInteger): BigInteger {
+    fun verifyOnChainTransfer(txHash: String, expectedAmountRaw: BigInteger, expectedFromAddress: String): BigInteger {
         val receipt = web3j.ethGetTransactionReceipt(txHash).send()
 
         if (receipt.transactionReceipt.isEmpty) {
@@ -139,14 +175,23 @@ class PaymentVerificationService(
             throw IllegalArgumentException("Transfer 이벤트를 찾을 수 없습니다.")
         }
 
-        // 수신자와 금액 검증
+        // 발신자, 수신자, 금액 검증
         for (logEntry in transferLogs) {
             if (logEntry.topics.size < 3) continue
 
+            val fromAddress = "0x" + logEntry.topics[1].removePrefix("0x").takeLast(40)
             val toAddress = "0x" + logEntry.topics[2].removePrefix("0x").takeLast(40)
             val transferValue = BigInteger(logEntry.data.removePrefix("0x"), 16)
 
             if (toAddress.equals(receiverWallet, ignoreCase = true)) {
+                // 발신 주소 검증
+                if (!fromAddress.equals(expectedFromAddress, ignoreCase = true)) {
+                    throw IllegalArgumentException(
+                        "온체인 발신 주소가 일치하지 않습니다. (예상: $expectedFromAddress, 실제: $fromAddress)"
+                    )
+                }
+
+                // 금액 검증
                 if (transferValue < expectedAmountRaw) {
                     throw IllegalArgumentException(
                         "전송 금액이 부족합니다. (필요: $expectedAmountRaw, 실제: $transferValue)"
