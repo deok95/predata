@@ -16,7 +16,10 @@ class OrderMatchingService(
     private val questionRepository: QuestionRepository,
     private val activityRepository: ActivityRepository,
     private val transactionHistoryService: TransactionHistoryService,
-    private val bettingSuspensionService: BettingSuspensionService
+    private val bettingSuspensionService: BettingSuspensionService,
+    private val positionService: PositionService,
+    private val orderBookService: OrderBookService,
+    private val priceHistoryRepository: com.predata.backend.repository.PriceHistoryRepository
 ) {
 
     /**
@@ -94,11 +97,14 @@ class OrderMatchingService(
             questionId = request.questionId
         )
 
-        // 4. 주문 생성
+        // 4. 주문 타입 결정
+        val orderType = request.orderType ?: OrderType.LIMIT  // 기본값: LIMIT
+
+        // 5. 주문 생성
         val order = Order(
             memberId = memberId,
             questionId = request.questionId,
-            orderType = OrderType.BUY,
+            orderType = orderType,
             side = request.side,
             price = request.price,
             amount = request.amount,
@@ -107,12 +113,38 @@ class OrderMatchingService(
 
         val savedOrder = orderRepository.save(order)
 
-        // 5. 매칭 실행
+        // 6. 매칭 실행
         val matchResult = matchOrder(savedOrder, question)
+
+        // 7. MARKET 주문인 경우 미체결분 자동 취소 (IOC)
+        if (orderType == OrderType.MARKET && savedOrder.remainingAmount > 0) {
+            savedOrder.status = OrderStatus.CANCELLED
+            savedOrder.remainingAmount = 0
+            savedOrder.updatedAt = LocalDateTime.now()
+            orderRepository.save(savedOrder)
+
+            // 미체결분 환불
+            val refundAmount = request.amount - matchResult.filledAmount
+            member.usdcBalance = member.usdcBalance.add(BigDecimal(refundAmount))
+            memberRepository.save(member)
+
+            transactionHistoryService.record(
+                memberId = memberId,
+                type = "SETTLEMENT",
+                amount = BigDecimal(refundAmount),
+                balanceAfter = member.usdcBalance,
+                description = "시장가 IOC 주문 미체결분 환불 - Question #${request.questionId}",
+                questionId = request.questionId
+            )
+        }
 
         return CreateOrderResponse(
             success = true,
             message = when {
+                orderType == OrderType.MARKET && matchResult.filledAmount == 0L ->
+                    "시장가 주문이 체결되지 않았습니다. (즉시 취소됨)"
+                orderType == OrderType.MARKET && matchResult.filledAmount < request.amount ->
+                    "시장가 주문이 부분 체결되었습니다. (${matchResult.filledAmount}/${request.amount}, 미체결분 자동 취소)"
                 matchResult.filledAmount == request.amount -> "주문이 완전 체결되었습니다."
                 matchResult.filledAmount > 0 -> "부분 체결되었습니다. (${matchResult.filledAmount}/${request.amount})"
                 else -> "주문이 오더북에 등록되었습니다."
@@ -179,6 +211,25 @@ class OrderMatchingService(
                 amount = fillAmount
             ))
 
+            // 포지션 업데이트 (양쪽 모두)
+            // Taker 포지션 업데이트
+            positionService.createOrUpdatePosition(
+                memberId = order.memberId,
+                questionId = order.questionId,
+                side = order.side,
+                qty = BigDecimal(fillAmount),
+                price = tradePrice
+            )
+
+            // Maker 포지션 업데이트
+            positionService.createOrUpdatePosition(
+                memberId = counterOrder.memberId,
+                questionId = counterOrder.questionId,
+                side = counterOrder.side,
+                qty = BigDecimal(fillAmount),
+                price = oppositePrice  // 상대방은 역가격으로 체결
+            )
+
             // 주문 수량 업데이트
             order.remainingAmount -= fillAmount
             counterOrder.remainingAmount -= fillAmount
@@ -202,9 +253,38 @@ class OrderMatchingService(
             }
             question.totalBetPool += totalFilled
             questionRepository.save(question)
+
+            // 가격 이력 기록 (체결 발생 시)
+            recordPriceHistory(order.questionId, order.price)
         }
 
         return MatchResult(filledAmount = totalFilled)
+    }
+
+    /**
+     * 가격 이력 기록
+     */
+    private fun recordPriceHistory(questionId: Long, lastTradePrice: BigDecimal) {
+        try {
+            val orderBook = orderBookService.getOrderBook(questionId)
+            val bestBid = orderBook.bids.firstOrNull()?.price
+            val bestAsk = orderBook.asks.firstOrNull()?.price
+            val midPrice = if (bestBid != null && bestAsk != null) {
+                bestBid.add(bestAsk).divide(BigDecimal("2.00"), 2, java.math.RoundingMode.HALF_UP)
+            } else null
+            val spread = orderBook.spread
+
+            val priceHistory = com.predata.backend.domain.PriceHistory(
+                questionId = questionId,
+                midPrice = midPrice,
+                lastTradePrice = lastTradePrice,
+                spread = spread
+            )
+            priceHistoryRepository.save(priceHistory)
+        } catch (e: Exception) {
+            // 가격 이력 기록 실패는 치명적이지 않으므로 로그만 남김
+            println("[PriceHistory] 가격 이력 기록 실패: ${e.message}")
+        }
     }
 
     private fun updateOrderStatus(order: Order) {

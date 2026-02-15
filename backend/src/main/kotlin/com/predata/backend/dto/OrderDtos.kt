@@ -2,6 +2,7 @@ package com.predata.backend.dto
 
 import com.predata.backend.domain.OrderSide
 import com.predata.backend.domain.OrderStatus
+import com.predata.backend.domain.OrderType
 import jakarta.validation.constraints.*
 import java.math.BigDecimal
 import java.time.LocalDateTime
@@ -23,7 +24,9 @@ data class CreateOrderRequest(
 
     @field:NotNull(message = "수량은 필수입니다")
     @field:Min(value = 1, message = "수량은 1 이상이어야 합니다")
-    val amount: Long
+    val amount: Long,
+
+    val orderType: OrderType? = null  // 기본값: LIMIT (null이면 LIMIT으로 처리)
 )
 
 /**

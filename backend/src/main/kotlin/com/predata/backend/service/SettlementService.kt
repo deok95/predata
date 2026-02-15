@@ -3,6 +3,7 @@ package com.predata.backend.service
 import com.predata.backend.domain.Choice
 import com.predata.backend.domain.QuestionStatus
 import com.predata.backend.domain.FinalResult
+import com.predata.backend.domain.OrderSide
 import com.predata.backend.repository.ActivityRepository
 import com.predata.backend.repository.QuestionRepository
 import com.predata.backend.repository.MemberRepository
@@ -22,7 +23,8 @@ class SettlementService(
     private val blockchainService: BlockchainService,
     private val badgeService: BadgeService,
     private val transactionHistoryService: TransactionHistoryService,
-    private val settlementPolicyFactory: SettlementPolicyFactory
+    private val settlementPolicyFactory: SettlementPolicyFactory,
+    private val positionService: PositionService
 ) {
     private val logger = org.slf4j.LoggerFactory.getLogger(SettlementService::class.java)
 
@@ -109,13 +111,18 @@ class SettlementService(
         question.disputeDeadline = null
         questionRepository.save(question)
 
-        // === 1회 조회: 모든 활동(투표+베팅) 조회 ===
+        // === 1회 조회: 투표 활동 조회 (티어/보상용) ===
         val allActivities = activityRepository.findByQuestionId(questionId)
         val votes = allActivities.filter { it.activityType == com.predata.backend.domain.ActivityType.VOTE }
-        val bets = allActivities.filter { it.activityType == com.predata.backend.domain.ActivityType.BET }
+
+        // === 포지션 기반 정산 (BET 대체) ===
+        val positions = positionService.getPositionsByQuestionId(questionId)
+
+        // winning side 결정
+        val winningSide = if (winningChoice == Choice.YES) OrderSide.YES else OrderSide.NO
 
         // === 1회 조회: 관련 멤버 전체 배치 조회 ===
-        val allMemberIds = (votes.map { it.memberId } + bets.map { it.memberId }).distinct()
+        val allMemberIds = (votes.map { it.memberId } + positions.map { it.memberId }).distinct()
         val membersMap = if (allMemberIds.isNotEmpty()) {
             memberRepository.findAllByIdIn(allMemberIds).associateBy { it.id!! }
         } else {
@@ -126,29 +133,29 @@ class SettlementService(
         var totalPayout = 0L
         var totalRewardPool = 0L
 
-        // === 메모리 처리 1: 베팅 승자 배당금 지급 ===
-        val winningBets = bets.filter { it.choice == winningChoice }
-        winningBets.forEach { bet ->
-            val member = membersMap[bet.memberId]
+        // === 메모리 처리 1: 포지션 기반 승자 배당금 지급 ===
+        val winningPositions = positions.filter { it.side == winningSide }
+        winningPositions.forEach { position ->
+            val member = membersMap[position.memberId]
             if (member != null) {
-                val payout = policy.calculatePayout(
-                    betAmount = bet.amount,
-                    totalPool = question.totalBetPool,
-                    winningPool = if (finalResult == FinalResult.YES) question.yesBetPool else question.noBetPool
-                )
+                // 폴리마켓 방식: winning side는 quantity * 1.0 포인트 지급
+                val payout = position.quantity.toLong()
                 member.usdcBalance = member.usdcBalance.add(BigDecimal(payout))
                 transactionHistoryService.record(
-                    memberId = bet.memberId,
+                    memberId = position.memberId,
                     type = "SETTLEMENT",
                     amount = BigDecimal(payout),
                     balanceAfter = member.usdcBalance,
-                    description = "베팅 정산 승리 - Question #$questionId",
+                    description = "포지션 정산 승리 - Question #$questionId",
                     questionId = questionId
                 )
                 totalWinners++
                 totalPayout += payout
             }
         }
+
+        // 정산 완료 시 모든 포지션에 settled=true 마킹
+        positionService.markAsSettled(questionId)
 
         // === 메모리 처리 2: 티어 업데이트 (TierService 로직 인라인) ===
         votes.forEach { vote ->
@@ -223,20 +230,21 @@ class SettlementService(
         // 온체인 기록
         blockchainService.settleQuestionOnChain(questionId, finalResult)
 
-        // === Badge 업데이트: 정산 후 뱃지 체크 ===
-        bets.forEach { bet ->
+        // === Badge 업데이트: 정산 후 뱃지 체크 (포지션 기반) ===
+        positions.forEach { position ->
             try {
-                val member = membersMap[bet.memberId] ?: return@forEach
-                val isWinner = bet.choice == winningChoice
-                val payoutRatio = if (isWinner && bet.amount > 0) {
-                    policy.calculatePayout(bet.amount, question.totalBetPool,
-                        if (finalResult == FinalResult.YES) question.yesBetPool else question.noBetPool
-                    ).toDouble() / bet.amount.toDouble()
-                } else 0.0
-                badgeService.onSettlement(bet.memberId, isWinner, payoutRatio)
-                badgeService.onPointsChange(bet.memberId, member.usdcBalance.toLong())
+                val member = membersMap[position.memberId] ?: return@forEach
+                val isWinner = position.side == winningSide
+                val payoutRatio = if (isWinner) {
+                    // 폴리마켓 방식: 1.0 배율 (quantity * 1.0)
+                    1.0
+                } else {
+                    0.0
+                }
+                badgeService.onSettlement(position.memberId, isWinner, payoutRatio)
+                badgeService.onPointsChange(position.memberId, member.usdcBalance.toLong())
             } catch (e: Exception) {
-                logger.warn("[Settlement] Badge 업데이트 실패 member={}: {}", bet.memberId, e.message)
+                logger.warn("[Settlement] Badge 업데이트 실패 member={}: {}", position.memberId, e.message)
             }
         }
 
@@ -253,7 +261,7 @@ class SettlementService(
         return SettlementResult(
             questionId = questionId,
             finalResult = finalResult.name,
-            totalBets = bets.size,
+            totalBets = positions.size,
             totalWinners = totalWinners,
             totalPayout = totalPayout,
             voterRewards = totalRewardPool,
@@ -298,38 +306,34 @@ class SettlementService(
     }
 
     /**
-     * 사용자별 정산 내역 조회
+     * 사용자별 정산 내역 조회 (포지션 기반)
      */
     fun getSettlementHistory(memberId: Long): List<SettlementHistoryItem> {
-        val allBets = activityRepository.findByMemberIdAndActivityType(
-            memberId,
-            com.predata.backend.domain.ActivityType.BET
-        )
+        val positions = positionService.getPositions(memberId)
+            .filter { it.settled }
 
-        return allBets.mapNotNull { bet ->
-            val question = questionRepository.findById(bet.questionId).orElse(null)
+        return positions.mapNotNull { position ->
+            val question = questionRepository.findById(position.questionId).orElse(null)
             if (question != null && question.status == QuestionStatus.SETTLED) {
                 val policy = settlementPolicyFactory.getPolicy(question.type)
                 val finalResultChoice = policy.determineWinningChoice(question.finalResult)
-                val isWinner = bet.choice == finalResultChoice
+                val winningSide = if (finalResultChoice == Choice.YES) OrderSide.YES else OrderSide.NO
+                val isWinner = position.side == winningSide
                 val payout = if (isWinner) {
-                    policy.calculatePayout(
-                        betAmount = bet.amount,
-                        totalPool = question.totalBetPool,
-                        winningPool = if (bet.choice == Choice.YES) question.yesBetPool else question.noBetPool
-                    )
+                    position.quantity.toLong()  // 폴리마켓: quantity * 1.0
                 } else {
                     0L
                 }
+                val betAmount = position.quantity.multiply(position.avgPrice).toLong()
 
                 SettlementHistoryItem(
                     questionId = question.id ?: 0,
                     questionTitle = question.title,
-                    myChoice = bet.choice.name,
+                    myChoice = if (position.side == OrderSide.YES) "YES" else "NO",
                     finalResult = question.finalResult.name,
-                    betAmount = bet.amount,
+                    betAmount = betAmount,
                     payout = payout,
-                    profit = payout - bet.amount,
+                    profit = payout - betAmount,
                     isWinner = isWinner
                 )
             } else {

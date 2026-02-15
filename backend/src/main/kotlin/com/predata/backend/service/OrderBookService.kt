@@ -10,7 +10,8 @@ import java.math.BigDecimal
 @Service
 class OrderBookService(
     private val orderRepository: OrderRepository,
-    private val tradeRepository: TradeRepository
+    private val tradeRepository: TradeRepository,
+    private val priceHistoryRepository: com.predata.backend.repository.PriceHistoryRepository
 ) {
 
     /**
@@ -64,4 +65,52 @@ class OrderBookService(
             spread = spread
         )
     }
+
+    /**
+     * Mid-price 계산 (최우선 bid + 최우선 ask) / 2
+     */
+    fun getMidPrice(questionId: Long): BigDecimal? {
+        val orderBook = getOrderBook(questionId)
+        val bestBid = orderBook.bids.firstOrNull()?.price
+        val bestAsk = orderBook.asks.firstOrNull()?.price
+
+        return if (bestBid != null && bestAsk != null) {
+            bestBid.add(bestAsk).divide(BigDecimal("2.00"), 2, java.math.RoundingMode.HALF_UP)
+        } else {
+            null
+        }
+    }
+
+    /**
+     * 가격 정보 조회 (mid-price, bestBid, bestAsk, lastTradePrice, spread)
+     */
+    fun getPriceInfo(questionId: Long): PriceInfo {
+        val orderBook = getOrderBook(questionId)
+        val bestBid = orderBook.bids.firstOrNull()?.price
+        val bestAsk = orderBook.asks.firstOrNull()?.price
+        val midPrice = if (bestBid != null && bestAsk != null) {
+            bestBid.add(bestAsk).divide(BigDecimal("2.00"), 2, java.math.RoundingMode.HALF_UP)
+        } else null
+
+        // 최근 가격 이력 조회 (없으면 현재 가격 사용)
+        val recentHistory = priceHistoryRepository.findTopByQuestionIdOrderByTimestampDesc(questionId)
+
+        return PriceInfo(
+            questionId = questionId,
+            midPrice = midPrice,
+            bestBid = bestBid,
+            bestAsk = bestAsk,
+            lastTradePrice = recentHistory?.lastTradePrice ?: orderBook.lastPrice,
+            spread = orderBook.spread
+        )
+    }
+
+    data class PriceInfo(
+        val questionId: Long,
+        val midPrice: BigDecimal?,
+        val bestBid: BigDecimal?,
+        val bestAsk: BigDecimal?,
+        val lastTradePrice: BigDecimal?,
+        val spread: BigDecimal?
+    )
 }

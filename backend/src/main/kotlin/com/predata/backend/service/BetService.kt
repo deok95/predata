@@ -13,6 +13,7 @@ import org.springframework.transaction.annotation.Transactional
 import java.math.BigDecimal
 import java.time.LocalDateTime
 
+@Deprecated("OrderMatchingService를 사용하세요. 이 서비스는 다음 스프린트에서 제거됩니다.")
 @Service
 class BetService(
     private val activityRepository: ActivityRepository,

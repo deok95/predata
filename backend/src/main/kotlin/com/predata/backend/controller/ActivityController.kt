@@ -28,7 +28,8 @@ class ActivityController(
     private val oddsService: OddsService,
     private val clientIpService: ClientIpService,
     private val bettingSuspensionService: com.predata.backend.service.BettingSuspensionService,
-    private val activityRepository: ActivityRepository
+    private val activityRepository: ActivityRepository,
+    private val orderMatchingService: com.predata.backend.service.OrderMatchingService
 ) {
 
     /**
@@ -56,7 +57,8 @@ class ActivityController(
     }
 
     /**
-     * 베팅 실행
+     * 베팅 실행 (시장가 IOC 주문으로 전환)
+     * 기존 BetService 대신 OrderMatchingService 사용
      */
     @PostMapping("/bet")
     fun bet(@Valid @RequestBody request: BetRequest, httpRequest: HttpServletRequest): ResponseEntity<ActivityResponse> {
@@ -68,27 +70,35 @@ class ActivityController(
 
         val clientIp = clientIpService.extractClientIp(httpRequest)
 
-        // 1. 베팅 일시 중지 체크
-        val suspensionStatus = bettingSuspensionService.isBettingSuspendedByQuestionId(request.questionId)
-        if (suspensionStatus.suspended) {
-            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(
-                ActivityResponse(
-                    success = false,
-                    message = "⚠️ 골 직후 베팅이 일시 중지되었습니다. ${suspensionStatus.remainingSeconds}초 후 재개됩니다."
-                )
-            )
-        }
+        // BetRequest를 CreateOrderRequest로 변환 (시장가 IOC 주문)
+        val orderRequest = CreateOrderRequest(
+            questionId = request.questionId,
+            side = when (request.choice) {
+                com.predata.backend.domain.Choice.YES -> com.predata.backend.domain.OrderSide.YES
+                com.predata.backend.domain.Choice.NO -> com.predata.backend.domain.OrderSide.NO
+            },
+            price = java.math.BigDecimal("0.50"),  // 시장가는 중간가로 설정 (실제론 즉시 체결되므로 무관)
+            amount = request.amount,
+            orderType = com.predata.backend.domain.OrderType.MARKET  // 시장가 IOC
+        )
 
-        // 2. 베팅 실행
-        val response = betService.bet(authenticatedMemberId, request, clientIp)
+        // OrderMatchingService로 주문 실행
+        val orderResponse = orderMatchingService.createOrder(authenticatedMemberId, orderRequest)
 
         // IP 업데이트
-        if (response.success) clientIpService.updateMemberLastIp(authenticatedMemberId, clientIp)
+        if (orderResponse.success) clientIpService.updateMemberLastIp(authenticatedMemberId, clientIp)
 
-        return if (response.success) {
-            ResponseEntity.ok(response)
+        // ActivityResponse로 변환
+        val activityResponse = ActivityResponse(
+            success = orderResponse.success,
+            message = orderResponse.message,
+            activityId = orderResponse.orderId
+        )
+
+        return if (orderResponse.success) {
+            ResponseEntity.ok(activityResponse)
         } else {
-            ResponseEntity.status(HttpStatus.BAD_REQUEST).body(response)
+            ResponseEntity.status(HttpStatus.BAD_REQUEST).body(activityResponse)
         }
     }
 
