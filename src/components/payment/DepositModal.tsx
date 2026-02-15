@@ -35,6 +35,11 @@ export default function DepositModal({ isOpen, onClose }: DepositModalProps) {
     onClose();
   };
 
+  const handlePresetAdd = (preset: number) => {
+    const next = (parseFloat(amount) || 0) + preset;
+    setAmount(String(next));
+  };
+
   const stepLabels: Record<PaymentStep, string> = {
     idle: '',
     sending: 'MetaMask에서 트랜잭션을 승인해주세요...',
@@ -88,14 +93,12 @@ export default function DepositModal({ isOpen, onClose }: DepositModalProps) {
               {PRESET_AMOUNTS.map((preset) => (
                 <button
                   key={preset}
-                  onClick={() => setAmount(preset.toString())}
+                  onClick={() => handlePresetAdd(preset)}
                   className={`py-2.5 rounded-xl text-sm font-bold transition-all ${
-                    numAmount === preset
-                      ? 'bg-emerald-600 text-white'
-                      : isDark ? 'bg-slate-800 text-slate-400 hover:bg-emerald-600 hover:text-white' : 'bg-slate-100 text-slate-500 hover:bg-emerald-600 hover:text-white'
+                    isDark ? 'bg-slate-800 text-slate-400 hover:bg-emerald-600 hover:text-white' : 'bg-slate-100 text-slate-500 hover:bg-emerald-600 hover:text-white'
                   }`}
                 >
-                  ${preset}
+                  +${preset}
                 </button>
               ))}
             </div>
