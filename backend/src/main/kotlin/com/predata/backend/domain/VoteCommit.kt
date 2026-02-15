@@ -2,6 +2,7 @@ package com.predata.backend.domain
 
 import jakarta.persistence.*
 import java.time.LocalDateTime
+import java.time.ZoneOffset
 
 /**
  * Commit-Reveal 투표 엔티티
@@ -45,7 +46,7 @@ data class VoteCommit(
     var revealedChoice: Choice? = null,  // Reveal 후 저장 (YES or NO)
 
     @Column(name = "committed_at", nullable = false, updatable = false)
-    val committedAt: LocalDateTime = LocalDateTime.now(),
+    val committedAt: LocalDateTime = LocalDateTime.now(ZoneOffset.UTC),
 
     @Column(name = "revealed_at")
     var revealedAt: LocalDateTime? = null,

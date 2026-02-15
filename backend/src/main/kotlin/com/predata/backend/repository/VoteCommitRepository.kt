@@ -1,5 +1,6 @@
 package com.predata.backend.repository
 
+import com.predata.backend.domain.Choice
 import com.predata.backend.domain.VoteCommit
 import com.predata.backend.domain.VoteCommitStatus
 import org.springframework.data.jpa.repository.JpaRepository
@@ -34,4 +35,9 @@ interface VoteCommitRepository : JpaRepository<VoteCommit, Long> {
         start: LocalDateTime,
         end: LocalDateTime
     ): Long
+
+    /**
+     * 특정 질문의 특정 선택 투표 개수
+     */
+    fun countByQuestionIdAndRevealedChoice(questionId: Long, choice: Choice): Long
 }

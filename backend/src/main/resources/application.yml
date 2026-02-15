@@ -17,7 +17,7 @@ spring:
 
   jpa:
     hibernate:
-      ddl-auto: validate  # Flyway가 스키마 관리하므로 validate로 변경
+      ddl-auto: none  # Flyway가 스키마 관리하므로 Hibernate 스키마 관리 비활성화
     show-sql: false
     properties:
       hibernate:

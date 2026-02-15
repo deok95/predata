@@ -22,7 +22,8 @@ data class VoteCommitRequest(
 data class VoteCommitResponse(
     val success: Boolean,
     val message: String,
-    val voteCommitId: Long? = null
+    val voteCommitId: Long? = null,
+    val salt: String? = null  // 서버 생성 salt (클라이언트가 reveal 시 사용)
 )
 
 /**

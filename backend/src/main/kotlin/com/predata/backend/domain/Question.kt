@@ -74,7 +74,7 @@ data class Question(
     var disputeDeadline: LocalDateTime? = null,
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "voting_phase", length = 30, nullable = false)
+    @Column(name = "voting_phase", length = 30, nullable = false, columnDefinition = "VARCHAR(30)")
     var votingPhase: VotingPhase = VotingPhase.VOTING_COMMIT_OPEN,
 
     @Column(name = "expired_at", nullable = false)
