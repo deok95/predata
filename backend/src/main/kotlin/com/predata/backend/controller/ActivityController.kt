@@ -172,19 +172,23 @@ class ActivityController(
     }
 
     /**
-     * 회원의 투표/베팅 내역 조회
-     * GET /api/activities/member/{memberId}?type=VOTE
+     * 본인의 투표/베팅 내역 조회 (JWT 인증 사용)
+     * GET /api/activities/me?type=VOTE
      */
-    @GetMapping("/activities/member/{memberId}")
-    fun getActivitiesByMember(
-        @PathVariable memberId: Long,
-        @RequestParam(required = false) type: String?
+    @GetMapping("/activities/me")
+    fun getMyActivities(
+        @RequestParam(required = false) type: String?,
+        httpRequest: HttpServletRequest
     ): ResponseEntity<List<MemberActivityView>> {
+        // JWT에서 인증된 memberId 가져오기 (IDOR 방지)
+        val authenticatedMemberId = httpRequest.getAttribute(com.predata.backend.config.JwtAuthInterceptor.ATTR_MEMBER_ID) as? Long
+            ?: return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(emptyList())
+
         val activities = if (type != null) {
             val activityType = ActivityType.valueOf(type.uppercase())
-            activityRepository.findByMemberIdAndActivityType(memberId, activityType)
+            activityRepository.findByMemberIdAndActivityType(authenticatedMemberId, activityType)
         } else {
-            activityRepository.findByMemberId(memberId)
+            activityRepository.findByMemberId(authenticatedMemberId)
         }
 
         val result = activities.map(ActivityViewAssembler::toMemberActivityView)
@@ -214,16 +218,20 @@ class ActivityController(
     }
 
     /**
-     * 특정 회원의 특정 질문에 대한 활동 조회
-     * GET /api/activities/member/{memberId}/question/{questionId}
+     * 본인의 특정 질문에 대한 활동 조회 (JWT 인증 사용)
+     * GET /api/activities/me/question/{questionId}
      */
-    @GetMapping("/activities/member/{memberId}/question/{questionId}")
-    fun getActivitiesByMemberAndQuestion(
-        @PathVariable memberId: Long,
+    @GetMapping("/activities/me/question/{questionId}")
+    fun getMyActivitiesByQuestion(
         @PathVariable questionId: Long,
-        @RequestParam(required = false) type: String?
+        @RequestParam(required = false) type: String?,
+        httpRequest: HttpServletRequest
     ): ResponseEntity<List<MemberQuestionActivityView>> {
-        val activities = activityRepository.findByMemberIdAndQuestionId(memberId, questionId)
+        // JWT에서 인증된 memberId 가져오기 (IDOR 방지)
+        val authenticatedMemberId = httpRequest.getAttribute(com.predata.backend.config.JwtAuthInterceptor.ATTR_MEMBER_ID) as? Long
+            ?: return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(emptyList())
+
+        val activities = activityRepository.findByMemberIdAndQuestionId(authenticatedMemberId, questionId)
 
         val filtered = if (type != null) {
             val activityType = ActivityType.valueOf(type.uppercase())
@@ -287,16 +295,6 @@ class ActivityController(
                 )
             )
         )
-    }
-
-    /**
-     * 정산 내역 조회
-     * GET /api/settlements/history/{memberId}
-     */
-    @GetMapping("/settlements/history/{memberId}")
-    fun getSettlementHistory(@PathVariable memberId: Long): ResponseEntity<List<com.predata.backend.service.SettlementHistoryItem>> {
-        val history = settlementService.getSettlementHistory(memberId)
-        return ResponseEntity.ok(history)
     }
 
 }
