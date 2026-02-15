@@ -166,6 +166,13 @@ class QuestionManagementService(
      */
     @Transactional
     fun createQuestionWithDuration(request: com.predata.backend.dto.AdminCreateQuestionRequest): QuestionCreationResponse {
+        // OPINION 타입 질문 템플릿 검증
+        if (request.marketType == com.predata.backend.domain.MarketType.OPINION) {
+            if (!request.title.startsWith("시장은 ") || !request.title.endsWith("라고 생각할까요?")) {
+                throw IllegalArgumentException("OPINION 타입 질문은 '시장은 ~라고 생각할까요?' 형식이어야 합니다")
+            }
+        }
+
         val now = LocalDateTime.now()
 
         // 자동 시간 계산
@@ -173,12 +180,21 @@ class QuestionManagementService(
         val bettingStartAt = votingEndAt.plusMinutes(5) // 5분 휴식
         val bettingEndAt = bettingStartAt.plusSeconds(request.bettingDuration)
 
+        // resolveAt, disputeUntil 파싱
+        val resolveAt = request.resolveAt?.let { LocalDateTime.parse(it, DateTimeFormatter.ISO_DATE_TIME) }
+        val disputeUntil = request.disputeUntil?.let { LocalDateTime.parse(it, DateTimeFormatter.ISO_DATE_TIME) }
+
         val question = Question(
             title = request.title,
             category = request.category,
             categoryWeight = BigDecimal.ONE,
             status = QuestionStatus.VOTING,
             type = request.type,
+            marketType = request.marketType,
+            resolutionRule = request.resolutionRule,
+            resolutionSource = request.resolutionSource,
+            resolveAt = resolveAt,
+            disputeUntil = disputeUntil,
             votingEndAt = votingEndAt,
             bettingStartAt = bettingStartAt,
             bettingEndAt = bettingEndAt,

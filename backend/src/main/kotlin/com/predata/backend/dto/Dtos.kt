@@ -128,6 +128,18 @@ data class AdminCreateQuestionRequest(
     @field:NotNull(message = "질문 타입은 필수입니다.")
     val type: com.predata.backend.domain.QuestionType,
 
+    @field:NotNull(message = "시장 타입은 필수입니다.")
+    val marketType: com.predata.backend.domain.MarketType = com.predata.backend.domain.MarketType.VERIFIABLE,
+
+    @field:NotBlank(message = "정산 규칙은 필수입니다.")
+    val resolutionRule: String,
+
+    val resolutionSource: String? = null,
+
+    val resolveAt: String? = null, // ISO 8601 형식
+
+    val disputeUntil: String? = null, // ISO 8601 형식
+
     val category: String? = null,
 
     @field:Min(value = 60, message = "투표 기간은 최소 60초입니다.")

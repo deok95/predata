@@ -24,13 +24,37 @@ class SettlementService(
     private val badgeService: BadgeService,
     private val transactionHistoryService: TransactionHistoryService,
     private val settlementPolicyFactory: SettlementPolicyFactory,
-    private val positionService: PositionService
+    private val positionService: PositionService,
+    private val resolutionAdapterRegistry: com.predata.backend.service.settlement.adapters.ResolutionAdapterRegistry
 ) {
     private val logger = org.slf4j.LoggerFactory.getLogger(SettlementService::class.java)
 
     companion object {
         private const val DISPUTE_HOURS = 0L // 테스트용: 이의제기 기간 없음 (즉시 확정)
         // TODO: 실제 운영에서는 24L로 변경
+    }
+
+    /**
+     * 1단계: 정산 시작 (자동 정산 - 어댑터 사용)
+     * ResolutionAdapterRegistry를 통해 자동으로 결과를 결정한다.
+     */
+    @Transactional
+    fun initiateSettlementAuto(questionId: Long): SettlementResult {
+        val question = questionRepository.findByIdWithLock(questionId)
+            ?: throw IllegalArgumentException("질문을 찾을 수 없습니다.")
+
+        if (question.status == QuestionStatus.SETTLED) {
+            throw IllegalStateException("이미 정산된 질문입니다.")
+        }
+        if (question.status != QuestionStatus.VOTING && question.status != QuestionStatus.BETTING && question.status != QuestionStatus.BREAK) {
+            throw IllegalStateException("정산 가능한 상태가 아닙니다. (현재: ${question.status})")
+        }
+
+        // ResolutionAdapter를 통해 자동 정산
+        val resolutionResult = resolutionAdapterRegistry.resolve(question)
+
+        // 기존 메서드 재사용
+        return initiateSettlement(questionId, resolutionResult.result, resolutionResult.sourceUrl)
     }
 
     /**
