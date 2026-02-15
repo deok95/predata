@@ -22,7 +22,7 @@ export default function DepositModal({ isOpen, onClose }: DepositModalProps) {
   if (!isOpen) return null;
 
   const numAmount = parseFloat(amount) || 0;
-  const isValidAmount = numAmount >= BET_MIN_USDC && numAmount <= BET_MAX_USDC;
+  const isValidAmount = numAmount >= 1;
 
   const handleDeposit = () => {
     if (!isValidAmount) return;
@@ -58,7 +58,7 @@ export default function DepositModal({ isOpen, onClose }: DepositModalProps) {
           </div>
           <div>
             <h2 className={`text-xl font-black ${isDark ? 'text-white' : 'text-slate-900'}`}>$ 충전</h2>
-            <p className="text-xs text-slate-400">{BET_MIN_USDC}~{BET_MAX_USDC} $ 범위</p>
+            <p className="text-xs text-slate-400">최소 $1부터</p>
           </div>
         </div>
 
@@ -69,8 +69,7 @@ export default function DepositModal({ isOpen, onClose }: DepositModalProps) {
               <div className="relative">
                 <input
                   type="number"
-                  min={BET_MIN_USDC}
-                  max={BET_MAX_USDC}
+                  min={1}
                   value={amount}
                   onChange={(e) => setAmount(e.target.value)}
                   placeholder="충전할 금액"
@@ -104,7 +103,7 @@ export default function DepositModal({ isOpen, onClose }: DepositModalProps) {
             {/* 안내 메시지 */}
             {amount && !isValidAmount && (
               <p className="text-xs text-rose-400 mb-4">
-                {numAmount < BET_MIN_USDC ? `최소 $${BET_MIN_USDC} 이상 충전해야 합니다.` : `최대 $${BET_MAX_USDC}까지 충전 가능합니다.`}
+                최소 $1 이상 충전해야 합니다.
               </p>
             )}
 

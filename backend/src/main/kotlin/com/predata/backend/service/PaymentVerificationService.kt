@@ -101,8 +101,8 @@ class PaymentVerificationService(
             throw IllegalArgumentException("이미 처리된 트랜잭션입니다: $txHash")
         }
 
-        if (amount < BigDecimal.ONE || amount > BigDecimal(100)) {
-            throw IllegalArgumentException("충전 가능 금액은 \$1~\$100입니다.")
+        if (amount < BigDecimal.ONE) {
+            throw IllegalArgumentException("충전 가능 금액은 \$1 이상이어야 합니다.")
         }
 
         val expectedAmountRaw = amount.multiply(BigDecimal.TEN.pow(USDC_DECIMALS)).toBigInteger()
