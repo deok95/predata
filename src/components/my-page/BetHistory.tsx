@@ -18,14 +18,14 @@ export default function BetHistory({ memberId }: BetHistoryProps) {
   const [filter, setFilter] = useState<'all' | 'active' | 'settled'>('all');
 
   useEffect(() => {
-    settlementApi.getHistory(memberId).then(res => {
+    settlementApi.getHistory().then(res => {
       if (res.success && res.data && res.data.length > 0) setHistory(res.data);
       else setHistory(mockSettlementHistory);
     }).catch(() => {
       setHistory(mockSettlementHistory);
     });
 
-    bettingApi.getActivitiesByMember(memberId).then(res => {
+    bettingApi.getActivitiesByMember('BET').then(res => {
       if (res.success && res.data && res.data.length > 0) setActivities(res.data);
       else setActivities(mockGuestActivities);
     }).catch(() => {

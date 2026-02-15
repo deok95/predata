@@ -31,7 +31,7 @@ export default function MyBets({ memberId, onClose }: MyBetsProps) {
   const fetchHistory = async () => {
     setLoading(true);
     try {
-      const response = await settlementApi.getHistory(memberId);
+      const response = await settlementApi.getHistory();
       if (response.success && response.data) {
         setHistory(response.data);
       }

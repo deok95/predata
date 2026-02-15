@@ -45,12 +45,12 @@ function LeaderboardContent() {
 
   useEffect(() => {
     leaderboardApi.getTop(50).then(res => {
-      if (res.success && res.data) setEntries(res.data);
+      if (res.success && res.data) setEntries(res.data as unknown as LeaderboardEntry[]);
     }).catch(() => {}).finally(() => setLoading(false));
 
     if (user && !user.email?.includes('guest')) {
       leaderboardApi.getMemberRank(user.id).then(res => {
-        if (res.success && res.data) setMyRank(res.data);
+        if (res.success && res.data) setMyRank(res.data as unknown as LeaderboardEntry);
       }).catch(() => {});
     }
   }, [user]);

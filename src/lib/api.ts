@@ -1,18 +1,20 @@
 export { API_BASE_URL, BACKEND_URL, ApiError, apiRequest, authFetch, unwrapApiEnvelope } from './api/core';
 export { authApi, memberApi } from './api/account';
 export { bettingApi, questionApi, settlementApi } from './api/market';
-export {
+export { orderApi } from './api/order';
+export type {
   CreateOrderRequest,
   CreateOrderResponse,
   OrderBookData,
   OrderBookLevel,
   OrderData,
-  orderApi,
 } from './api/order';
 export { faucetApi, paymentApi, transactionApi, votingPassApi } from './api/finance';
 export { notificationApi } from './api/notification';
-export { getPriceHistory, PriceHistoryData } from './api/price';
-export { getMyPositions, getMyPositionsByQuestion, PositionData } from './api/position';
+export { getPriceHistory } from './api/price';
+export type { PriceHistoryData } from './api/price';
+export { getMyPositions, getMyPositionsByQuestion } from './api/position';
+export type { PositionData } from './api/position';
 export {
   analysisApi,
   analyticsApi,

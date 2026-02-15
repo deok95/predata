@@ -18,7 +18,7 @@ export function mapQuestion(raw: Record<string, unknown>): Question {
     votingEndAt: raw.votingEndAt as string,
     bettingStartAt: raw.bettingStartAt as string,
     bettingEndAt: raw.bettingEndAt as string,
-    expiredAt: (raw.expiredAt as string | undefined) || (raw.expiresAt as string | undefined),
+    expiredAt: (raw.expiredAt as string | undefined) || (raw.expiresAt as string | undefined) || '',
     createdAt: raw.createdAt as string,
   };
 }

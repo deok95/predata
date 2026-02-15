@@ -19,7 +19,7 @@ export default function DisputeHistory({ memberId }: DisputeHistoryProps) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    settlementApi.getHistory(memberId).then(res => {
+    settlementApi.getHistory().then(res => {
       if (res.success && res.data) setHistory(res.data);
     }).catch(() => {}).finally(() => setLoading(false));
   }, [memberId]);

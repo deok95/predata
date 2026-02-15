@@ -1,4 +1,4 @@
-import { apiClient } from './core';
+import { apiRequest } from './core';
 
 /**
  * 포지션 데이터
@@ -22,7 +22,7 @@ export interface PositionData {
  */
 export async function getMyPositions(): Promise<PositionData[]> {
   try {
-    const response = await apiClient('/api/positions/me');
+    const response = await apiRequest<{ success: boolean; data: PositionData[] }>('/api/positions/me');
     return response.data || [];
   } catch (error) {
     console.error('Failed to fetch positions:', error);
@@ -36,7 +36,7 @@ export async function getMyPositions(): Promise<PositionData[]> {
  */
 export async function getMyPositionsByQuestion(questionId: number): Promise<PositionData[]> {
   try {
-    const response = await apiClient(`/api/positions/me/question/${questionId}`);
+    const response = await apiRequest<{ success: boolean; data: PositionData[] }>(`/api/positions/me/question/${questionId}`);
     return response.data || [];
   } catch (error) {
     console.error('Failed to fetch positions by question:', error);

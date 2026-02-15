@@ -111,7 +111,6 @@ export default function TradingPanel({ question, user, onTradeComplete, votedCho
     setLoading(true);
     try {
       const result = await orderApi.createOrder({
-        memberId: user.id,
         questionId: question.id,
         side: selectedOutcome,
         price: parseFloat(limitPrice),

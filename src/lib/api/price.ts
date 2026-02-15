@@ -1,4 +1,4 @@
-import { apiClient } from './core';
+import { apiRequest } from './core';
 
 /**
  * 가격 이력 데이터
@@ -20,7 +20,7 @@ export async function getPriceHistory(
   limit: number = 100
 ): Promise<PriceHistoryData[]> {
   try {
-    const response = await apiClient(
+    const response = await apiRequest<{ success: boolean; data: PriceHistoryData[] }>(
       `/api/questions/${questionId}/price-history?interval=${interval}&limit=${limit}`
     );
     return response.data || [];

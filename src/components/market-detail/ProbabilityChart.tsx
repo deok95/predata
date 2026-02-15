@@ -141,7 +141,7 @@ export default function ProbabilityChart({
                 tick={{ fill: isDark ? '#64748b' : '#94a3b8', fontSize: 10 }}
               />
               <Tooltip
-                formatter={(value: number) => `${value.toFixed(1)}%`}
+                formatter={(value: number | undefined) => value !== undefined ? `${value.toFixed(1)}%` : 'N/A'}
                 contentStyle={{
                   backgroundColor: isDark ? '#1e293b' : '#ffffff',
                   border: `1px solid ${isDark ? '#334155' : '#e2e8f0'}`,

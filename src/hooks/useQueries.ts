@@ -87,7 +87,7 @@ export function useActivitiesByMember(memberId: number) {
     queryKey: ['activities', 'member', memberId],
     queryFn: async () => {
       try {
-        const res = await bettingApi.getActivitiesByMember(memberId);
+        const res = await bettingApi.getActivitiesByMember('BET');
         if (res.success && res.data && res.data.length > 0) return res.data;
         return mockGuestActivities;
       } catch {
@@ -105,7 +105,7 @@ export function useSettlementHistory(memberId: number) {
     queryKey: ['settlement', 'history', memberId],
     queryFn: async () => {
       try {
-        const res = await settlementApi.getHistory(memberId);
+        const res = await settlementApi.getHistory();
         if (res.success && res.data && res.data.length > 0) return res.data;
         return mockSettlementHistory;
       } catch {
