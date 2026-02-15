@@ -4,176 +4,21 @@
 
 ▲ Next.js 16.1.6 (Turbopack)
 - Local:         http://localhost:3000
-- Network:       http://192.168.219.100:3000
+- Network:       http://192.168.219.105:3000
+- Environments: .env.local, .env
 
 ✓ Starting...
-✓ Ready in 754ms
- GET / 200 in 1148ms (compile: 1050ms, render: 98ms)
- GET / 200 in 37ms (compile: 8ms, render: 30ms)
-✓ Compiled in 136ms
- GET / 200 in 81ms (compile: 42ms, render: 39ms)
-✓ Compiled in 164ms
-✓ Compiled in 43ms
-✓ Compiled in 85ms
-✓ Compiled in 37ms
-✓ Compiled in 39ms
-✓ Compiled in 77ms
-✓ Compiled in 67ms
-✓ Compiled in 50ms
- GET / 200 in 93ms (compile: 48ms, render: 45ms)
-✓ Compiled in 32ms
-✓ Compiled in 147ms
-✓ Compiled in 87ms
-✓ Compiled in 37ms
-✓ Compiled in 38ms
-✓ Compiled in 59ms
-✓ Compiled in 124ms
-✓ Compiled in 51ms
-⚠ Fast Refresh had to perform a full reload due to a runtime error.
-⚠ Fast Refresh had to perform a full reload due to a runtime error.
- GET / 200 in 98ms (compile: 39ms, render: 59ms)
-✓ Compiled in 153ms
-✓ Compiled in 66ms
-✓ Compiled in 34ms
-✓ Compiled in 25ms
-✓ Compiled in 115ms
-✓ Compiled in 73ms
-✓ Compiled in 42ms
-✓ Compiled in 127ms
-✓ Compiled in 83ms
-✓ Compiled in 51ms
-✓ Compiled in 92ms
-✓ Compiled in 66ms
-✓ Compiled in 26ms
-✓ Compiled in 157ms
-✓ Compiled in 151ms
-⚠ Fast Refresh had to perform a full reload due to a runtime error.
- GET / 200 in 103ms (compile: 74ms, render: 29ms)
- GET / 200 in 49ms (compile: 6ms, render: 43ms)
- GET /data-center 200 in 1364ms (compile: 1301ms, render: 63ms)
-✓ Compiled in 38ms
-✓ Compiled in 139ms
- GET /data-center 200 in 133ms (compile: 56ms, render: 77ms)
- GET /data-center 200 in 128ms (compile: 68ms, render: 60ms)
- GET /data-center 200 in 128ms (compile: 84ms, render: 45ms)
- GET /data-center 200 in 64ms (compile: 33ms, render: 31ms)
- GET /data-center 200 in 24ms (compile: 9ms, render: 15ms)
- GET /data-center 200 in 33ms (compile: 2ms, render: 31ms)
- GET /data-center 200 in 46ms (compile: 4ms, render: 42ms)
- GET /data-center 200 in 43ms (compile: 9ms, render: 34ms)
- GET /data-center 200 in 36ms (compile: 9ms, render: 27ms)
- GET /data-center 200 in 28ms (compile: 10ms, render: 18ms)
- GET /data-center 200 in 71ms (compile: 3ms, render: 68ms)
-✓ Compiled in 185ms
- GET / 200 in 148ms (compile: 62ms, render: 86ms)
- GET /premium-data 200 in 355ms (compile: 326ms, render: 29ms)
- GET /data-center 200 in 49ms (compile: 14ms, render: 35ms)
-✓ Compiled in 38ms
-✓ Compiled in 348ms
-⚠ Fast Refresh had to perform a full reload when ./src/app/page.tsx changed. Read more: https://nextjs.org/docs/messages/fast-refresh-reload
- GET / 200 in 136ms (compile: 101ms, render: 35ms)
- GET / 200 in 61ms (compile: 6ms, render: 55ms)
- GET /question/1 200 in 674ms (compile: 662ms, render: 12ms)
- GET /question/1 200 in 15ms (compile: 4ms, render: 12ms)
- GET /data-center 200 in 34ms (compile: 19ms, render: 15ms)
-✓ Compiled in 108ms
- GET / 200 in 166ms (compile: 67ms, render: 99ms)
- GET / 200 in 68ms (compile: 7ms, render: 60ms)
- GET / 200 in 46ms (compile: 10ms, render: 35ms)
- GET / 200 in 71ms (compile: 27ms, render: 44ms)
- GET / 200 in 47ms (compile: 17ms, render: 31ms)
- GET / 200 in 54ms (compile: 24ms, render: 31ms)
- GET / 200 in 62ms (compile: 1875µs, render: 60ms)
- GET / 200 in 53ms (compile: 2ms, render: 51ms)
- GET / 200 in 52ms (compile: 1285µs, render: 51ms)
- GET / 200 in 46ms (compile: 1223µs, render: 44ms)
- GET / 200 in 47ms (compile: 9ms, render: 37ms)
- GET / 200 in 35ms (compile: 6ms, render: 30ms)
- GET / 200 in 38ms (compile: 1598µs, render: 36ms)
- GET / 200 in 30ms (compile: 3ms, render: 27ms)
- GET / 200 in 22ms (compile: 1364µs, render: 20ms)
- GET / 200 in 22ms (compile: 8ms, render: 14ms)
- GET / 200 in 49ms (compile: 4ms, render: 45ms)
- GET / 200 in 34ms (compile: 6ms, render: 29ms)
- GET /question/2 200 in 21ms (compile: 12ms, render: 9ms)
- GET /question/3 200 in 27ms (compile: 10ms, render: 17ms)
- GET /data-center 200 in 109ms (compile: 22ms, render: 87ms)
- GET /premium-data 200 in 54ms (compile: 14ms, render: 40ms)
- GET / 200 in 60ms (compile: 10ms, render: 50ms)
- GET / 200 in 37ms (compile: 7ms, render: 30ms)
- GET / 200 in 51ms (compile: 10ms, render: 42ms)
-✓ Compiled in 32ms
- GET / 200 in 59ms (compile: 20ms, render: 40ms)
- GET / 200 in 42ms (compile: 10ms, render: 33ms)
- GET / 200 in 38ms (compile: 7ms, render: 31ms)
- GET / 200 in 47ms (compile: 9ms, render: 38ms)
- GET / 200 in 32ms (compile: 5ms, render: 27ms)
-✓ Compiled in 34ms
- GET / 200 in 39ms (compile: 11ms, render: 28ms)
-✓ Compiled in 2.5s
-✓ Compiled in 138ms
-✓ Compiled in 51ms
- GET / 200 in 235ms (compile: 226ms, render: 9ms)
- GET / 200 in 234ms (compile: 189ms, render: 45ms)
- GET / 200 in 236ms (compile: 214ms, render: 22ms)
- GET / 200 in 252ms (compile: 142ms, render: 111ms)
-⨯ TypeError: localStorage.getItem is not a function
-    at ignore-listed frames {
-  digest: '3794311496'
-}
-(node:66655) Warning: `--localstorage-file` was provided without a valid path
-(Use `node --trace-warnings ...` to show where the warning was created)
- GET / 500 in 183ms (compile: 5ms, render: 178ms)
-⨯ TypeError: localStorage.getItem is not a function
-    at ignore-listed frames {
-  digest: '3794311496'
-}
- GET / 500 in 55ms (compile: 8ms, render: 47ms)
-⨯ TypeError: localStorage.getItem is not a function
-    at ignore-listed frames {
-  digest: '3794311496'
-}
- GET / 500 in 68ms (compile: 9ms, render: 59ms)
-⨯ TypeError: localStorage.getItem is not a function
-    at ignore-listed frames {
-  digest: '3794311496'
-}
- GET / 500 in 69ms (compile: 13ms, render: 56ms)
-✓ Compiled in 846ms
- GET / 200 in 36ms (compile: 16ms, render: 20ms)
-⨯ TypeError: localStorage.getItem is not a function
-    at ignore-listed frames {
-  digest: '3794311496'
-}
- GET / 500 in 90ms (compile: 24ms, render: 66ms)
-⨯ TypeError: localStorage.getItem is not a function
-    at ignore-listed frames {
-  digest: '3794311496'
-}
- GET / 500 in 94ms (compile: 20ms, render: 74ms)
-⨯ TypeError: localStorage.getItem is not a function
-    at ignore-listed frames {
-  digest: '3794311496'
-}
- GET / 500 in 92ms (compile: 13ms, render: 79ms)
-✓ Compiled in 293ms
-⨯ TypeError: localStorage.getItem is not a function
-    at ignore-listed frames {
-  digest: '1069521703'
-}
-⨯ TypeError: localStorage.getItem is not a function
-    at ignore-listed frames {
-  digest: '1069521703'
-}
- GET / 500 in 474ms (compile: 169ms, render: 306ms)
-✓ Compiled in 10ms
-⨯ TypeError: localStorage.getItem is not a function
-    at ignore-listed frames {
-  digest: '1069521703'
-}
- GET / 500 in 74ms (compile: 12ms, render: 62ms)
-Persisting failed: Unable to open static sorted file referenced from 00001934.meta
+⚠ The "middleware" file convention is deprecated. Please use "proxy" instead. Learn more: https://nextjs.org/docs/messages/middleware-to-proxy
+✓ Ready in 589ms
+○ Compiling /my-page ...
+Lit is in dev mode. Not recommended for production  Reload env: .env.local
+Persisting failed: Unable to open static sorted file referenced from 00000006.meta
 
 Caused by:
-    0: Unable to open static sorted file 00001933.sst
+    0: Unable to open static sorted file 00000003.sst
     1: No such file or directory (os error 2)
+der: 58ms)
+ HEAD /my-page 200 in 187ms (compile: 156ms, render: 31ms)
+  Reload env: .env.local
+✓ Compiled in 1407ms
+ GET /my-page 200 in 1448ms (compile: 1426ms, render: 21ms)

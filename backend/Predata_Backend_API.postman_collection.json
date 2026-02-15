@@ -1,0 +1,928 @@
+{
+	"info": {
+		"_postman_id": "predata-backend-api",
+		"name": "Predata Backend API",
+		"description": "Predata Backend API Collection - Phase 1 Security Fix Applied",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"variable": [
+		{ "key": "baseUrl", "value": "http://localhost:8080", "type": "string" },
+		{ "key": "memberId", "value": "1", "type": "string" },
+		{ "key": "questionId", "value": "1", "type": "string" },
+		{ "key": "token", "value": "", "type": "string" }
+	],
+	"auth": {
+		"type": "bearer",
+		"bearer": [{ "key": "token", "value": "{{token}}", "type": "string" }]
+	},
+	"item": [
+		{
+			"name": "Auth",
+			"item": [
+				{
+					"name": "Send Verification Code",
+					"request": {
+						"method": "POST",
+						"header": [{ "key": "Content-Type", "value": "application/json" }],
+						"url": { "raw": "{{baseUrl}}/api/auth/send-code", "host": ["{{baseUrl}}"], "path": ["api", "auth", "send-code"] },
+						"body": { "mode": "raw", "raw": "{\n  \"email\": \"test@example.com\"\n}" }
+					}
+				},
+				{
+					"name": "Verify Code",
+					"request": {
+						"method": "POST",
+						"header": [{ "key": "Content-Type", "value": "application/json" }],
+						"url": { "raw": "{{baseUrl}}/api/auth/verify-code", "host": ["{{baseUrl}}"], "path": ["api", "auth", "verify-code"] },
+						"body": { "mode": "raw", "raw": "{\n  \"email\": \"test@example.com\",\n  \"code\": \"123456\"\n}" }
+					}
+				},
+				{
+					"name": "Complete Signup",
+					"request": {
+						"method": "POST",
+						"header": [{ "key": "Content-Type", "value": "application/json" }],
+						"url": { "raw": "{{baseUrl}}/api/auth/complete-signup", "host": ["{{baseUrl}}"], "path": ["api", "auth", "complete-signup"] },
+						"body": { "mode": "raw", "raw": "{\n  \"email\": \"test@example.com\",\n  \"code\": \"123456\",\n  \"password\": \"Test1234!\",\n  \"passwordConfirm\": \"Test1234!\"\n}" }
+					}
+				},
+				{
+					"name": "Login",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"var jsonData = pm.response.json();",
+									"if (jsonData.token) {",
+									"    pm.collectionVariables.set('token', jsonData.token);",
+									"    console.log('Token saved:', jsonData.token.substring(0, 20) + '...');",
+									"}",
+									"if (jsonData.memberId) {",
+									"    pm.collectionVariables.set('memberId', jsonData.memberId.toString());",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [{ "key": "Content-Type", "value": "application/json" }],
+						"url": { "raw": "{{baseUrl}}/api/auth/login", "host": ["{{baseUrl}}"], "path": ["api", "auth", "login"] },
+						"body": { "mode": "raw", "raw": "{\n  \"email\": \"admin@predata.io\",\n  \"password\": \"123400\"\n}" }
+					}
+				},
+				{
+					"name": "Google OAuth Login",
+					"request": {
+						"method": "POST",
+						"header": [{ "key": "Content-Type", "value": "application/json" }],
+						"url": { "raw": "{{baseUrl}}/api/auth/google", "host": ["{{baseUrl}}"], "path": ["api", "auth", "google"] },
+						"body": { "mode": "raw", "raw": "{\n  \"googleToken\": \"YOUR_GOOGLE_ID_TOKEN\"\n}" }
+					}
+				},
+				{
+					"name": "Complete Google Registration",
+					"request": {
+						"method": "POST",
+						"header": [{ "key": "Content-Type", "value": "application/json" }],
+						"url": { "raw": "{{baseUrl}}/api/auth/google/complete-registration", "host": ["{{baseUrl}}"], "path": ["api", "auth", "google", "complete-registration"] },
+						"body": { "mode": "raw", "raw": "{\n  \"googleId\": \"google-sub-id\",\n  \"email\": \"user@gmail.com\",\n  \"countryCode\": \"KR\"\n}" }
+					}
+				}
+			]
+		},
+		{
+			"name": "Members",
+			"item": [
+				{
+					"name": "Create Member (Signup)",
+					"request": {
+						"method": "POST",
+						"header": [{ "key": "Content-Type", "value": "application/json" }],
+						"url": { "raw": "{{baseUrl}}/api/members", "host": ["{{baseUrl}}"], "path": ["api", "members"] },
+						"body": { "mode": "raw", "raw": "{\n  \"email\": \"newuser@example.com\",\n  \"walletAddress\": null,\n  \"countryCode\": \"KR\",\n  \"jobCategory\": \"IT\",\n  \"ageGroup\": 30\n}" }
+					}
+				},
+				{
+					"name": "Get Member by ID",
+					"request": {
+						"method": "GET",
+						"url": { "raw": "{{baseUrl}}/api/members/{{memberId}}", "host": ["{{baseUrl}}"], "path": ["api", "members", "{{memberId}}"] }
+					}
+				},
+				{
+					"name": "Get Current User (JWT)",
+					"request": {
+						"method": "GET",
+						"url": { "raw": "{{baseUrl}}/api/members/me", "host": ["{{baseUrl}}"], "path": ["api", "members", "me"] }
+					}
+				},
+				{
+					"name": "Get Member by Email",
+					"request": {
+						"method": "GET",
+						"url": { "raw": "{{baseUrl}}/api/members/by-email?email=admin@predata.io", "host": ["{{baseUrl}}"], "path": ["api", "members", "by-email"], "query": [{ "key": "email", "value": "admin@predata.io" }] }
+					}
+				},
+				{
+					"name": "Get Member by Wallet",
+					"request": {
+						"method": "GET",
+						"url": { "raw": "{{baseUrl}}/api/members/by-wallet?address=0x1234", "host": ["{{baseUrl}}"], "path": ["api", "members", "by-wallet"], "query": [{ "key": "address", "value": "0x1234" }] }
+					}
+				}
+			]
+		},
+		{
+			"name": "Questions",
+			"item": [
+				{
+					"name": "Get All Questions",
+					"request": {
+						"method": "GET",
+						"url": { "raw": "{{baseUrl}}/api/questions", "host": ["{{baseUrl}}"], "path": ["api", "questions"] }
+					}
+				},
+				{
+					"name": "Get Question by ID",
+					"request": {
+						"method": "GET",
+						"url": { "raw": "{{baseUrl}}/api/questions/{{questionId}}", "host": ["{{baseUrl}}"], "path": ["api", "questions", "{{questionId}}"] }
+					}
+				},
+				{
+					"name": "Get Questions by Status (VOTING)",
+					"request": {
+						"method": "GET",
+						"url": { "raw": "{{baseUrl}}/api/questions/status/VOTING", "host": ["{{baseUrl}}"], "path": ["api", "questions", "status", "VOTING"] }
+					}
+				},
+				{
+					"name": "Get Questions by Status (BETTING)",
+					"request": {
+						"method": "GET",
+						"url": { "raw": "{{baseUrl}}/api/questions/status/BETTING", "host": ["{{baseUrl}}"], "path": ["api", "questions", "status", "BETTING"] }
+					}
+				},
+				{
+					"name": "Get Questions by Status (SETTLED)",
+					"request": {
+						"method": "GET",
+						"url": { "raw": "{{baseUrl}}/api/questions/status/SETTLED", "host": ["{{baseUrl}}"], "path": ["api", "questions", "status", "SETTLED"] }
+					}
+				},
+				{
+					"name": "Get Real-time Odds",
+					"request": {
+						"method": "GET",
+						"url": { "raw": "{{baseUrl}}/api/questions/{{questionId}}/odds", "host": ["{{baseUrl}}"], "path": ["api", "questions", "{{questionId}}", "odds"] }
+					}
+				}
+			]
+		},
+		{
+			"name": "Vote & Bet",
+			"item": [
+				{
+					"name": "Vote",
+					"request": {
+						"method": "POST",
+						"header": [{ "key": "Content-Type", "value": "application/json" }],
+						"url": { "raw": "{{baseUrl}}/api/vote", "host": ["{{baseUrl}}"], "path": ["api", "vote"] },
+						"body": { "mode": "raw", "raw": "{\n  \"memberId\": {{memberId}},\n  \"questionId\": {{questionId}},\n  \"choice\": \"YES\",\n  \"amount\": 100\n}" }
+					}
+				},
+				{
+					"name": "Bet",
+					"request": {
+						"method": "POST",
+						"header": [{ "key": "Content-Type", "value": "application/json" }],
+						"url": { "raw": "{{baseUrl}}/api/bet", "host": ["{{baseUrl}}"], "path": ["api", "bet"] },
+						"body": { "mode": "raw", "raw": "{\n  \"memberId\": {{memberId}},\n  \"questionId\": {{questionId}},\n  \"choice\": \"YES\",\n  \"amount\": 500\n}" }
+					}
+				},
+				{
+					"name": "Sell Bet Position",
+					"request": {
+						"method": "POST",
+						"header": [{ "key": "Content-Type", "value": "application/json" }],
+						"url": { "raw": "{{baseUrl}}/api/bets/1/sell", "host": ["{{baseUrl}}"], "path": ["api", "bets", "1", "sell"] },
+						"body": { "mode": "raw", "raw": "{\n  \"betId\": 1,\n  \"memberId\": {{memberId}},\n  \"price\": 450\n}" }
+					}
+				},
+				{
+					"name": "Get Activities by Member",
+					"request": {
+						"method": "GET",
+						"url": { "raw": "{{baseUrl}}/api/activities/member/{{memberId}}", "host": ["{{baseUrl}}"], "path": ["api", "activities", "member", "{{memberId}}"] }
+					}
+				},
+				{
+					"name": "Get Activities by Member (Vote Only)",
+					"request": {
+						"method": "GET",
+						"url": { "raw": "{{baseUrl}}/api/activities/member/{{memberId}}?type=VOTE", "host": ["{{baseUrl}}"], "path": ["api", "activities", "member", "{{memberId}}"], "query": [{ "key": "type", "value": "VOTE" }] }
+					}
+				},
+				{
+					"name": "Get Activities by Question",
+					"request": {
+						"method": "GET",
+						"url": { "raw": "{{baseUrl}}/api/activities/question/{{questionId}}", "host": ["{{baseUrl}}"], "path": ["api", "activities", "question", "{{questionId}}"] }
+					}
+				},
+				{
+					"name": "Get Activities by Member & Question",
+					"request": {
+						"method": "GET",
+						"url": { "raw": "{{baseUrl}}/api/activities/member/{{memberId}}/question/{{questionId}}", "host": ["{{baseUrl}}"], "path": ["api", "activities", "member", "{{memberId}}", "question", "{{questionId}}"] }
+					}
+				}
+			]
+		},
+		{
+			"name": "Orders",
+			"item": [
+				{
+					"name": "Get Order Book",
+					"request": {
+						"method": "GET",
+						"url": { "raw": "{{baseUrl}}/api/questions/{{questionId}}/orderbook", "host": ["{{baseUrl}}"], "path": ["api", "questions", "{{questionId}}", "orderbook"] }
+					}
+				},
+				{
+					"name": "Create Limit Order",
+					"request": {
+						"method": "POST",
+						"header": [{ "key": "Content-Type", "value": "application/json" }],
+						"url": { "raw": "{{baseUrl}}/api/orders", "host": ["{{baseUrl}}"], "path": ["api", "orders"] },
+						"body": { "mode": "raw", "raw": "{\n  \"memberId\": {{memberId}},\n  \"questionId\": {{questionId}},\n  \"side\": \"YES\",\n  \"price\": 60,\n  \"quantity\": 10\n}" }
+					}
+				},
+				{
+					"name": "Cancel Order",
+					"request": {
+						"method": "DELETE",
+						"url": { "raw": "{{baseUrl}}/api/orders/1?memberId={{memberId}}", "host": ["{{baseUrl}}"], "path": ["api", "orders", "1"], "query": [{ "key": "memberId", "value": "{{memberId}}" }] }
+					}
+				},
+				{
+					"name": "Get Member's Active Orders",
+					"request": {
+						"method": "GET",
+						"url": { "raw": "{{baseUrl}}/api/orders/member/{{memberId}}", "host": ["{{baseUrl}}"], "path": ["api", "orders", "member", "{{memberId}}"] }
+					}
+				},
+				{
+					"name": "Get Member's Orders for Question",
+					"request": {
+						"method": "GET",
+						"url": { "raw": "{{baseUrl}}/api/orders/member/{{memberId}}/question/{{questionId}}", "host": ["{{baseUrl}}"], "path": ["api", "orders", "member", "{{memberId}}", "question", "{{questionId}}"] }
+					}
+				}
+			]
+		},
+		{
+			"name": "Settlement",
+			"item": [
+				{
+					"name": "Initiate Settlement",
+					"request": {
+						"method": "POST",
+						"header": [{ "key": "Content-Type", "value": "application/json" }],
+						"url": { "raw": "{{baseUrl}}/api/questions/{{questionId}}/settle", "host": ["{{baseUrl}}"], "path": ["api", "questions", "{{questionId}}", "settle"] },
+						"body": { "mode": "raw", "raw": "{\n  \"finalResult\": \"YES\",\n  \"sourceUrl\": \"https://example.com/result\"\n}" }
+					}
+				},
+				{
+					"name": "Finalize Settlement",
+					"request": {
+						"method": "POST",
+						"header": [{ "key": "Content-Type", "value": "application/json" }],
+						"url": { "raw": "{{baseUrl}}/api/questions/{{questionId}}/settle/finalize", "host": ["{{baseUrl}}"], "path": ["api", "questions", "{{questionId}}", "settle", "finalize"] },
+						"body": { "mode": "raw", "raw": "{\n  \"force\": false\n}" }
+					}
+				},
+				{
+					"name": "Cancel Settlement",
+					"request": {
+						"method": "POST",
+						"url": { "raw": "{{baseUrl}}/api/questions/{{questionId}}/settle/cancel", "host": ["{{baseUrl}}"], "path": ["api", "questions", "{{questionId}}", "settle", "cancel"] }
+					}
+				},
+				{
+					"name": "Get Settlement History",
+					"request": {
+						"method": "GET",
+						"url": { "raw": "{{baseUrl}}/api/settlements/history/{{memberId}}", "host": ["{{baseUrl}}"], "path": ["api", "settlements", "history", "{{memberId}}"] }
+					}
+				}
+			]
+		},
+		{
+			"name": "Tickets & Faucet",
+			"item": [
+				{
+					"name": "Get Remaining Tickets",
+					"request": {
+						"method": "GET",
+						"url": { "raw": "{{baseUrl}}/api/tickets/{{memberId}}", "host": ["{{baseUrl}}"], "path": ["api", "tickets", "{{memberId}}"] }
+					}
+				},
+				{
+					"name": "Purchase Tickets",
+					"request": {
+						"method": "POST",
+						"header": [{ "key": "Content-Type", "value": "application/json" }],
+						"url": { "raw": "{{baseUrl}}/api/tickets/purchase", "host": ["{{baseUrl}}"], "path": ["api", "tickets", "purchase"] },
+						"body": { "mode": "raw", "raw": "{\n  \"memberId\": {{memberId}},\n  \"quantity\": 5\n}" }
+					}
+				},
+				{
+					"name": "Get Ticket Purchase History",
+					"request": {
+						"method": "GET",
+						"url": { "raw": "{{baseUrl}}/api/tickets/history/{{memberId}}", "host": ["{{baseUrl}}"], "path": ["api", "tickets", "history", "{{memberId}}"] }
+					}
+				},
+				{
+					"name": "Claim Daily Points (Faucet)",
+					"request": {
+						"method": "POST",
+						"url": { "raw": "{{baseUrl}}/api/faucet/claim/{{memberId}}", "host": ["{{baseUrl}}"], "path": ["api", "faucet", "claim", "{{memberId}}"] }
+					}
+				},
+				{
+					"name": "Get Faucet Status",
+					"request": {
+						"method": "GET",
+						"url": { "raw": "{{baseUrl}}/api/faucet/status/{{memberId}}", "host": ["{{baseUrl}}"], "path": ["api", "faucet", "status", "{{memberId}}"] }
+					}
+				}
+			]
+		},
+		{
+			"name": "Tier & Leaderboard",
+			"item": [
+				{
+					"name": "Get Tier Progress",
+					"request": {
+						"method": "GET",
+						"url": { "raw": "{{baseUrl}}/api/tiers/progress/{{memberId}}", "host": ["{{baseUrl}}"], "path": ["api", "tiers", "progress", "{{memberId}}"] }
+					}
+				},
+				{
+					"name": "Get Tier Statistics",
+					"request": {
+						"method": "GET",
+						"url": { "raw": "{{baseUrl}}/api/tiers/statistics", "host": ["{{baseUrl}}"], "path": ["api", "tiers", "statistics"] }
+					}
+				},
+				{
+					"name": "Get Leaderboard Top 50",
+					"request": {
+						"method": "GET",
+						"url": { "raw": "{{baseUrl}}/api/leaderboard/top?limit=50", "host": ["{{baseUrl}}"], "path": ["api", "leaderboard", "top"], "query": [{ "key": "limit", "value": "50" }] }
+					}
+				},
+				{
+					"name": "Get Member Rank",
+					"request": {
+						"method": "GET",
+						"url": { "raw": "{{baseUrl}}/api/leaderboard/member/{{memberId}}", "host": ["{{baseUrl}}"], "path": ["api", "leaderboard", "member", "{{memberId}}"] }
+					}
+				}
+			]
+		},
+		{
+			"name": "Badges & Rewards",
+			"item": [
+				{
+					"name": "Get Badge Definitions",
+					"request": {
+						"method": "GET",
+						"url": { "raw": "{{baseUrl}}/api/badges/definitions", "host": ["{{baseUrl}}"], "path": ["api", "badges", "definitions"] }
+					}
+				},
+				{
+					"name": "Get Member Badges",
+					"request": {
+						"method": "GET",
+						"url": { "raw": "{{baseUrl}}/api/badges/member/{{memberId}}", "host": ["{{baseUrl}}"], "path": ["api", "badges", "member", "{{memberId}}"] }
+					}
+				},
+				{
+					"name": "Get Member Earned Badges",
+					"request": {
+						"method": "GET",
+						"url": { "raw": "{{baseUrl}}/api/badges/member/{{memberId}}/earned", "host": ["{{baseUrl}}"], "path": ["api", "badges", "member", "{{memberId}}", "earned"] }
+					}
+				},
+				{
+					"name": "Get Cumulative Rewards",
+					"request": {
+						"method": "GET",
+						"url": { "raw": "{{baseUrl}}/api/rewards/{{memberId}}", "host": ["{{baseUrl}}"], "path": ["api", "rewards", "{{memberId}}"] }
+					}
+				}
+			]
+		},
+		{
+			"name": "Portfolio (JWT Required)",
+			"item": [
+				{
+					"name": "Get Portfolio Summary",
+					"request": {
+						"method": "GET",
+						"url": { "raw": "{{baseUrl}}/api/portfolio/summary", "host": ["{{baseUrl}}"], "path": ["api", "portfolio", "summary"] }
+					}
+				},
+				{
+					"name": "Get Open Positions",
+					"request": {
+						"method": "GET",
+						"url": { "raw": "{{baseUrl}}/api/portfolio/positions", "host": ["{{baseUrl}}"], "path": ["api", "portfolio", "positions"] }
+					}
+				},
+				{
+					"name": "Get Category Breakdown",
+					"request": {
+						"method": "GET",
+						"url": { "raw": "{{baseUrl}}/api/portfolio/category-breakdown", "host": ["{{baseUrl}}"], "path": ["api", "portfolio", "category-breakdown"] }
+					}
+				},
+				{
+					"name": "Get Accuracy Trend",
+					"request": {
+						"method": "GET",
+						"url": { "raw": "{{baseUrl}}/api/portfolio/accuracy-trend", "host": ["{{baseUrl}}"], "path": ["api", "portfolio", "accuracy-trend"] }
+					}
+				}
+			]
+		},
+		{
+			"name": "Notifications (JWT Required)",
+			"item": [
+				{
+					"name": "Get Notifications",
+					"request": {
+						"method": "GET",
+						"url": { "raw": "{{baseUrl}}/api/notifications", "host": ["{{baseUrl}}"], "path": ["api", "notifications"] }
+					}
+				},
+				{
+					"name": "Get Unread Count",
+					"request": {
+						"method": "GET",
+						"url": { "raw": "{{baseUrl}}/api/notifications/unread-count", "host": ["{{baseUrl}}"], "path": ["api", "notifications", "unread-count"] }
+					}
+				},
+				{
+					"name": "Mark as Read",
+					"request": {
+						"method": "POST",
+						"url": { "raw": "{{baseUrl}}/api/notifications/1/read", "host": ["{{baseUrl}}"], "path": ["api", "notifications", "1", "read"] }
+					}
+				},
+				{
+					"name": "Mark All as Read",
+					"request": {
+						"method": "POST",
+						"url": { "raw": "{{baseUrl}}/api/notifications/read-all", "host": ["{{baseUrl}}"], "path": ["api", "notifications", "read-all"] }
+					}
+				}
+			]
+		},
+		{
+			"name": "Referrals (JWT Required)",
+			"item": [
+				{
+					"name": "Get Referral Stats",
+					"request": {
+						"method": "GET",
+						"url": { "raw": "{{baseUrl}}/api/referrals/stats", "host": ["{{baseUrl}}"], "path": ["api", "referrals", "stats"] }
+					}
+				},
+				{
+					"name": "Get Referral Code",
+					"request": {
+						"method": "GET",
+						"url": { "raw": "{{baseUrl}}/api/referrals/code", "host": ["{{baseUrl}}"], "path": ["api", "referrals", "code"] }
+					}
+				},
+				{
+					"name": "Apply Referral Code",
+					"request": {
+						"method": "POST",
+						"header": [{ "key": "Content-Type", "value": "application/json" }],
+						"url": { "raw": "{{baseUrl}}/api/referrals/apply", "host": ["{{baseUrl}}"], "path": ["api", "referrals", "apply"] },
+						"body": { "mode": "raw", "raw": "{\n  \"referralCode\": \"ABC123\"\n}" }
+					}
+				}
+			]
+		},
+		{
+			"name": "Analytics",
+			"item": [
+				{
+					"name": "Get Demographics",
+					"request": {
+						"method": "GET",
+						"url": { "raw": "{{baseUrl}}/api/analytics/demographics/{{questionId}}", "host": ["{{baseUrl}}"], "path": ["api", "analytics", "demographics", "{{questionId}}"] }
+					}
+				},
+				{
+					"name": "Get Gap Analysis",
+					"request": {
+						"method": "GET",
+						"url": { "raw": "{{baseUrl}}/api/analytics/gap-analysis/{{questionId}}", "host": ["{{baseUrl}}"], "path": ["api", "analytics", "gap-analysis", "{{questionId}}"] }
+					}
+				},
+				{
+					"name": "Get Filtering Effect",
+					"request": {
+						"method": "GET",
+						"url": { "raw": "{{baseUrl}}/api/analytics/filtering-effect/{{questionId}}", "host": ["{{baseUrl}}"], "path": ["api", "analytics", "filtering-effect", "{{questionId}}"] }
+					}
+				},
+				{
+					"name": "Get Data Quality Dashboard",
+					"request": {
+						"method": "GET",
+						"url": { "raw": "{{baseUrl}}/api/analytics/dashboard/{{questionId}}", "host": ["{{baseUrl}}"], "path": ["api", "analytics", "dashboard", "{{questionId}}"] }
+					}
+				},
+				{
+					"name": "Get Global Stats",
+					"request": {
+						"method": "GET",
+						"url": { "raw": "{{baseUrl}}/api/analytics/global/stats", "host": ["{{baseUrl}}"], "path": ["api", "analytics", "global", "stats"] }
+					}
+				}
+			]
+		},
+		{
+			"name": "Data Analysis",
+			"item": [
+				{
+					"name": "Get Abusing Report",
+					"request": {
+						"method": "GET",
+						"url": { "raw": "{{baseUrl}}/api/analysis/questions/{{questionId}}/abusing-report", "host": ["{{baseUrl}}"], "path": ["api", "analysis", "questions", "{{questionId}}", "abusing-report"] }
+					}
+				},
+				{
+					"name": "Get Quality Score",
+					"request": {
+						"method": "GET",
+						"url": { "raw": "{{baseUrl}}/api/analysis/questions/{{questionId}}/quality-score", "host": ["{{baseUrl}}"], "path": ["api", "analysis", "questions", "{{questionId}}", "quality-score"] }
+					}
+				},
+				{
+					"name": "Get Weighted Votes",
+					"request": {
+						"method": "GET",
+						"url": { "raw": "{{baseUrl}}/api/analysis/questions/{{questionId}}/weighted-votes", "host": ["{{baseUrl}}"], "path": ["api", "analysis", "questions", "{{questionId}}", "weighted-votes"] }
+					}
+				},
+				{
+					"name": "Get Weighted Votes by Category",
+					"request": {
+						"method": "GET",
+						"url": { "raw": "{{baseUrl}}/api/analysis/questions/{{questionId}}/weighted-votes?category=IT", "host": ["{{baseUrl}}"], "path": ["api", "analysis", "questions", "{{questionId}}", "weighted-votes"], "query": [{ "key": "category", "value": "IT" }] }
+					}
+				},
+				{
+					"name": "Get Votes by Country",
+					"request": {
+						"method": "GET",
+						"url": { "raw": "{{baseUrl}}/api/analysis/questions/{{questionId}}/by-country", "host": ["{{baseUrl}}"], "path": ["api", "analysis", "questions", "{{questionId}}", "by-country"] }
+					}
+				},
+				{
+					"name": "Get Premium Data",
+					"request": {
+						"method": "GET",
+						"url": { "raw": "{{baseUrl}}/api/analysis/questions/{{questionId}}/premium-data?minLatencyMs=2000&onlyBettors=false", "host": ["{{baseUrl}}"], "path": ["api", "analysis", "questions", "{{questionId}}", "premium-data"], "query": [{ "key": "minLatencyMs", "value": "2000" }, { "key": "onlyBettors", "value": "false" }] }
+					}
+				},
+				{
+					"name": "Detect Fast Clickers",
+					"request": {
+						"method": "GET",
+						"url": { "raw": "{{baseUrl}}/api/analysis/questions/{{questionId}}/fast-clickers?thresholdMs=1000", "host": ["{{baseUrl}}"], "path": ["api", "analysis", "questions", "{{questionId}}", "fast-clickers"], "query": [{ "key": "thresholdMs", "value": "1000" }] }
+					}
+				},
+				{
+					"name": "Simulate Filter",
+					"request": {
+						"method": "POST",
+						"header": [{ "key": "Content-Type", "value": "application/json" }],
+						"url": { "raw": "{{baseUrl}}/api/analysis/questions/{{questionId}}/simulate-filter", "host": ["{{baseUrl}}"], "path": ["api", "analysis", "questions", "{{questionId}}", "simulate-filter"] },
+						"body": { "mode": "raw", "raw": "{\n  \"minLatencyMs\": 2000,\n  \"onlyBettors\": true\n}" }
+					}
+				}
+			]
+		},
+		{
+			"name": "Premium Data Export",
+			"item": [
+				{
+					"name": "Preview Premium Data",
+					"request": {
+						"method": "POST",
+						"header": [{ "key": "Content-Type", "value": "application/json" }],
+						"url": { "raw": "{{baseUrl}}/api/premium-data/preview", "host": ["{{baseUrl}}"], "path": ["api", "premium-data", "preview"] },
+						"body": { "mode": "raw", "raw": "{\n  \"questionId\": {{questionId}},\n  \"filters\": {}\n}" }
+					}
+				},
+				{
+					"name": "Export Premium Data",
+					"request": {
+						"method": "POST",
+						"header": [{ "key": "Content-Type", "value": "application/json" }],
+						"url": { "raw": "{{baseUrl}}/api/premium-data/export", "host": ["{{baseUrl}}"], "path": ["api", "premium-data", "export"] },
+						"body": { "mode": "raw", "raw": "{\n  \"questionId\": {{questionId}},\n  \"filters\": {}\n}" }
+					}
+				},
+				{
+					"name": "Get Quality Summary",
+					"request": {
+						"method": "GET",
+						"url": { "raw": "{{baseUrl}}/api/premium-data/quality-summary/{{questionId}}", "host": ["{{baseUrl}}"], "path": ["api", "premium-data", "quality-summary", "{{questionId}}"] }
+					}
+				}
+			]
+		},
+		{
+			"name": "Betting Suspension",
+			"item": [
+				{
+					"name": "Check Suspension by Question",
+					"request": {
+						"method": "GET",
+						"url": { "raw": "{{baseUrl}}/api/betting/suspension/question/{{questionId}}", "host": ["{{baseUrl}}"], "path": ["api", "betting", "suspension", "question", "{{questionId}}"] }
+					}
+				},
+				{
+					"name": "Check Suspension by Match",
+					"request": {
+						"method": "GET",
+						"url": { "raw": "{{baseUrl}}/api/betting/suspension/match/1", "host": ["{{baseUrl}}"], "path": ["api", "betting", "suspension", "match", "1"] }
+					}
+				}
+			]
+		},
+		{
+			"name": "Blockchain",
+			"item": [
+				{
+					"name": "Get Blockchain Status",
+					"request": {
+						"method": "GET",
+						"url": { "raw": "{{baseUrl}}/api/blockchain/status", "host": ["{{baseUrl}}"], "path": ["api", "blockchain", "status"] }
+					}
+				},
+				{
+					"name": "Get On-chain Question Data",
+					"request": {
+						"method": "GET",
+						"url": { "raw": "{{baseUrl}}/api/blockchain/question/{{questionId}}", "host": ["{{baseUrl}}"], "path": ["api", "blockchain", "question", "{{questionId}}"] }
+					}
+				}
+			]
+		},
+		{
+			"name": "Sports",
+			"item": [
+				{
+					"name": "Get Matches by League & Status",
+					"request": {
+						"method": "GET",
+						"url": { "raw": "{{baseUrl}}/api/sports/matches?league=PL&status=SCHEDULED", "host": ["{{baseUrl}}"], "path": ["api", "sports", "matches"], "query": [{ "key": "league", "value": "PL" }, { "key": "status", "value": "SCHEDULED" }] }
+					}
+				},
+				{
+					"name": "Get All Matches",
+					"request": {
+						"method": "GET",
+						"url": { "raw": "{{baseUrl}}/api/sports/matches", "host": ["{{baseUrl}}"], "path": ["api", "sports", "matches"] }
+					}
+				}
+			]
+		},
+		{
+			"name": "Health",
+			"item": [
+				{
+					"name": "Health Check",
+					"request": {
+						"method": "GET",
+						"url": { "raw": "{{baseUrl}}/api/health", "host": ["{{baseUrl}}"], "path": ["api", "health"] }
+					}
+				}
+			]
+		},
+		{
+			"name": "Admin - Questions",
+			"item": [
+				{
+					"name": "Create Question (Duration-based)",
+					"request": {
+						"method": "POST",
+						"header": [{ "key": "Content-Type", "value": "application/json" }],
+						"url": { "raw": "{{baseUrl}}/api/admin/questions", "host": ["{{baseUrl}}"], "path": ["api", "admin", "questions"] },
+						"body": { "mode": "raw", "raw": "{\n  \"title\": \"Will BTC reach $100k by end of 2026?\",\n  \"type\": \"VERIFIABLE\",\n  \"category\": \"CRYPTO\",\n  \"votingDuration\": 60,\n  \"bettingDuration\": 120\n}" }
+					}
+				},
+				{
+					"name": "Create Question (Legacy)",
+					"request": {
+						"method": "POST",
+						"header": [{ "key": "Content-Type", "value": "application/json" }],
+						"url": { "raw": "{{baseUrl}}/api/admin/questions/legacy", "host": ["{{baseUrl}}"], "path": ["api", "admin", "questions", "legacy"] },
+						"body": { "mode": "raw", "raw": "{\n  \"title\": \"Will it rain in Seoul tomorrow?\",\n  \"type\": \"VERIFIABLE\",\n  \"category\": \"WEATHER\",\n  \"expiredAt\": \"2026-12-31T23:59:59\"\n}" }
+					}
+				},
+				{
+					"name": "Update Question",
+					"request": {
+						"method": "PUT",
+						"header": [{ "key": "Content-Type", "value": "application/json" }],
+						"url": { "raw": "{{baseUrl}}/api/admin/questions/{{questionId}}", "host": ["{{baseUrl}}"], "path": ["api", "admin", "questions", "{{questionId}}"] },
+						"body": { "mode": "raw", "raw": "{\n  \"title\": \"Updated question title\",\n  \"category\": \"SPORTS\"\n}" }
+					}
+				},
+				{
+					"name": "Delete Question",
+					"request": {
+						"method": "DELETE",
+						"url": { "raw": "{{baseUrl}}/api/admin/questions/{{questionId}}", "host": ["{{baseUrl}}"], "path": ["api", "admin", "questions", "{{questionId}}"] }
+					}
+				},
+				{
+					"name": "Get All Questions (Paginated)",
+					"request": {
+						"method": "GET",
+						"url": { "raw": "{{baseUrl}}/api/admin/questions?page=0&size=20&sortBy=createdAt&sortDirection=DESC", "host": ["{{baseUrl}}"], "path": ["api", "admin", "questions"], "query": [{ "key": "page", "value": "0" }, { "key": "size", "value": "20" }, { "key": "sortBy", "value": "createdAt" }, { "key": "sortDirection", "value": "DESC" }] }
+					}
+				},
+				{
+					"name": "Set Question Result",
+					"request": {
+						"method": "POST",
+						"header": [{ "key": "Content-Type", "value": "application/json" }],
+						"url": { "raw": "{{baseUrl}}/api/admin/questions/{{questionId}}/result", "host": ["{{baseUrl}}"], "path": ["api", "admin", "questions", "{{questionId}}", "result"] },
+						"body": { "mode": "raw", "raw": "{\n  \"result\": \"YES\"\n}" }
+					}
+				},
+				{
+					"name": "Manual Settlement",
+					"request": {
+						"method": "PUT",
+						"header": [{ "key": "Content-Type", "value": "application/json" }],
+						"url": { "raw": "{{baseUrl}}/api/admin/questions/{{questionId}}/settle-manual", "host": ["{{baseUrl}}"], "path": ["api", "admin", "questions", "{{questionId}}", "settle-manual"] },
+						"body": { "mode": "raw", "raw": "{\n  \"result\": \"YES\"\n}" }
+					}
+				}
+			]
+		},
+		{
+			"name": "Admin - Question Generator",
+			"item": [
+				{
+					"name": "Get Generator Settings",
+					"request": {
+						"method": "GET",
+						"url": { "raw": "{{baseUrl}}/api/admin/settings/question-generator", "host": ["{{baseUrl}}"], "path": ["api", "admin", "settings", "question-generator"] }
+					}
+				},
+				{
+					"name": "Update Generator Settings",
+					"request": {
+						"method": "PUT",
+						"header": [{ "key": "Content-Type", "value": "application/json" }],
+						"url": { "raw": "{{baseUrl}}/api/admin/settings/question-generator", "host": ["{{baseUrl}}"], "path": ["api", "admin", "settings", "question-generator"] },
+						"body": { "mode": "raw", "raw": "{\n  \"enabled\": true,\n  \"intervalMinutes\": 60,\n  \"categories\": [\"SPORTS\", \"CRYPTO\", \"POLITICS\"]\n}" }
+					}
+				},
+				{
+					"name": "Manually Generate Question",
+					"request": {
+						"method": "POST",
+						"header": [{ "key": "Content-Type", "value": "application/json" }],
+						"url": { "raw": "{{baseUrl}}/api/admin/questions/generate", "host": ["{{baseUrl}}"], "path": ["api", "admin", "questions", "generate"] },
+						"body": { "mode": "raw", "raw": "{\n  \"category\": \"SPORTS\"\n}" }
+					}
+				}
+			]
+		},
+		{
+			"name": "Admin - Abuse Management",
+			"item": [
+				{
+					"name": "Ban User",
+					"request": {
+						"method": "POST",
+						"header": [{ "key": "Content-Type", "value": "application/json" }],
+						"url": { "raw": "{{baseUrl}}/api/admin/abuse/ban", "host": ["{{baseUrl}}"], "path": ["api", "admin", "abuse", "ban"] },
+						"body": { "mode": "raw", "raw": "{\n  \"memberId\": 2,\n  \"reason\": \"Suspicious activity detected\"\n}" }
+					}
+				},
+				{
+					"name": "Unban User",
+					"request": {
+						"method": "POST",
+						"header": [{ "key": "Content-Type", "value": "application/json" }],
+						"url": { "raw": "{{baseUrl}}/api/admin/abuse/unban", "host": ["{{baseUrl}}"], "path": ["api", "admin", "abuse", "unban"] },
+						"body": { "mode": "raw", "raw": "{\n  \"memberId\": 2\n}" }
+					}
+				},
+				{
+					"name": "Get Banned Users",
+					"request": {
+						"method": "GET",
+						"url": { "raw": "{{baseUrl}}/api/admin/abuse/banned", "host": ["{{baseUrl}}"], "path": ["api", "admin", "abuse", "banned"] }
+					}
+				},
+				{
+					"name": "Multi-Account Report",
+					"request": {
+						"method": "GET",
+						"url": { "raw": "{{baseUrl}}/api/admin/abuse/multi-account-report", "host": ["{{baseUrl}}"], "path": ["api", "admin", "abuse", "multi-account-report"] }
+					}
+				},
+				{
+					"name": "IP Lookup",
+					"request": {
+						"method": "GET",
+						"url": { "raw": "{{baseUrl}}/api/admin/abuse/ip-lookup?ip=127.0.0.1", "host": ["{{baseUrl}}"], "path": ["api", "admin", "abuse", "ip-lookup"], "query": [{ "key": "ip", "value": "127.0.0.1" }] }
+					}
+				},
+				{
+					"name": "Get Member IP History",
+					"request": {
+						"method": "GET",
+						"url": { "raw": "{{baseUrl}}/api/admin/abuse/member-ips/{{memberId}}", "host": ["{{baseUrl}}"], "path": ["api", "admin", "abuse", "member-ips", "{{memberId}}"] }
+					}
+				}
+			]
+		},
+		{
+			"name": "Admin - Sports",
+			"item": [
+				{
+					"name": "Generate Sports Questions",
+					"request": {
+						"method": "POST",
+						"url": { "raw": "{{baseUrl}}/api/admin/sports/generate", "host": ["{{baseUrl}}"], "path": ["api", "admin", "sports", "generate"] }
+					}
+				},
+				{
+					"name": "Update Match Results",
+					"request": {
+						"method": "POST",
+						"url": { "raw": "{{baseUrl}}/api/admin/sports/update-results", "host": ["{{baseUrl}}"], "path": ["api", "admin", "sports", "update-results"] }
+					}
+				},
+				{
+					"name": "Trigger Auto-Settlement",
+					"request": {
+						"method": "POST",
+						"url": { "raw": "{{baseUrl}}/api/admin/sports/settle", "host": ["{{baseUrl}}"], "path": ["api", "admin", "sports", "settle"] }
+					}
+				},
+				{
+					"name": "Get LIVE Matches",
+					"request": {
+						"method": "GET",
+						"url": { "raw": "{{baseUrl}}/api/admin/sports/live", "host": ["{{baseUrl}}"], "path": ["api", "admin", "sports", "live"] }
+					}
+				},
+				{
+					"name": "Get Upcoming Matches",
+					"request": {
+						"method": "GET",
+						"url": { "raw": "{{baseUrl}}/api/admin/sports/upcoming", "host": ["{{baseUrl}}"], "path": ["api", "admin", "sports", "upcoming"] }
+					}
+				},
+				{
+					"name": "Get Match-Linked Questions",
+					"request": {
+						"method": "GET",
+						"url": { "raw": "{{baseUrl}}/api/admin/sports/questions", "host": ["{{baseUrl}}"], "path": ["api", "admin", "sports", "questions"] }
+					}
+				},
+				{
+					"name": "Generate Match Questions",
+					"request": {
+						"method": "POST",
+						"url": { "raw": "{{baseUrl}}/api/admin/sports/generate-match-questions", "host": ["{{baseUrl}}"], "path": ["api", "admin", "sports", "generate-match-questions"] }
+					}
+				}
+			]
+		}
+	]
+}

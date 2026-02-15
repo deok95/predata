@@ -1,12 +1,9 @@
 > Task :checkKotlinGradlePluginConfigurationErrors
-> Task :processResources UP-TO-DATE
-
-> Task :compileKotlin
-w: file:///Users/mac/Desktop/predata/predata/backend/src/main/kotlin/com/predata/backend/service/PaymentVerificationService.kt:75:13 Variable 'verifiedAmount' is never used
-
+> Task :compileKotlin UP-TO-DATE
 > Task :compileJava NO-SOURCE
+> Task :processResources UP-TO-DATE
 > Task :classes UP-TO-DATE
-> Task :resolveMainClassName
+> Task :resolveMainClassName UP-TO-DATE
 
 > Task :bootRun
 
@@ -18,364 +15,79 @@ w: file:///Users/mac/Desktop/predata/predata/backend/src/main/kotlin/com/predata
  =========|_|==============|___/=/_/_/_/
  :: Spring Boot ::                (v3.2.1)
 
-2026-02-14T22:34:45.091+09:00  INFO 93537 --- [predata-backend] [           main] c.p.backend.PredataBackendApplicationKt  : Starting PredataBackendApplicationKt using Java 17.0.18 with PID 93537 (/Users/mac/Desktop/predata/predata/backend/build/classes/kotlin/main started by mac in /Users/mac/Desktop/predata/predata/backend)
-2026-02-14T22:34:45.092+09:00 DEBUG 93537 --- [predata-backend] [           main] c.p.backend.PredataBackendApplicationKt  : Running with Spring Boot v3.2.1, Spring v6.1.2
-2026-02-14T22:34:45.092+09:00  INFO 93537 --- [predata-backend] [           main] c.p.backend.PredataBackendApplicationKt  : No active profile set, falling back to 1 default profile: "default"
-2026-02-14T22:34:45.586+09:00  INFO 93537 --- [predata-backend] [           main] .s.d.r.c.RepositoryConfigurationDelegate : Bootstrapping Spring Data JPA repositories in DEFAULT mode.
-2026-02-14T22:34:45.651+09:00  INFO 93537 --- [predata-backend] [           main] .s.d.r.c.RepositoryConfigurationDelegate : Finished Spring Data repository scanning in 60 ms. Found 18 JPA repository interfaces.
-2026-02-14T22:34:46.019+09:00  INFO 93537 --- [predata-backend] [           main] o.s.b.w.embedded.tomcat.TomcatWebServer  : Tomcat initialized with port 8080 (http)
-2026-02-14T22:34:46.025+09:00  INFO 93537 --- [predata-backend] [           main] o.apache.catalina.core.StandardService   : Starting service [Tomcat]
-2026-02-14T22:34:46.025+09:00  INFO 93537 --- [predata-backend] [           main] o.apache.catalina.core.StandardEngine    : Starting Servlet engine: [Apache Tomcat/10.1.17]
-2026-02-14T22:34:46.067+09:00  INFO 93537 --- [predata-backend] [           main] o.a.c.c.C.[Tomcat].[localhost].[/]       : Initializing Spring embedded WebApplicationContext
-2026-02-14T22:34:46.068+09:00  INFO 93537 --- [predata-backend] [           main] w.s.c.ServletWebServerApplicationContext : Root WebApplicationContext: initialization completed in 948 ms
-2026-02-14T22:34:46.153+09:00  INFO 93537 --- [predata-backend] [           main] o.hibernate.jpa.internal.util.LogHelper  : HHH000204: Processing PersistenceUnitInfo [name: default]
-2026-02-14T22:34:46.184+09:00  INFO 93537 --- [predata-backend] [           main] org.hibernate.Version                    : HHH000412: Hibernate ORM core version 6.4.1.Final
-2026-02-14T22:34:46.200+09:00  INFO 93537 --- [predata-backend] [           main] o.h.c.internal.RegionFactoryInitiator    : HHH000026: Second-level cache disabled
-2026-02-14T22:34:46.316+09:00  INFO 93537 --- [predata-backend] [           main] o.s.o.j.p.SpringPersistenceUnitInfo      : No LoadTimeWeaver setup: ignoring JPA class transformer
-2026-02-14T22:34:46.330+09:00  INFO 93537 --- [predata-backend] [           main] com.zaxxer.hikari.HikariDataSource       : HikariPool-1 - Starting...
-2026-02-14T22:34:46.376+09:00  INFO 93537 --- [predata-backend] [           main] com.zaxxer.hikari.pool.HikariPool        : HikariPool-1 - Added connection org.mariadb.jdbc.Connection@5dd747c1
-2026-02-14T22:34:46.377+09:00  INFO 93537 --- [predata-backend] [           main] com.zaxxer.hikari.HikariDataSource       : HikariPool-1 - Start completed.
-2026-02-14T22:34:46.394+09:00  WARN 93537 --- [predata-backend] [           main] org.hibernate.orm.deprecation            : HHH90000025: MariaDBDialect does not need to be specified explicitly using 'hibernate.dialect' (remove the property setting and it will be selected by default)
-2026-02-14T22:34:46.891+09:00  INFO 93537 --- [predata-backend] [           main] o.h.e.t.j.p.i.JtaPlatformInitiator       : HHH000489: No JTA platform available (set 'hibernate.transaction.jta.platform' to enable JTA platform integration)
-2026-02-14T22:34:47.412+09:00  INFO 93537 --- [predata-backend] [           main] j.LocalContainerEntityManagerFactoryBean : Initialized JPA EntityManagerFactory for persistence unit 'default'
-2026-02-14T22:34:47.894+09:00  INFO 93537 --- [predata-backend] [           main] o.s.d.j.r.query.QueryEnhancerFactory     : Hibernate is in classpath; If applicable, HQL parser will be used.
-2026-02-14T22:34:48.085+09:00  INFO 93537 --- [predata-backend] [           main] c.p.backend.config.RateLimitInterceptor  : [RateLimit] 개발 모드 (관대한 제한) - General: 600req/분
-2026-02-14T22:34:48.342+09:00  INFO 93537 --- [predata-backend] [           main] c.p.b.service.MockBlockchainService      : 🔧 Mock 블록체인 서비스 시작 (로컬 개발 모드)
-2026-02-14T22:34:48.342+09:00  INFO 93537 --- [predata-backend] [           main] c.p.b.service.MockBlockchainService      : 📍 네트워크: Local Mock Chain
-2026-02-14T22:34:48.342+09:00  INFO 93537 --- [predata-backend] [           main] c.p.b.service.MockBlockchainService      : ⚡ 가스비: 무료 (시뮬레이션)
-2026-02-14T22:34:48.343+09:00  INFO 93537 --- [predata-backend] [           main] c.p.backend.service.BlockchainService    : ⚠️ 블록체인 서비스 비활성화 (DB만 사용)
-2026-02-14T22:34:49.101+09:00  WARN 93537 --- [predata-backend] [           main] JpaBaseConfiguration$JpaWebConfiguration : spring.jpa.open-in-view is enabled by default. Therefore, database queries may be performed during view rendering. Explicitly configure spring.jpa.open-in-view to disable this warning
-2026-02-14T22:34:49.269+09:00  INFO 93537 --- [predata-backend] [           main] o.s.s.web.DefaultSecurityFilterChain     : Will secure any request with [org.springframework.security.web.session.DisableEncodeUrlFilter@6bfd574c, org.springframework.security.web.context.request.async.WebAsyncManagerIntegrationFilter@71c31fdd, org.springframework.security.web.context.SecurityContextHolderFilter@39716249, org.springframework.security.web.header.HeaderWriterFilter@471ac7e2, org.springframework.web.filter.CorsFilter@323ebcc6, org.springframework.security.web.authentication.logout.LogoutFilter@2dedf1c9, org.springframework.security.oauth2.client.web.OAuth2AuthorizationRequestRedirectFilter@18be5bce, org.springframework.security.oauth2.client.web.OAuth2LoginAuthenticationFilter@7e6c990f, org.springframework.security.web.authentication.ui.DefaultLoginPageGeneratingFilter@4731c9af, org.springframework.security.web.authentication.ui.DefaultLogoutPageGeneratingFilter@7bca7b6c, org.springframework.security.web.savedrequest.RequestCacheAwareFilter@46179420, org.springframework.security.web.servletapi.SecurityContextHolderAwareRequestFilter@33c6625c, org.springframework.security.web.authentication.AnonymousAuthenticationFilter@7a0c046e, org.springframework.security.web.access.ExceptionTranslationFilter@4d979f76, org.springframework.security.web.access.intercept.AuthorizationFilter@74a8d26c]
-2026-02-14T22:34:49.428+09:00  INFO 93537 --- [predata-backend] [           main] o.s.b.w.embedded.tomcat.TomcatWebServer  : Tomcat started on port 8080 (http) with context path ''
-2026-02-14T22:34:49.437+09:00  INFO 93537 --- [predata-backend] [           main] c.p.backend.PredataBackendApplicationKt  : Started PredataBackendApplicationKt in 4.557 seconds (process running for 4.731)
-2026-02-14T22:34:49.501+09:00  INFO 93537 --- [predata-backend] [   scheduling-1] c.p.b.s.QuestionGeneratorScheduler       : [QuestionGeneratorScheduler] ===== 자동 질문 생성 시작 =====
-2026-02-14T22:34:49.501+09:00  INFO 93537 --- [predata-backend] [           main] c.p.backend.config.DataInitializer       : [DataInitializer] Admin account already exists: admin@predata.io
-2026-02-14T22:34:49.503+09:00  INFO 93537 --- [predata-backend] [   scheduling-1] c.p.b.s.QuestionGeneratorScheduler       : [QuestionGeneratorScheduler] 선택된 카테고리: POLITICS
-2026-02-14T22:34:49.507+09:00  INFO 93537 --- [predata-backend] [   scheduling-1] c.p.b.service.QuestionGeneratorService   : [DEMO MODE] API 키가 설정되지 않아 샘플 질문을 사용합니다.
-2026-02-14T22:34:49.507+09:00  INFO 93537 --- [predata-backend] [   scheduling-1] c.p.b.service.QuestionGeneratorService   : [DEMO MODE] 샘플 질문 사용: 2026년 한국 지방선거에서 여당이 승리할까?
-2026-02-14T22:34:49.530+09:00 DEBUG 93537 --- [predata-backend] [   scheduling-1] c.p.backend.service.BlockchainService    : 블록체인 비활성화 상태 - 질문 생성 건너뜀
-2026-02-14T22:34:49.536+09:00  INFO 93537 --- [predata-backend] [   scheduling-1] c.p.b.service.QuestionGeneratorService   : [DEMO MODE] 질문 생성 완료: 2026년 한국 지방선거에서 여당이 승리할까? (카테고리: POLITICS)
-2026-02-14T22:34:49.548+09:00  INFO 93537 --- [predata-backend] [   scheduling-1] c.p.b.s.QuestionGeneratorScheduler       : [QuestionGeneratorScheduler] 생성 완료: 2026년 한국 지방선거에서 여당이 승리할까?
+2026-02-15T03:29:30.535-08:00  INFO 52997 --- [predata-backend] [           main] c.p.backend.PredataBackendApplicationKt  : Starting PredataBackendApplicationKt using Java 17.0.18 with PID 52997 (/Users/harrykim/Desktop/predata/backend/build/classes/kotlin/main started by harrykim in /Users/harrykim/Desktop/predata/backend)
+2026-02-15T03:29:30.536-08:00 DEBUG 52997 --- [predata-backend] [           main] c.p.backend.PredataBackendApplicationKt  : Running with Spring Boot v3.2.1, Spring v6.1.2
+2026-02-15T03:29:30.536-08:00  INFO 52997 --- [predata-backend] [           main] c.p.backend.PredataBackendApplicationKt  : No active profile set, falling back to 1 default profile: "default"
+2026-02-15T03:29:31.090-08:00  INFO 52997 --- [predata-backend] [           main] .s.d.r.c.RepositoryConfigurationDelegate : Bootstrapping Spring Data JPA repositories in DEFAULT mode.
+2026-02-15T03:29:31.153-08:00  INFO 52997 --- [predata-backend] [           main] .s.d.r.c.RepositoryConfigurationDelegate : Finished Spring Data repository scanning in 59 ms. Found 18 JPA repository interfaces.
+2026-02-15T03:29:31.501-08:00  INFO 52997 --- [predata-backend] [           main] o.s.b.w.embedded.tomcat.TomcatWebServer  : Tomcat initialized with port 8080 (http)
+2026-02-15T03:29:31.509-08:00  INFO 52997 --- [predata-backend] [           main] o.apache.catalina.core.StandardService   : Starting service [Tomcat]
+2026-02-15T03:29:31.509-08:00  INFO 52997 --- [predata-backend] [           main] o.apache.catalina.core.StandardEngine    : Starting Servlet engine: [Apache Tomcat/10.1.17]
+2026-02-15T03:29:31.552-08:00  INFO 52997 --- [predata-backend] [           main] o.a.c.c.C.[Tomcat].[localhost].[/]       : Initializing Spring embedded WebApplicationContext
+2026-02-15T03:29:31.553-08:00  INFO 52997 --- [predata-backend] [           main] w.s.c.ServletWebServerApplicationContext : Root WebApplicationContext: initialization completed in 991 ms
+2026-02-15T03:29:31.650-08:00  INFO 52997 --- [predata-backend] [           main] o.hibernate.jpa.internal.util.LogHelper  : HHH000204: Processing PersistenceUnitInfo [name: default]
+2026-02-15T03:29:31.686-08:00  INFO 52997 --- [predata-backend] [           main] org.hibernate.Version                    : HHH000412: Hibernate ORM core version 6.4.1.Final
+2026-02-15T03:29:31.704-08:00  INFO 52997 --- [predata-backend] [           main] o.h.c.internal.RegionFactoryInitiator    : HHH000026: Second-level cache disabled
+2026-02-15T03:29:31.840-08:00  INFO 52997 --- [predata-backend] [           main] o.s.o.j.p.SpringPersistenceUnitInfo      : No LoadTimeWeaver setup: ignoring JPA class transformer
+2026-02-15T03:29:31.854-08:00  INFO 52997 --- [predata-backend] [           main] com.zaxxer.hikari.HikariDataSource       : HikariPool-1 - Starting...
+2026-02-15T03:29:31.905-08:00  INFO 52997 --- [predata-backend] [           main] com.zaxxer.hikari.pool.HikariPool        : HikariPool-1 - Added connection org.mariadb.jdbc.Connection@571d0925
+2026-02-15T03:29:31.906-08:00  INFO 52997 --- [predata-backend] [           main] com.zaxxer.hikari.HikariDataSource       : HikariPool-1 - Start completed.
+2026-02-15T03:29:31.938-08:00  WARN 52997 --- [predata-backend] [           main] org.hibernate.orm.deprecation            : HHH90000025: MariaDBDialect does not need to be specified explicitly using 'hibernate.dialect' (remove the property setting and it will be selected by default)
+2026-02-15T03:29:32.424-08:00  INFO 52997 --- [predata-backend] [           main] o.h.e.t.j.p.i.JtaPlatformInitiator       : HHH000489: No JTA platform available (set 'hibernate.transaction.jta.platform' to enable JTA platform integration)
+2026-02-15T03:29:32.451-08:00  INFO 52997 --- [predata-backend] [           main] j.LocalContainerEntityManagerFactoryBean : Initialized JPA EntityManagerFactory for persistence unit 'default'
+2026-02-15T03:29:32.757-08:00  INFO 52997 --- [predata-backend] [           main] o.s.d.j.r.query.QueryEnhancerFactory     : Hibernate is in classpath; If applicable, HQL parser will be used.
+2026-02-15T03:29:32.947-08:00  INFO 52997 --- [predata-backend] [           main] c.p.backend.config.RateLimitInterceptor  : [RateLimit] 개발 모드 (관대한 제한) - General: 600req/분
+2026-02-15T03:29:33.144-08:00  INFO 52997 --- [predata-backend] [           main] c.p.b.service.MockBlockchainService      : 🔧 Mock 블록체인 서비스 시작 (로컬 개발 모드)
+2026-02-15T03:29:33.145-08:00  INFO 52997 --- [predata-backend] [           main] c.p.b.service.MockBlockchainService      : 📍 네트워크: Local Mock Chain
+2026-02-15T03:29:33.145-08:00  INFO 52997 --- [predata-backend] [           main] c.p.b.service.MockBlockchainService      : ⚡ 가스비: 무료 (시뮬레이션)
+2026-02-15T03:29:33.145-08:00  INFO 52997 --- [predata-backend] [           main] c.p.backend.service.BlockchainService    : ⚠️ 블록체인 서비스 비활성화 (DB만 사용)
+2026-02-15T03:29:33.775-08:00  WARN 52997 --- [predata-backend] [           main] JpaBaseConfiguration$JpaWebConfiguration : spring.jpa.open-in-view is enabled by default. Therefore, database queries may be performed during view rendering. Explicitly configure spring.jpa.open-in-view to disable this warning
+2026-02-15T03:29:33.929-08:00  INFO 52997 --- [predata-backend] [           main] o.s.s.web.DefaultSecurityFilterChain     : Will secure any request with [org.springframework.security.web.session.DisableEncodeUrlFilter@1305f8e3, org.springframework.security.web.context.request.async.WebAsyncManagerIntegrationFilter@51a07eac, org.springframework.security.web.context.SecurityContextHolderFilter@682d0957, org.springframework.security.web.header.HeaderWriterFilter@34278424, org.springframework.web.filter.CorsFilter@3b6a4b91, org.springframework.security.web.authentication.logout.LogoutFilter@7e6c990f, org.springframework.security.oauth2.client.web.OAuth2AuthorizationRequestRedirectFilter@366a5b35, org.springframework.security.oauth2.client.web.OAuth2LoginAuthenticationFilter@af913dc, org.springframework.security.web.authentication.ui.DefaultLoginPageGeneratingFilter@6aa34b05, org.springframework.security.web.authentication.ui.DefaultLogoutPageGeneratingFilter@25dae0f0, org.springframework.security.web.savedrequest.RequestCacheAwareFilter@9730004, org.springframework.security.web.servletapi.SecurityContextHolderAwareRequestFilter@38187be6, org.springframework.security.web.authentication.AnonymousAuthenticationFilter@19a4c648, org.springframework.security.web.access.ExceptionTranslationFilter@781a51d0, org.springframework.security.web.access.intercept.AuthorizationFilter@5390bdee]
+2026-02-15T03:29:34.059-08:00  INFO 52997 --- [predata-backend] [           main] o.s.b.w.embedded.tomcat.TomcatWebServer  : Tomcat started on port 8080 (http) with context path ''
+2026-02-15T03:29:34.066-08:00  INFO 52997 --- [predata-backend] [           main] c.p.backend.PredataBackendApplicationKt  : Started PredataBackendApplicationKt in 3.72 seconds (process running for 3.887)
+2026-02-15T03:29:34.122-08:00  INFO 52997 --- [predata-backend] [           main] c.p.backend.config.DataInitializer       : [DataInitializer] Admin account already exists: admin@predata.io
+2026-02-15T03:29:34.126-08:00  INFO 52997 --- [predata-backend] [   scheduling-1] c.p.b.s.QuestionGeneratorScheduler       : [QuestionGeneratorScheduler] ===== 자동 질문 생성 시작 =====
+2026-02-15T03:29:34.129-08:00  INFO 52997 --- [predata-backend] [   scheduling-1] c.p.b.s.QuestionGeneratorScheduler       : [QuestionGeneratorScheduler] 선택된 카테고리: POLITICS
+2026-02-15T03:29:34.132-08:00  INFO 52997 --- [predata-backend] [   scheduling-1] c.p.b.service.QuestionGeneratorService   : [DEMO MODE] API 키가 설정되지 않아 샘플 질문을 사용합니다.
+2026-02-15T03:29:34.133-08:00  INFO 52997 --- [predata-backend] [   scheduling-1] c.p.b.service.QuestionGeneratorService   : [DEMO MODE] 샘플 질문 사용: 2026년 한국 지방선거에서 여당이 승리할까?
+2026-02-15T03:29:34.148-08:00 DEBUG 52997 --- [predata-backend] [   scheduling-1] c.p.backend.service.BlockchainService    : 블록체인 비활성화 상태 - 질문 생성 건너뜀
+2026-02-15T03:29:34.154-08:00  INFO 52997 --- [predata-backend] [   scheduling-1] c.p.b.service.QuestionGeneratorService   : [DEMO MODE] 질문 생성 완료: 2026년 한국 지방선거에서 여당이 승리할까? (카테고리: POLITICS)
+2026-02-15T03:29:34.161-08:00  INFO 52997 --- [predata-backend] [   scheduling-1] c.p.b.s.QuestionGeneratorScheduler       : [QuestionGeneratorScheduler] 생성 완료: 2026년 한국 지방선거에서 여당이 승리할까?
+2026-02-15T03:29:37.087-08:00  INFO 52997 --- [predata-backend] [nio-8080-exec-1] o.a.c.c.C.[Tomcat].[localhost].[/]       : Initializing Spring DispatcherServlet 'dispatcherServlet'
+2026-02-15T03:29:37.087-08:00  INFO 52997 --- [predata-backend] [nio-8080-exec-1] o.s.web.servlet.DispatcherServlet        : Initializing Servlet 'dispatcherServlet'
+2026-02-15T03:29:37.088-08:00  INFO 52997 --- [predata-backend] [nio-8080-exec-1] o.s.web.servlet.DispatcherServlet        : Completed initialization in 1 ms
 [Scheduler] ===== ⚡ 즉시 자동 정산 체크 =====
 [AutoGen] 스포츠 질문 자동 정산 시작
 [AutoGen] 자동 정산 완료: 0 건
 [Scheduler] ===== 🔴 실시간 스코어 업데이트 시작 =====
 [AutoGen] 완료된 경기 결과 업데이트 시작
 [AutoGen] 결과 업데이트 완료: 0 건
-2026-02-14T22:35:00.027+09:00  INFO 93537 --- [predata-backend] [   scheduling-1] c.p.b.s.QuestionLifecycleScheduler       : ========================================
-2026-02-14T22:35:00.027+09:00  INFO 93537 --- [predata-backend] [   scheduling-1] c.p.b.s.QuestionLifecycleScheduler       : [Lifecycle] 스케줄러 실행 시각: 2026-02-14T22:35:00.027631
-2026-02-14T22:35:00.027+09:00  INFO 93537 --- [predata-backend] [   scheduling-1] c.p.b.s.QuestionLifecycleScheduler       : ========================================
-2026-02-14T22:35:00.034+09:00  INFO 93537 --- [predata-backend] [   scheduling-1] c.p.b.s.QuestionLifecycleScheduler       : [Lifecycle] VOTING → BREAK 체크: 만료된 질문 1건
-2026-02-14T22:35:00.034+09:00  INFO 93537 --- [predata-backend] [   scheduling-1] c.p.b.s.QuestionLifecycleScheduler       : [Lifecycle] VOTING 만료 1건 발견 → BREAK 전환 시작
-2026-02-14T22:35:00.041+09:00  INFO 93537 --- [predata-backend] [   scheduling-1] c.p.b.s.QuestionLifecycleScheduler       : [Lifecycle] 질문 #258 '애플이 2026년 안에 폴더블 아이폰을 출시할까?' → BREAK (투표 마감)
-2026-02-14T22:35:00.045+09:00  INFO 93537 --- [predata-backend] [   scheduling-1] c.p.b.s.QuestionLifecycleScheduler       : [Lifecycle] BREAK → BETTING 체크: 만료된 질문 0건
-2026-02-14T22:35:00.045+09:00 DEBUG 93537 --- [predata-backend] [   scheduling-1] c.p.b.s.QuestionLifecycleScheduler       : [Lifecycle] BREAK 상태에서 만료된 질문 없음
-2026-02-14T22:35:00.049+09:00  INFO 93537 --- [predata-backend] [   scheduling-1] c.p.b.s.QuestionLifecycleScheduler       : [Lifecycle] BETTING → SETTLED 체크: 만료된 질문 0건
-2026-02-14T22:35:00.049+09:00 DEBUG 93537 --- [predata-backend] [   scheduling-1] c.p.b.s.QuestionLifecycleScheduler       : [Lifecycle] BETTING 상태에서 만료된 질문 없음
-2026-02-14T22:35:00.054+09:00  INFO 93537 --- [predata-backend] [   scheduling-1] c.p.b.s.QuestionLifecycleScheduler       : [Lifecycle] 스케줄러 실행 완료
-2026-02-14T22:35:25.957+09:00  INFO 93537 --- [predata-backend] [nio-8080-exec-1] o.a.c.c.C.[Tomcat].[localhost].[/]       : Initializing Spring DispatcherServlet 'dispatcherServlet'
-2026-02-14T22:35:25.958+09:00  INFO 93537 --- [predata-backend] [nio-8080-exec-1] o.s.web.servlet.DispatcherServlet        : Initializing Servlet 'dispatcherServlet'
-2026-02-14T22:35:25.959+09:00  INFO 93537 --- [predata-backend] [nio-8080-exec-1] o.s.web.servlet.DispatcherServlet        : Completed initialization in 1 ms
-2026-02-14T22:35:25.990+09:00 ERROR 93537 --- [predata-backend] [nio-8080-exec-1] c.p.b.exception.GlobalExceptionHandler   : Unexpected error: No static resource actuator/health.
-
-org.springframework.web.servlet.resource.NoResourceFoundException: No static resource actuator/health.
-	at org.springframework.web.servlet.resource.ResourceHttpRequestHandler.handleRequest(ResourceHttpRequestHandler.java:585) ~[spring-webmvc-6.1.2.jar:6.1.2]
-	at org.springframework.web.servlet.mvc.HttpRequestHandlerAdapter.handle(HttpRequestHandlerAdapter.java:52) ~[spring-webmvc-6.1.2.jar:6.1.2]
-	at org.springframework.web.servlet.DispatcherServlet.doDispatch(DispatcherServlet.java:1089) ~[spring-webmvc-6.1.2.jar:6.1.2]
-	at org.springframework.web.servlet.DispatcherServlet.doService(DispatcherServlet.java:979) ~[spring-webmvc-6.1.2.jar:6.1.2]
-	at org.springframework.web.servlet.FrameworkServlet.processRequest(FrameworkServlet.java:1014) ~[spring-webmvc-6.1.2.jar:6.1.2]
-	at org.springframework.web.servlet.FrameworkServlet.doGet(FrameworkServlet.java:903) ~[spring-webmvc-6.1.2.jar:6.1.2]
-	at jakarta.servlet.http.HttpServlet.service(HttpServlet.java:564) ~[tomcat-embed-core-10.1.17.jar:6.0]
-	at org.springframework.web.servlet.FrameworkServlet.service(FrameworkServlet.java:885) ~[spring-webmvc-6.1.2.jar:6.1.2]
-	at jakarta.servlet.http.HttpServlet.service(HttpServlet.java:658) ~[tomcat-embed-core-10.1.17.jar:6.0]
-	at org.apache.catalina.core.ApplicationFilterChain.internalDoFilter(ApplicationFilterChain.java:205) ~[tomcat-embed-core-10.1.17.jar:10.1.17]
-	at org.apache.catalina.core.ApplicationFilterChain.doFilter(ApplicationFilterChain.java:149) ~[tomcat-embed-core-10.1.17.jar:10.1.17]
-	at org.apache.tomcat.websocket.server.WsFilter.doFilter(WsFilter.java:51) ~[tomcat-embed-websocket-10.1.17.jar:10.1.17]
-	at org.apache.catalina.core.ApplicationFilterChain.internalDoFilter(ApplicationFilterChain.java:174) ~[tomcat-embed-core-10.1.17.jar:10.1.17]
-	at org.apache.catalina.core.ApplicationFilterChain.doFilter(ApplicationFilterChain.java:149) ~[tomcat-embed-core-10.1.17.jar:10.1.17]
-	at org.springframework.web.filter.CompositeFilter$VirtualFilterChain.doFilter(CompositeFilter.java:108) ~[spring-web-6.1.2.jar:6.1.2]
-	at org.springframework.security.web.FilterChainProxy.lambda$doFilterInternal$3(FilterChainProxy.java:231) ~[spring-security-web-6.2.1.jar:6.2.1]
-	at org.springframework.security.web.FilterChainProxy$VirtualFilterChain.doFilter(FilterChainProxy.java:365) ~[spring-security-web-6.2.1.jar:6.2.1]
-	at org.springframework.security.web.access.intercept.AuthorizationFilter.doFilter(AuthorizationFilter.java:100) ~[spring-security-web-6.2.1.jar:6.2.1]
-	at org.springframework.security.web.FilterChainProxy$VirtualFilterChain.doFilter(FilterChainProxy.java:374) ~[spring-security-web-6.2.1.jar:6.2.1]
-	at org.springframework.security.web.access.ExceptionTranslationFilter.doFilter(ExceptionTranslationFilter.java:126) ~[spring-security-web-6.2.1.jar:6.2.1]
-	at org.springframework.security.web.access.ExceptionTranslationFilter.doFilter(ExceptionTranslationFilter.java:120) ~[spring-security-web-6.2.1.jar:6.2.1]
-	at org.springframework.security.web.FilterChainProxy$VirtualFilterChain.doFilter(FilterChainProxy.java:374) ~[spring-security-web-6.2.1.jar:6.2.1]
-	at org.springframework.security.web.authentication.AnonymousAuthenticationFilter.doFilter(AnonymousAuthenticationFilter.java:100) ~[spring-security-web-6.2.1.jar:6.2.1]
-	at org.springframework.security.web.FilterChainProxy$VirtualFilterChain.doFilter(FilterChainProxy.java:374) ~[spring-security-web-6.2.1.jar:6.2.1]
-	at org.springframework.security.web.servletapi.SecurityContextHolderAwareRequestFilter.doFilter(SecurityContextHolderAwareRequestFilter.java:179) ~[spring-security-web-6.2.1.jar:6.2.1]
-	at org.springframework.security.web.FilterChainProxy$VirtualFilterChain.doFilter(FilterChainProxy.java:374) ~[spring-security-web-6.2.1.jar:6.2.1]
-	at org.springframework.security.web.savedrequest.RequestCacheAwareFilter.doFilter(RequestCacheAwareFilter.java:63) ~[spring-security-web-6.2.1.jar:6.2.1]
-	at org.springframework.security.web.FilterChainProxy$VirtualFilterChain.doFilter(FilterChainProxy.java:374) ~[spring-security-web-6.2.1.jar:6.2.1]
-	at org.springframework.security.web.authentication.ui.DefaultLogoutPageGeneratingFilter.doFilterInternal(DefaultLogoutPageGeneratingFilter.java:58) ~[spring-security-web-6.2.1.jar:6.2.1]
-	at org.springframework.web.filter.OncePerRequestFilter.doFilter(OncePerRequestFilter.java:116) ~[spring-web-6.1.2.jar:6.1.2]
-	at org.springframework.security.web.FilterChainProxy$VirtualFilterChain.doFilter(FilterChainProxy.java:374) ~[spring-security-web-6.2.1.jar:6.2.1]
-	at org.springframework.security.web.authentication.ui.DefaultLoginPageGeneratingFilter.doFilter(DefaultLoginPageGeneratingFilter.java:189) ~[spring-security-web-6.2.1.jar:6.2.1]
-	at org.springframework.security.web.authentication.ui.DefaultLoginPageGeneratingFilter.doFilter(DefaultLoginPageGeneratingFilter.java:175) ~[spring-security-web-6.2.1.jar:6.2.1]
-	at org.springframework.security.web.FilterChainProxy$VirtualFilterChain.doFilter(FilterChainProxy.java:374) ~[spring-security-web-6.2.1.jar:6.2.1]
-	at org.springframework.security.web.authentication.AbstractAuthenticationProcessingFilter.doFilter(AbstractAuthenticationProcessingFilter.java:227) ~[spring-security-web-6.2.1.jar:6.2.1]
-	at org.springframework.security.web.authentication.AbstractAuthenticationProcessingFilter.doFilter(AbstractAuthenticationProcessingFilter.java:221) ~[spring-security-web-6.2.1.jar:6.2.1]
-	at org.springframework.security.web.FilterChainProxy$VirtualFilterChain.doFilter(FilterChainProxy.java:374) ~[spring-security-web-6.2.1.jar:6.2.1]
-	at org.springframework.security.oauth2.client.web.OAuth2AuthorizationRequestRedirectFilter.doFilterInternal(OAuth2AuthorizationRequestRedirectFilter.java:181) ~[spring-security-oauth2-client-6.2.1.jar:6.2.1]
-	at org.springframework.web.filter.OncePerRequestFilter.doFilter(OncePerRequestFilter.java:116) ~[spring-web-6.1.2.jar:6.1.2]
-	at org.springframework.security.web.FilterChainProxy$VirtualFilterChain.doFilter(FilterChainProxy.java:374) ~[spring-security-web-6.2.1.jar:6.2.1]
-	at org.springframework.security.web.authentication.logout.LogoutFilter.doFilter(LogoutFilter.java:107) ~[spring-security-web-6.2.1.jar:6.2.1]
-	at org.springframework.security.web.authentication.logout.LogoutFilter.doFilter(LogoutFilter.java:93) ~[spring-security-web-6.2.1.jar:6.2.1]
-	at org.springframework.security.web.FilterChainProxy$VirtualFilterChain.doFilter(FilterChainProxy.java:374) ~[spring-security-web-6.2.1.jar:6.2.1]
-	at org.springframework.web.filter.CorsFilter.doFilterInternal(CorsFilter.java:91) ~[spring-web-6.1.2.jar:6.1.2]
-	at org.springframework.web.filter.OncePerRequestFilter.doFilter(OncePerRequestFilter.java:116) ~[spring-web-6.1.2.jar:6.1.2]
-	at org.springframework.security.web.FilterChainProxy$VirtualFilterChain.doFilter(FilterChainProxy.java:374) ~[spring-security-web-6.2.1.jar:6.2.1]
-	at org.springframework.security.web.header.HeaderWriterFilter.doHeadersAfter(HeaderWriterFilter.java:90) ~[spring-security-web-6.2.1.jar:6.2.1]
-	at org.springframework.security.web.header.HeaderWriterFilter.doFilterInternal(HeaderWriterFilter.java:75) ~[spring-security-web-6.2.1.jar:6.2.1]
-	at org.springframework.web.filter.OncePerRequestFilter.doFilter(OncePerRequestFilter.java:116) ~[spring-web-6.1.2.jar:6.1.2]
-	at org.springframework.security.web.FilterChainProxy$VirtualFilterChain.doFilter(FilterChainProxy.java:374) ~[spring-security-web-6.2.1.jar:6.2.1]
-	at org.springframework.security.web.context.SecurityContextHolderFilter.doFilter(SecurityContextHolderFilter.java:82) ~[spring-security-web-6.2.1.jar:6.2.1]
-	at org.springframework.security.web.context.SecurityContextHolderFilter.doFilter(SecurityContextHolderFilter.java:69) ~[spring-security-web-6.2.1.jar:6.2.1]
-	at org.springframework.security.web.FilterChainProxy$VirtualFilterChain.doFilter(FilterChainProxy.java:374) ~[spring-security-web-6.2.1.jar:6.2.1]
-	at org.springframework.security.web.context.request.async.WebAsyncManagerIntegrationFilter.doFilterInternal(WebAsyncManagerIntegrationFilter.java:62) ~[spring-security-web-6.2.1.jar:6.2.1]
-	at org.springframework.web.filter.OncePerRequestFilter.doFilter(OncePerRequestFilter.java:116) ~[spring-web-6.1.2.jar:6.1.2]
-	at org.springframework.security.web.FilterChainProxy$VirtualFilterChain.doFilter(FilterChainProxy.java:374) ~[spring-security-web-6.2.1.jar:6.2.1]
-	at org.springframework.security.web.session.DisableEncodeUrlFilter.doFilterInternal(DisableEncodeUrlFilter.java:42) ~[spring-security-web-6.2.1.jar:6.2.1]
-	at org.springframework.web.filter.OncePerRequestFilter.doFilter(OncePerRequestFilter.java:116) ~[spring-web-6.1.2.jar:6.1.2]
-	at org.springframework.security.web.FilterChainProxy$VirtualFilterChain.doFilter(FilterChainProxy.java:374) ~[spring-security-web-6.2.1.jar:6.2.1]
-	at org.springframework.security.web.FilterChainProxy.doFilterInternal(FilterChainProxy.java:233) ~[spring-security-web-6.2.1.jar:6.2.1]
-	at org.springframework.security.web.FilterChainProxy.doFilter(FilterChainProxy.java:191) ~[spring-security-web-6.2.1.jar:6.2.1]
-	at org.springframework.web.filter.CompositeFilter$VirtualFilterChain.doFilter(CompositeFilter.java:113) ~[spring-web-6.1.2.jar:6.1.2]
-	at org.springframework.web.servlet.handler.HandlerMappingIntrospector.lambda$createCacheFilter$3(HandlerMappingIntrospector.java:195) ~[spring-webmvc-6.1.2.jar:6.1.2]
-	at org.springframework.web.filter.CompositeFilter$VirtualFilterChain.doFilter(CompositeFilter.java:113) ~[spring-web-6.1.2.jar:6.1.2]
-	at org.springframework.web.filter.CompositeFilter.doFilter(CompositeFilter.java:74) ~[spring-web-6.1.2.jar:6.1.2]
-	at org.springframework.security.config.annotation.web.configuration.WebMvcSecurityConfiguration$CompositeFilterChainProxy.doFilter(WebMvcSecurityConfiguration.java:225) ~[spring-security-config-6.2.1.jar:6.2.1]
-	at org.springframework.web.filter.DelegatingFilterProxy.invokeDelegate(DelegatingFilterProxy.java:352) ~[spring-web-6.1.2.jar:6.1.2]
-	at org.springframework.web.filter.DelegatingFilterProxy.doFilter(DelegatingFilterProxy.java:268) ~[spring-web-6.1.2.jar:6.1.2]
-	at org.apache.catalina.core.ApplicationFilterChain.internalDoFilter(ApplicationFilterChain.java:174) ~[tomcat-embed-core-10.1.17.jar:10.1.17]
-	at org.apache.catalina.core.ApplicationFilterChain.doFilter(ApplicationFilterChain.java:149) ~[tomcat-embed-core-10.1.17.jar:10.1.17]
-	at org.springframework.web.filter.RequestContextFilter.doFilterInternal(RequestContextFilter.java:100) ~[spring-web-6.1.2.jar:6.1.2]
-	at org.springframework.web.filter.OncePerRequestFilter.doFilter(OncePerRequestFilter.java:116) ~[spring-web-6.1.2.jar:6.1.2]
-	at org.apache.catalina.core.ApplicationFilterChain.internalDoFilter(ApplicationFilterChain.java:174) ~[tomcat-embed-core-10.1.17.jar:10.1.17]
-	at org.apache.catalina.core.ApplicationFilterChain.doFilter(ApplicationFilterChain.java:149) ~[tomcat-embed-core-10.1.17.jar:10.1.17]
-	at org.springframework.web.filter.FormContentFilter.doFilterInternal(FormContentFilter.java:93) ~[spring-web-6.1.2.jar:6.1.2]
-	at org.springframework.web.filter.OncePerRequestFilter.doFilter(OncePerRequestFilter.java:116) ~[spring-web-6.1.2.jar:6.1.2]
-	at org.apache.catalina.core.ApplicationFilterChain.internalDoFilter(ApplicationFilterChain.java:174) ~[tomcat-embed-core-10.1.17.jar:10.1.17]
-	at org.apache.catalina.core.ApplicationFilterChain.doFilter(ApplicationFilterChain.java:149) ~[tomcat-embed-core-10.1.17.jar:10.1.17]
-	at org.springframework.web.filter.CharacterEncodingFilter.doFilterInternal(CharacterEncodingFilter.java:201) ~[spring-web-6.1.2.jar:6.1.2]
-	at org.springframework.web.filter.OncePerRequestFilter.doFilter(OncePerRequestFilter.java:116) ~[spring-web-6.1.2.jar:6.1.2]
-	at org.apache.catalina.core.ApplicationFilterChain.internalDoFilter(ApplicationFilterChain.java:174) ~[tomcat-embed-core-10.1.17.jar:10.1.17]
-	at org.apache.catalina.core.ApplicationFilterChain.doFilter(ApplicationFilterChain.java:149) ~[tomcat-embed-core-10.1.17.jar:10.1.17]
-	at org.apache.catalina.core.StandardWrapperValve.invoke(StandardWrapperValve.java:167) ~[tomcat-embed-core-10.1.17.jar:10.1.17]
-	at org.apache.catalina.core.StandardContextValve.invoke(StandardContextValve.java:90) ~[tomcat-embed-core-10.1.17.jar:10.1.17]
-	at org.apache.catalina.authenticator.AuthenticatorBase.invoke(AuthenticatorBase.java:482) ~[tomcat-embed-core-10.1.17.jar:10.1.17]
-	at org.apache.catalina.core.StandardHostValve.invoke(StandardHostValve.java:115) ~[tomcat-embed-core-10.1.17.jar:10.1.17]
-	at org.apache.catalina.valves.ErrorReportValve.invoke(ErrorReportValve.java:93) ~[tomcat-embed-core-10.1.17.jar:10.1.17]
-	at org.apache.catalina.core.StandardEngineValve.invoke(StandardEngineValve.java:74) ~[tomcat-embed-core-10.1.17.jar:10.1.17]
-	at org.apache.catalina.connector.CoyoteAdapter.service(CoyoteAdapter.java:340) ~[tomcat-embed-core-10.1.17.jar:10.1.17]
-	at org.apache.coyote.http11.Http11Processor.service(Http11Processor.java:391) ~[tomcat-embed-core-10.1.17.jar:10.1.17]
-	at org.apache.coyote.AbstractProcessorLight.process(AbstractProcessorLight.java:63) ~[tomcat-embed-core-10.1.17.jar:10.1.17]
-	at org.apache.coyote.AbstractProtocol$ConnectionHandler.process(AbstractProtocol.java:896) ~[tomcat-embed-core-10.1.17.jar:10.1.17]
-	at org.apache.tomcat.util.net.NioEndpoint$SocketProcessor.doRun(NioEndpoint.java:1744) ~[tomcat-embed-core-10.1.17.jar:10.1.17]
-	at org.apache.tomcat.util.net.SocketProcessorBase.run(SocketProcessorBase.java:52) ~[tomcat-embed-core-10.1.17.jar:10.1.17]
-	at org.apache.tomcat.util.threads.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1191) ~[tomcat-embed-core-10.1.17.jar:10.1.17]
-	at org.apache.tomcat.util.threads.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:659) ~[tomcat-embed-core-10.1.17.jar:10.1.17]
-	at org.apache.tomcat.util.threads.TaskThread$WrappingRunnable.run(TaskThread.java:61) ~[tomcat-embed-core-10.1.17.jar:10.1.17]
-	at java.base/java.lang.Thread.run(Thread.java:840) ~[na:na]
-
+2026-02-15T03:30:00.015-08:00  INFO 52997 --- [predata-backend] [   scheduling-1] c.p.b.s.QuestionLifecycleScheduler       : ========================================
+2026-02-15T03:30:00.015-08:00  INFO 52997 --- [predata-backend] [   scheduling-1] c.p.b.s.QuestionLifecycleScheduler       : [Lifecycle] 스케줄러 실행 시각: 2026-02-15T03:30:00.015065
+2026-02-15T03:30:00.015-08:00  INFO 52997 --- [predata-backend] [   scheduling-1] c.p.b.s.QuestionLifecycleScheduler       : ========================================
+2026-02-15T03:30:00.022-08:00  INFO 52997 --- [predata-backend] [   scheduling-1] c.p.b.s.QuestionLifecycleScheduler       : [Lifecycle] VOTING → BREAK 체크: 만료된 질문 0건
+2026-02-15T03:30:00.022-08:00 DEBUG 52997 --- [predata-backend] [   scheduling-1] c.p.b.s.QuestionLifecycleScheduler       : [Lifecycle] VOTING 상태에서 만료된 질문 없음
+2026-02-15T03:30:00.024-08:00  INFO 52997 --- [predata-backend] [   scheduling-1] c.p.b.s.QuestionLifecycleScheduler       : [Lifecycle] BREAK → BETTING 체크: 만료된 질문 0건
+2026-02-15T03:30:00.024-08:00 DEBUG 52997 --- [predata-backend] [   scheduling-1] c.p.b.s.QuestionLifecycleScheduler       : [Lifecycle] BREAK 상태에서 만료된 질문 없음
+2026-02-15T03:30:00.027-08:00  INFO 52997 --- [predata-backend] [   scheduling-1] c.p.b.s.QuestionLifecycleScheduler       : [Lifecycle] BETTING → SETTLED 체크: 만료된 질문 0건
+2026-02-15T03:30:00.027-08:00 DEBUG 52997 --- [predata-backend] [   scheduling-1] c.p.b.s.QuestionLifecycleScheduler       : [Lifecycle] BETTING 상태에서 만료된 질문 없음
+2026-02-15T03:30:00.029-08:00  INFO 52997 --- [predata-backend] [   scheduling-1] c.p.b.s.QuestionLifecycleScheduler       : [Lifecycle] 스케줄러 실행 완료
 [Scheduler] ===== 🔴 실시간 스코어 업데이트 시작 =====
 [AutoGen] 완료된 경기 결과 업데이트 시작
 [AutoGen] 결과 업데이트 완료: 0 건
-2026-02-14T22:35:38.897+09:00 ERROR 93537 --- [predata-backend] [nio-8080-exec-2] c.p.b.exception.GlobalExceptionHandler   : Unexpected error: java.io.IOException: Broken pipe
-
-org.apache.catalina.connector.ClientAbortException: java.io.IOException: Broken pipe
-	at org.apache.catalina.connector.OutputBuffer.realWriteBytes(OutputBuffer.java:344) ~[tomcat-embed-core-10.1.17.jar:10.1.17]
-	at org.apache.catalina.connector.OutputBuffer.flushByteBuffer(OutputBuffer.java:773) ~[tomcat-embed-core-10.1.17.jar:10.1.17]
-	at org.apache.catalina.connector.OutputBuffer.append(OutputBuffer.java:676) ~[tomcat-embed-core-10.1.17.jar:10.1.17]
-	at org.apache.catalina.connector.OutputBuffer.writeBytes(OutputBuffer.java:379) ~[tomcat-embed-core-10.1.17.jar:10.1.17]
-	at org.apache.catalina.connector.OutputBuffer.write(OutputBuffer.java:357) ~[tomcat-embed-core-10.1.17.jar:10.1.17]
-	at org.apache.catalina.connector.CoyoteOutputStream.write(CoyoteOutputStream.java:97) ~[tomcat-embed-core-10.1.17.jar:10.1.17]
-	at org.springframework.security.web.util.OnCommittedResponseWrapper$SaveContextServletOutputStream.write(OnCommittedResponseWrapper.java:639) ~[spring-security-web-6.2.1.jar:6.2.1]
-	at org.springframework.util.StreamUtils$NonClosingOutputStream.write(StreamUtils.java:264) ~[spring-core-6.1.2.jar:6.1.2]
-	at com.fasterxml.jackson.core.json.UTF8JsonGenerator._flushBuffer(UTF8JsonGenerator.java:2203) ~[jackson-core-2.15.3.jar:2.15.3]
-	at com.fasterxml.jackson.core.json.UTF8JsonGenerator.writeFieldName(UTF8JsonGenerator.java:290) ~[jackson-core-2.15.3.jar:2.15.3]
-	at com.fasterxml.jackson.databind.ser.BeanPropertyWriter.serializeAsField(BeanPropertyWriter.java:730) ~[jackson-databind-2.15.3.jar:2.15.3]
-	at com.fasterxml.jackson.databind.ser.std.BeanSerializerBase.serializeFields(BeanSerializerBase.java:772) ~[jackson-databind-2.15.3.jar:2.15.3]
-	at com.fasterxml.jackson.databind.ser.BeanSerializer.serialize(BeanSerializer.java:178) ~[jackson-databind-2.15.3.jar:2.15.3]
-	at com.fasterxml.jackson.databind.ser.std.CollectionSerializer.serializeContentsUsing(CollectionSerializer.java:171) ~[jackson-databind-2.15.3.jar:2.15.3]
-	at com.fasterxml.jackson.databind.ser.std.CollectionSerializer.serializeContents(CollectionSerializer.java:116) ~[jackson-databind-2.15.3.jar:2.15.3]
-	at com.fasterxml.jackson.databind.ser.std.CollectionSerializer.serialize(CollectionSerializer.java:107) ~[jackson-databind-2.15.3.jar:2.15.3]
-	at com.fasterxml.jackson.databind.ser.std.CollectionSerializer.serialize(CollectionSerializer.java:25) ~[jackson-databind-2.15.3.jar:2.15.3]
-	at com.fasterxml.jackson.databind.ser.DefaultSerializerProvider._serialize(DefaultSerializerProvider.java:479) ~[jackson-databind-2.15.3.jar:2.15.3]
-	at com.fasterxml.jackson.databind.ser.DefaultSerializerProvider.serializeValue(DefaultSerializerProvider.java:399) ~[jackson-databind-2.15.3.jar:2.15.3]
-	at com.fasterxml.jackson.databind.ObjectWriter$Prefetch.serialize(ObjectWriter.java:1568) ~[jackson-databind-2.15.3.jar:2.15.3]
-	at com.fasterxml.jackson.databind.ObjectWriter.writeValue(ObjectWriter.java:1061) ~[jackson-databind-2.15.3.jar:2.15.3]
-	at org.springframework.http.converter.json.AbstractJackson2HttpMessageConverter.writeInternal(AbstractJackson2HttpMessageConverter.java:483) ~[spring-web-6.1.2.jar:6.1.2]
-	at org.springframework.http.converter.AbstractGenericHttpMessageConverter.write(AbstractGenericHttpMessageConverter.java:114) ~[spring-web-6.1.2.jar:6.1.2]
-	at org.springframework.web.servlet.mvc.method.annotation.AbstractMessageConverterMethodProcessor.writeWithMessageConverters(AbstractMessageConverterMethodProcessor.java:297) ~[spring-webmvc-6.1.2.jar:6.1.2]
-	at org.springframework.web.servlet.mvc.method.annotation.HttpEntityMethodProcessor.handleReturnValue(HttpEntityMethodProcessor.java:245) ~[spring-webmvc-6.1.2.jar:6.1.2]
-	at org.springframework.web.method.support.HandlerMethodReturnValueHandlerComposite.handleReturnValue(HandlerMethodReturnValueHandlerComposite.java:78) ~[spring-web-6.1.2.jar:6.1.2]
-	at org.springframework.web.servlet.mvc.method.annotation.ServletInvocableHandlerMethod.invokeAndHandle(ServletInvocableHandlerMethod.java:136) ~[spring-webmvc-6.1.2.jar:6.1.2]
-	at org.springframework.web.servlet.mvc.method.annotation.RequestMappingHandlerAdapter.invokeHandlerMethod(RequestMappingHandlerAdapter.java:917) ~[spring-webmvc-6.1.2.jar:6.1.2]
-	at org.springframework.web.servlet.mvc.method.annotation.RequestMappingHandlerAdapter.handleInternal(RequestMappingHandlerAdapter.java:829) ~[spring-webmvc-6.1.2.jar:6.1.2]
-	at org.springframework.web.servlet.mvc.method.AbstractHandlerMethodAdapter.handle(AbstractHandlerMethodAdapter.java:87) ~[spring-webmvc-6.1.2.jar:6.1.2]
-	at org.springframework.web.servlet.DispatcherServlet.doDispatch(DispatcherServlet.java:1089) ~[spring-webmvc-6.1.2.jar:6.1.2]
-	at org.springframework.web.servlet.DispatcherServlet.doService(DispatcherServlet.java:979) ~[spring-webmvc-6.1.2.jar:6.1.2]
-	at org.springframework.web.servlet.FrameworkServlet.processRequest(FrameworkServlet.java:1014) ~[spring-webmvc-6.1.2.jar:6.1.2]
-	at org.springframework.web.servlet.FrameworkServlet.doGet(FrameworkServlet.java:903) ~[spring-webmvc-6.1.2.jar:6.1.2]
-	at jakarta.servlet.http.HttpServlet.service(HttpServlet.java:564) ~[tomcat-embed-core-10.1.17.jar:6.0]
-	at org.springframework.web.servlet.FrameworkServlet.service(FrameworkServlet.java:885) ~[spring-webmvc-6.1.2.jar:6.1.2]
-	at jakarta.servlet.http.HttpServlet.service(HttpServlet.java:658) ~[tomcat-embed-core-10.1.17.jar:6.0]
-	at org.apache.catalina.core.ApplicationFilterChain.internalDoFilter(ApplicationFilterChain.java:205) ~[tomcat-embed-core-10.1.17.jar:10.1.17]
-	at org.apache.catalina.core.ApplicationFilterChain.doFilter(ApplicationFilterChain.java:149) ~[tomcat-embed-core-10.1.17.jar:10.1.17]
-	at org.apache.tomcat.websocket.server.WsFilter.doFilter(WsFilter.java:51) ~[tomcat-embed-websocket-10.1.17.jar:10.1.17]
-	at org.apache.catalina.core.ApplicationFilterChain.internalDoFilter(ApplicationFilterChain.java:174) ~[tomcat-embed-core-10.1.17.jar:10.1.17]
-	at org.apache.catalina.core.ApplicationFilterChain.doFilter(ApplicationFilterChain.java:149) ~[tomcat-embed-core-10.1.17.jar:10.1.17]
-	at org.springframework.web.filter.CompositeFilter$VirtualFilterChain.doFilter(CompositeFilter.java:108) ~[spring-web-6.1.2.jar:6.1.2]
-	at org.springframework.security.web.FilterChainProxy.lambda$doFilterInternal$3(FilterChainProxy.java:231) ~[spring-security-web-6.2.1.jar:6.2.1]
-	at org.springframework.security.web.FilterChainProxy$VirtualFilterChain.doFilter(FilterChainProxy.java:365) ~[spring-security-web-6.2.1.jar:6.2.1]
-	at org.springframework.security.web.access.intercept.AuthorizationFilter.doFilter(AuthorizationFilter.java:100) ~[spring-security-web-6.2.1.jar:6.2.1]
-	at org.springframework.security.web.FilterChainProxy$VirtualFilterChain.doFilter(FilterChainProxy.java:374) ~[spring-security-web-6.2.1.jar:6.2.1]
-	at org.springframework.security.web.access.ExceptionTranslationFilter.doFilter(ExceptionTranslationFilter.java:126) ~[spring-security-web-6.2.1.jar:6.2.1]
-	at org.springframework.security.web.access.ExceptionTranslationFilter.doFilter(ExceptionTranslationFilter.java:120) ~[spring-security-web-6.2.1.jar:6.2.1]
-	at org.springframework.security.web.FilterChainProxy$VirtualFilterChain.doFilter(FilterChainProxy.java:374) ~[spring-security-web-6.2.1.jar:6.2.1]
-	at org.springframework.security.web.authentication.AnonymousAuthenticationFilter.doFilter(AnonymousAuthenticationFilter.java:100) ~[spring-security-web-6.2.1.jar:6.2.1]
-	at org.springframework.security.web.FilterChainProxy$VirtualFilterChain.doFilter(FilterChainProxy.java:374) ~[spring-security-web-6.2.1.jar:6.2.1]
-	at org.springframework.security.web.servletapi.SecurityContextHolderAwareRequestFilter.doFilter(SecurityContextHolderAwareRequestFilter.java:179) ~[spring-security-web-6.2.1.jar:6.2.1]
-	at org.springframework.security.web.FilterChainProxy$VirtualFilterChain.doFilter(FilterChainProxy.java:374) ~[spring-security-web-6.2.1.jar:6.2.1]
-	at org.springframework.security.web.savedrequest.RequestCacheAwareFilter.doFilter(RequestCacheAwareFilter.java:63) ~[spring-security-web-6.2.1.jar:6.2.1]
-	at org.springframework.security.web.FilterChainProxy$VirtualFilterChain.doFilter(FilterChainProxy.java:374) ~[spring-security-web-6.2.1.jar:6.2.1]
-	at org.springframework.security.web.authentication.ui.DefaultLogoutPageGeneratingFilter.doFilterInternal(DefaultLogoutPageGeneratingFilter.java:58) ~[spring-security-web-6.2.1.jar:6.2.1]
-	at org.springframework.web.filter.OncePerRequestFilter.doFilter(OncePerRequestFilter.java:116) ~[spring-web-6.1.2.jar:6.1.2]
-	at org.springframework.security.web.FilterChainProxy$VirtualFilterChain.doFilter(FilterChainProxy.java:374) ~[spring-security-web-6.2.1.jar:6.2.1]
-	at org.springframework.security.web.authentication.ui.DefaultLoginPageGeneratingFilter.doFilter(DefaultLoginPageGeneratingFilter.java:189) ~[spring-security-web-6.2.1.jar:6.2.1]
-	at org.springframework.security.web.authentication.ui.DefaultLoginPageGeneratingFilter.doFilter(DefaultLoginPageGeneratingFilter.java:175) ~[spring-security-web-6.2.1.jar:6.2.1]
-	at org.springframework.security.web.FilterChainProxy$VirtualFilterChain.doFilter(FilterChainProxy.java:374) ~[spring-security-web-6.2.1.jar:6.2.1]
-	at org.springframework.security.web.authentication.AbstractAuthenticationProcessingFilter.doFilter(AbstractAuthenticationProcessingFilter.java:227) ~[spring-security-web-6.2.1.jar:6.2.1]
-	at org.springframework.security.web.authentication.AbstractAuthenticationProcessingFilter.doFilter(AbstractAuthenticationProcessingFilter.java:221) ~[spring-security-web-6.2.1.jar:6.2.1]
-	at org.springframework.security.web.FilterChainProxy$VirtualFilterChain.doFilter(FilterChainProxy.java:374) ~[spring-security-web-6.2.1.jar:6.2.1]
-	at org.springframework.security.oauth2.client.web.OAuth2AuthorizationRequestRedirectFilter.doFilterInternal(OAuth2AuthorizationRequestRedirectFilter.java:181) ~[spring-security-oauth2-client-6.2.1.jar:6.2.1]
-	at org.springframework.web.filter.OncePerRequestFilter.doFilter(OncePerRequestFilter.java:116) ~[spring-web-6.1.2.jar:6.1.2]
-	at org.springframework.security.web.FilterChainProxy$VirtualFilterChain.doFilter(FilterChainProxy.java:374) ~[spring-security-web-6.2.1.jar:6.2.1]
-	at org.springframework.security.web.authentication.logout.LogoutFilter.doFilter(LogoutFilter.java:107) ~[spring-security-web-6.2.1.jar:6.2.1]
-	at org.springframework.security.web.authentication.logout.LogoutFilter.doFilter(LogoutFilter.java:93) ~[spring-security-web-6.2.1.jar:6.2.1]
-	at org.springframework.security.web.FilterChainProxy$VirtualFilterChain.doFilter(FilterChainProxy.java:374) ~[spring-security-web-6.2.1.jar:6.2.1]
-	at org.springframework.web.filter.CorsFilter.doFilterInternal(CorsFilter.java:91) ~[spring-web-6.1.2.jar:6.1.2]
-	at org.springframework.web.filter.OncePerRequestFilter.doFilter(OncePerRequestFilter.java:116) ~[spring-web-6.1.2.jar:6.1.2]
-	at org.springframework.security.web.FilterChainProxy$VirtualFilterChain.doFilter(FilterChainProxy.java:374) ~[spring-security-web-6.2.1.jar:6.2.1]
-	at org.springframework.security.web.header.HeaderWriterFilter.doHeadersAfter(HeaderWriterFilter.java:90) ~[spring-security-web-6.2.1.jar:6.2.1]
-	at org.springframework.security.web.header.HeaderWriterFilter.doFilterInternal(HeaderWriterFilter.java:75) ~[spring-security-web-6.2.1.jar:6.2.1]
-	at org.springframework.web.filter.OncePerRequestFilter.doFilter(OncePerRequestFilter.java:116) ~[spring-web-6.1.2.jar:6.1.2]
-	at org.springframework.security.web.FilterChainProxy$VirtualFilterChain.doFilter(FilterChainProxy.java:374) ~[spring-security-web-6.2.1.jar:6.2.1]
-	at org.springframework.security.web.context.SecurityContextHolderFilter.doFilter(SecurityContextHolderFilter.java:82) ~[spring-security-web-6.2.1.jar:6.2.1]
-	at org.springframework.security.web.context.SecurityContextHolderFilter.doFilter(SecurityContextHolderFilter.java:69) ~[spring-security-web-6.2.1.jar:6.2.1]
-	at org.springframework.security.web.FilterChainProxy$VirtualFilterChain.doFilter(FilterChainProxy.java:374) ~[spring-security-web-6.2.1.jar:6.2.1]
-	at org.springframework.security.web.context.request.async.WebAsyncManagerIntegrationFilter.doFilterInternal(WebAsyncManagerIntegrationFilter.java:62) ~[spring-security-web-6.2.1.jar:6.2.1]
-	at org.springframework.web.filter.OncePerRequestFilter.doFilter(OncePerRequestFilter.java:116) ~[spring-web-6.1.2.jar:6.1.2]
-	at org.springframework.security.web.FilterChainProxy$VirtualFilterChain.doFilter(FilterChainProxy.java:374) ~[spring-security-web-6.2.1.jar:6.2.1]
-	at org.springframework.security.web.session.DisableEncodeUrlFilter.doFilterInternal(DisableEncodeUrlFilter.java:42) ~[spring-security-web-6.2.1.jar:6.2.1]
-	at org.springframework.web.filter.OncePerRequestFilter.doFilter(OncePerRequestFilter.java:116) ~[spring-web-6.1.2.jar:6.1.2]
-	at org.springframework.security.web.FilterChainProxy$VirtualFilterChain.doFilter(FilterChainProxy.java:374) ~[spring-security-web-6.2.1.jar:6.2.1]
-	at org.springframework.security.web.FilterChainProxy.doFilterInternal(FilterChainProxy.java:233) ~[spring-security-web-6.2.1.jar:6.2.1]
-	at org.springframework.security.web.FilterChainProxy.doFilter(FilterChainProxy.java:191) ~[spring-security-web-6.2.1.jar:6.2.1]
-	at org.springframework.web.filter.CompositeFilter$VirtualFilterChain.doFilter(CompositeFilter.java:113) ~[spring-web-6.1.2.jar:6.1.2]
-	at org.springframework.web.servlet.handler.HandlerMappingIntrospector.lambda$createCacheFilter$3(HandlerMappingIntrospector.java:195) ~[spring-webmvc-6.1.2.jar:6.1.2]
-	at org.springframework.web.filter.CompositeFilter$VirtualFilterChain.doFilter(CompositeFilter.java:113) ~[spring-web-6.1.2.jar:6.1.2]
-	at org.springframework.web.filter.CompositeFilter.doFilter(CompositeFilter.java:74) ~[spring-web-6.1.2.jar:6.1.2]
-	at org.springframework.security.config.annotation.web.configuration.WebMvcSecurityConfiguration$CompositeFilterChainProxy.doFilter(WebMvcSecurityConfiguration.java:225) ~[spring-security-config-6.2.1.jar:6.2.1]
-	at org.springframework.web.filter.DelegatingFilterProxy.invokeDelegate(DelegatingFilterProxy.java:352) ~[spring-web-6.1.2.jar:6.1.2]
-	at org.springframework.web.filter.DelegatingFilterProxy.doFilter(DelegatingFilterProxy.java:268) ~[spring-web-6.1.2.jar:6.1.2]
-	at org.apache.catalina.core.ApplicationFilterChain.internalDoFilter(ApplicationFilterChain.java:174) ~[tomcat-embed-core-10.1.17.jar:10.1.17]
-	at org.apache.catalina.core.ApplicationFilterChain.doFilter(ApplicationFilterChain.java:149) ~[tomcat-embed-core-10.1.17.jar:10.1.17]
-	at org.springframework.web.filter.RequestContextFilter.doFilterInternal(RequestContextFilter.java:100) ~[spring-web-6.1.2.jar:6.1.2]
-	at org.springframework.web.filter.OncePerRequestFilter.doFilter(OncePerRequestFilter.java:116) ~[spring-web-6.1.2.jar:6.1.2]
-	at org.apache.catalina.core.ApplicationFilterChain.internalDoFilter(ApplicationFilterChain.java:174) ~[tomcat-embed-core-10.1.17.jar:10.1.17]
-	at org.apache.catalina.core.ApplicationFilterChain.doFilter(ApplicationFilterChain.java:149) ~[tomcat-embed-core-10.1.17.jar:10.1.17]
-	at org.springframework.web.filter.FormContentFilter.doFilterInternal(FormContentFilter.java:93) ~[spring-web-6.1.2.jar:6.1.2]
-	at org.springframework.web.filter.OncePerRequestFilter.doFilter(OncePerRequestFilter.java:116) ~[spring-web-6.1.2.jar:6.1.2]
-	at org.apache.catalina.core.ApplicationFilterChain.internalDoFilter(ApplicationFilterChain.java:174) ~[tomcat-embed-core-10.1.17.jar:10.1.17]
-	at org.apache.catalina.core.ApplicationFilterChain.doFilter(ApplicationFilterChain.java:149) ~[tomcat-embed-core-10.1.17.jar:10.1.17]
-	at org.springframework.web.filter.CharacterEncodingFilter.doFilterInternal(CharacterEncodingFilter.java:201) ~[spring-web-6.1.2.jar:6.1.2]
-	at org.springframework.web.filter.OncePerRequestFilter.doFilter(OncePerRequestFilter.java:116) ~[spring-web-6.1.2.jar:6.1.2]
-	at org.apache.catalina.core.ApplicationFilterChain.internalDoFilter(ApplicationFilterChain.java:174) ~[tomcat-embed-core-10.1.17.jar:10.1.17]
-	at org.apache.catalina.core.ApplicationFilterChain.doFilter(ApplicationFilterChain.java:149) ~[tomcat-embed-core-10.1.17.jar:10.1.17]
-	at org.apache.catalina.core.StandardWrapperValve.invoke(StandardWrapperValve.java:167) ~[tomcat-embed-core-10.1.17.jar:10.1.17]
-	at org.apache.catalina.core.StandardContextValve.invoke(StandardContextValve.java:90) ~[tomcat-embed-core-10.1.17.jar:10.1.17]
-	at org.apache.catalina.authenticator.AuthenticatorBase.invoke(AuthenticatorBase.java:482) ~[tomcat-embed-core-10.1.17.jar:10.1.17]
-	at org.apache.catalina.core.StandardHostValve.invoke(StandardHostValve.java:115) ~[tomcat-embed-core-10.1.17.jar:10.1.17]
-	at org.apache.catalina.valves.ErrorReportValve.invoke(ErrorReportValve.java:93) ~[tomcat-embed-core-10.1.17.jar:10.1.17]
-	at org.apache.catalina.core.StandardEngineValve.invoke(StandardEngineValve.java:74) ~[tomcat-embed-core-10.1.17.jar:10.1.17]
-	at org.apache.catalina.connector.CoyoteAdapter.service(CoyoteAdapter.java:340) ~[tomcat-embed-core-10.1.17.jar:10.1.17]
-	at org.apache.coyote.http11.Http11Processor.service(Http11Processor.java:391) ~[tomcat-embed-core-10.1.17.jar:10.1.17]
-	at org.apache.coyote.AbstractProcessorLight.process(AbstractProcessorLight.java:63) ~[tomcat-embed-core-10.1.17.jar:10.1.17]
-	at org.apache.coyote.AbstractProtocol$ConnectionHandler.process(AbstractProtocol.java:896) ~[tomcat-embed-core-10.1.17.jar:10.1.17]
-	at org.apache.tomcat.util.net.NioEndpoint$SocketProcessor.doRun(NioEndpoint.java:1744) ~[tomcat-embed-core-10.1.17.jar:10.1.17]
-	at org.apache.tomcat.util.net.SocketProcessorBase.run(SocketProcessorBase.java:52) ~[tomcat-embed-core-10.1.17.jar:10.1.17]
-	at org.apache.tomcat.util.threads.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1191) ~[tomcat-embed-core-10.1.17.jar:10.1.17]
-	at org.apache.tomcat.util.threads.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:659) ~[tomcat-embed-core-10.1.17.jar:10.1.17]
-	at org.apache.tomcat.util.threads.TaskThread$WrappingRunnable.run(TaskThread.java:61) ~[tomcat-embed-core-10.1.17.jar:10.1.17]
-	at java.base/java.lang.Thread.run(Thread.java:840) ~[na:na]
-	Suppressed: org.apache.catalina.connector.ClientAbortException: java.io.IOException: Broken pipe
-		at org.apache.catalina.connector.OutputBuffer.realWriteBytes(OutputBuffer.java:344) ~[tomcat-embed-core-10.1.17.jar:10.1.17]
-		at org.apache.catalina.connector.OutputBuffer.flushByteBuffer(OutputBuffer.java:773) ~[tomcat-embed-core-10.1.17.jar:10.1.17]
-		at org.apache.catalina.connector.OutputBuffer.append(OutputBuffer.java:676) ~[tomcat-embed-core-10.1.17.jar:10.1.17]
-		at org.apache.catalina.connector.OutputBuffer.writeBytes(OutputBuffer.java:379) ~[tomcat-embed-core-10.1.17.jar:10.1.17]
-		at org.apache.catalina.connector.OutputBuffer.write(OutputBuffer.java:357) ~[tomcat-embed-core-10.1.17.jar:10.1.17]
-		at org.apache.catalina.connector.CoyoteOutputStream.write(CoyoteOutputStream.java:97) ~[tomcat-embed-core-10.1.17.jar:10.1.17]
-		at org.springframework.security.web.util.OnCommittedResponseWrapper$SaveContextServletOutputStream.write(OnCommittedResponseWrapper.java:639) ~[spring-security-web-6.2.1.jar:6.2.1]
-		at org.springframework.util.StreamUtils$NonClosingOutputStream.write(StreamUtils.java:264) ~[spring-core-6.1.2.jar:6.1.2]
-		at com.fasterxml.jackson.core.json.UTF8JsonGenerator._flushBuffer(UTF8JsonGenerator.java:2203) ~[jackson-core-2.15.3.jar:2.15.3]
-		at com.fasterxml.jackson.core.json.UTF8JsonGenerator.close(UTF8JsonGenerator.java:1227) ~[jackson-core-2.15.3.jar:2.15.3]
-		at org.springframework.http.converter.json.AbstractJackson2HttpMessageConverter.writeInternal(AbstractJackson2HttpMessageConverter.java:452) ~[spring-web-6.1.2.jar:6.1.2]
-		... 104 common frames omitted
-	Caused by: java.io.IOException: Broken pipe
-		at java.base/sun.nio.ch.FileDispatcherImpl.write0(Native Method)
-		at java.base/sun.nio.ch.SocketDispatcher.write(SocketDispatcher.java:62)
-		at java.base/sun.nio.ch.IOUtil.writeFromNativeBuffer(IOUtil.java:132)
-		at java.base/sun.nio.ch.IOUtil.write(IOUtil.java:97)
-		at java.base/sun.nio.ch.IOUtil.write(IOUtil.java:53)
-		at java.base/sun.nio.ch.SocketChannelImpl.write(SocketChannelImpl.java:532)
-		at org.apache.tomcat.util.net.NioChannel.write(NioChannel.java:118)
-		at org.apache.tomcat.util.net.NioEndpoint$NioSocketWrapper.doWrite(NioEndpoint.java:1381)
-		at org.apache.tomcat.util.net.SocketWrapperBase.doWrite(SocketWrapperBase.java:764)
-		at org.apache.tomcat.util.net.SocketWrapperBase.writeBlocking(SocketWrapperBase.java:589)
-		at org.apache.tomcat.util.net.SocketWrapperBase.write(SocketWrapperBase.java:533)
-		at org.apache.coyote.http11.Http11OutputBuffer$SocketOutputBuffer.doWrite(Http11OutputBuffer.java:540)
-		at org.apache.coyote.http11.filters.ChunkedOutputFilter.doWrite(ChunkedOutputFilter.java:110)
-		at org.apache.coyote.http11.Http11OutputBuffer.doWrite(Http11OutputBuffer.java:193)
-		at org.apache.coyote.Response.doWrite(Response.java:616)
-		at org.apache.catalina.connector.OutputBuffer.realWriteBytes(OutputBuffer.java:331)
-		... 114 common frames omitted
-Caused by: java.io.IOException: Broken pipe
-	at java.base/sun.nio.ch.FileDispatcherImpl.write0(Native Method) ~[na:na]
-	at java.base/sun.nio.ch.SocketDispatcher.write(SocketDispatcher.java:62) ~[na:na]
-	at java.base/sun.nio.ch.IOUtil.writeFromNativeBuffer(IOUtil.java:132) ~[na:na]
-	at java.base/sun.nio.ch.IOUtil.write(IOUtil.java:97) ~[na:na]
-	at java.base/sun.nio.ch.IOUtil.write(IOUtil.java:53) ~[na:na]
-	at java.base/sun.nio.ch.SocketChannelImpl.write(SocketChannelImpl.java:532) ~[na:na]
-	at org.apache.tomcat.util.net.NioChannel.write(NioChannel.java:118) ~[tomcat-embed-core-10.1.17.jar:10.1.17]
-	at org.apache.tomcat.util.net.NioEndpoint$NioSocketWrapper.doWrite(NioEndpoint.java:1381) ~[tomcat-embed-core-10.1.17.jar:10.1.17]
-	at org.apache.tomcat.util.net.SocketWrapperBase.doWrite(SocketWrapperBase.java:764) ~[tomcat-embed-core-10.1.17.jar:10.1.17]
-	at org.apache.tomcat.util.net.SocketWrapperBase.writeBlocking(SocketWrapperBase.java:589) ~[tomcat-embed-core-10.1.17.jar:10.1.17]
-	at org.apache.tomcat.util.net.SocketWrapperBase.write(SocketWrapperBase.java:533) ~[tomcat-embed-core-10.1.17.jar:10.1.17]
-	at org.apache.coyote.http11.Http11OutputBuffer$SocketOutputBuffer.doWrite(Http11OutputBuffer.java:540) ~[tomcat-embed-core-10.1.17.jar:10.1.17]
-	at org.apache.coyote.http11.filters.ChunkedOutputFilter.doWrite(ChunkedOutputFilter.java:112) ~[tomcat-embed-core-10.1.17.jar:10.1.17]
-	at org.apache.coyote.http11.Http11OutputBuffer.doWrite(Http11OutputBuffer.java:193) ~[tomcat-embed-core-10.1.17.jar:10.1.17]
-	at org.apache.coyote.Response.doWrite(Response.java:616) ~[tomcat-embed-core-10.1.17.jar:10.1.17]
-	at org.apache.catalina.connector.OutputBuffer.realWriteBytes(OutputBuffer.java:331) ~[tomcat-embed-core-10.1.17.jar:10.1.17]
-	... 125 common frames omitted
-
-[Scheduler] ===== 🔴 실시간 스코어 업데이트 시작 =====
-[AutoGen] 완료된 경기 결과 업데이트 시작
-[AutoGen] 결과 업데이트 완료: 0 건
+2026-02-15T03:31:00.005-08:00  INFO 52997 --- [predata-backend] [   scheduling-1] c.p.b.s.QuestionLifecycleScheduler       : ========================================
+2026-02-15T03:31:00.005-08:00  INFO 52997 --- [predata-backend] [   scheduling-1] c.p.b.s.QuestionLifecycleScheduler       : [Lifecycle] 스케줄러 실행 시각: 2026-02-15T03:31:00.005239
+2026-02-15T03:31:00.006-08:00  INFO 52997 --- [predata-backend] [   scheduling-1] c.p.b.s.QuestionLifecycleScheduler       : ========================================
+2026-02-15T03:31:00.013-08:00  INFO 52997 --- [predata-backend] [   scheduling-1] c.p.b.s.QuestionLifecycleScheduler       : [Lifecycle] VOTING → BREAK 체크: 만료된 질문 0건
+2026-02-15T03:31:00.014-08:00 DEBUG 52997 --- [predata-backend] [   scheduling-1] c.p.b.s.QuestionLifecycleScheduler       : [Lifecycle] VOTING 상태에서 만료된 질문 없음
+2026-02-15T03:31:00.016-08:00  INFO 52997 --- [predata-backend] [   scheduling-1] c.p.b.s.QuestionLifecycleScheduler       : [Lifecycle] BREAK → BETTING 체크: 만료된 질문 0건
+2026-02-15T03:31:00.016-08:00 DEBUG 52997 --- [predata-backend] [   scheduling-1] c.p.b.s.QuestionLifecycleScheduler       : [Lifecycle] BREAK 상태에서 만료된 질문 없음
+2026-02-15T03:31:00.020-08:00  INFO 52997 --- [predata-backend] [   scheduling-1] c.p.b.s.QuestionLifecycleScheduler       : [Lifecycle] BETTING → SETTLED 체크: 만료된 질문 0건
+2026-02-15T03:31:00.020-08:00 DEBUG 52997 --- [predata-backend] [   scheduling-1] c.p.b.s.QuestionLifecycleScheduler       : [Lifecycle] BETTING 상태에서 만료된 질문 없음
+2026-02-15T03:31:00.022-08:00  INFO 52997 --- [predata-backend] [   scheduling-1] c.p.b.s.QuestionLifecycleScheduler       : [Lifecycle] 스케줄러 실행 완료
 [Scheduler] ===== ⚡ 즉시 자동 정산 체크 =====
 [AutoGen] 스포츠 질문 자동 정산 시작
 [AutoGen] 자동 정산 완료: 0 건
-2026-02-14T22:36:00.031+09:00  INFO 93537 --- [predata-backend] [   scheduling-1] c.p.b.s.QuestionLifecycleScheduler       : ========================================
-2026-02-14T22:36:00.031+09:00  INFO 93537 --- [predata-backend] [   scheduling-1] c.p.b.s.QuestionLifecycleScheduler       : [Lifecycle] 스케줄러 실행 시각: 2026-02-14T22:36:00.031672
-2026-02-14T22:36:00.032+09:00  INFO 93537 --- [predata-backend] [   scheduling-1] c.p.b.s.QuestionLifecycleScheduler       : ========================================
-2026-02-14T22:36:00.042+09:00  INFO 93537 --- [predata-backend] [   scheduling-1] c.p.b.s.QuestionLifecycleScheduler       : [Lifecycle] VOTING → BREAK 체크: 만료된 질문 0건
-2026-02-14T22:36:00.043+09:00 DEBUG 93537 --- [predata-backend] [   scheduling-1] c.p.b.s.QuestionLifecycleScheduler       : [Lifecycle] VOTING 상태에서 만료된 질문 없음
-2026-02-14T22:36:00.046+09:00  INFO 93537 --- [predata-backend] [   scheduling-1] c.p.b.s.QuestionLifecycleScheduler       : [Lifecycle] BREAK → BETTING 체크: 만료된 질문 0건
-2026-02-14T22:36:00.046+09:00 DEBUG 93537 --- [predata-backend] [   scheduling-1] c.p.b.s.QuestionLifecycleScheduler       : [Lifecycle] BREAK 상태에서 만료된 질문 없음
-2026-02-14T22:36:00.050+09:00  INFO 93537 --- [predata-backend] [   scheduling-1] c.p.b.s.QuestionLifecycleScheduler       : [Lifecycle] BETTING → SETTLED 체크: 만료된 질문 0건
-2026-02-14T22:36:00.050+09:00 DEBUG 93537 --- [predata-backend] [   scheduling-1] c.p.b.s.QuestionLifecycleScheduler       : [Lifecycle] BETTING 상태에서 만료된 질문 없음
-2026-02-14T22:36:00.054+09:00  INFO 93537 --- [predata-backend] [   scheduling-1] c.p.b.s.QuestionLifecycleScheduler       : [Lifecycle] 스케줄러 실행 완료
 [Scheduler] ===== 🔴 실시간 스코어 업데이트 시작 =====
 [AutoGen] 완료된 경기 결과 업데이트 시작
 [AutoGen] 결과 업데이트 완료: 0 건
@@ -385,16 +97,35 @@ Caused by: java.io.IOException: Broken pipe
 [Scheduler] ===== ⚡ 즉시 자동 정산 체크 =====
 [AutoGen] 스포츠 질문 자동 정산 시작
 [AutoGen] 자동 정산 완료: 0 건
-2026-02-14T22:37:00.037+09:00  INFO 93537 --- [predata-backend] [   scheduling-1] c.p.b.s.QuestionLifecycleScheduler       : ========================================
-2026-02-14T22:37:00.037+09:00  INFO 93537 --- [predata-backend] [   scheduling-1] c.p.b.s.QuestionLifecycleScheduler       : [Lifecycle] 스케줄러 실행 시각: 2026-02-14T22:37:00.037087
-2026-02-14T22:37:00.037+09:00  INFO 93537 --- [predata-backend] [   scheduling-1] c.p.b.s.QuestionLifecycleScheduler       : ========================================
-2026-02-14T22:37:00.038+09:00  INFO 93537 --- [predata-backend] [   scheduling-1] c.p.b.s.QuestionLifecycleScheduler       : [Lifecycle] VOTING → BREAK 체크: 만료된 질문 0건
-2026-02-14T22:37:00.038+09:00 DEBUG 93537 --- [predata-backend] [   scheduling-1] c.p.b.s.QuestionLifecycleScheduler       : [Lifecycle] VOTING 상태에서 만료된 질문 없음
-2026-02-14T22:37:00.039+09:00  INFO 93537 --- [predata-backend] [   scheduling-1] c.p.b.s.QuestionLifecycleScheduler       : [Lifecycle] BREAK → BETTING 체크: 만료된 질문 0건
-2026-02-14T22:37:00.039+09:00 DEBUG 93537 --- [predata-backend] [   scheduling-1] c.p.b.s.QuestionLifecycleScheduler       : [Lifecycle] BREAK 상태에서 만료된 질문 없음
-2026-02-14T22:37:00.045+09:00  INFO 93537 --- [predata-backend] [   scheduling-1] c.p.b.s.QuestionLifecycleScheduler       : [Lifecycle] BETTING → SETTLED 체크: 만료된 질문 0건
-2026-02-14T22:37:00.045+09:00 DEBUG 93537 --- [predata-backend] [   scheduling-1] c.p.b.s.QuestionLifecycleScheduler       : [Lifecycle] BETTING 상태에서 만료된 질문 없음
-2026-02-14T22:37:00.046+09:00  INFO 93537 --- [predata-backend] [   scheduling-1] c.p.b.s.QuestionLifecycleScheduler       : [Lifecycle] 스케줄러 실행 완료
+2026-02-15T03:32:00.015-08:00  INFO 52997 --- [predata-backend] [   scheduling-1] c.p.b.s.QuestionLifecycleScheduler       : ========================================
+2026-02-15T03:32:00.016-08:00  INFO 52997 --- [predata-backend] [   scheduling-1] c.p.b.s.QuestionLifecycleScheduler       : [Lifecycle] 스케줄러 실행 시각: 2026-02-15T03:32:00.015898
+2026-02-15T03:32:00.016-08:00  INFO 52997 --- [predata-backend] [   scheduling-1] c.p.b.s.QuestionLifecycleScheduler       : ========================================
+2026-02-15T03:32:00.023-08:00  INFO 52997 --- [predata-backend] [   scheduling-1] c.p.b.s.QuestionLifecycleScheduler       : [Lifecycle] VOTING → BREAK 체크: 만료된 질문 0건
+2026-02-15T03:32:00.023-08:00 DEBUG 52997 --- [predata-backend] [   scheduling-1] c.p.b.s.QuestionLifecycleScheduler       : [Lifecycle] VOTING 상태에서 만료된 질문 없음
+2026-02-15T03:32:00.026-08:00  INFO 52997 --- [predata-backend] [   scheduling-1] c.p.b.s.QuestionLifecycleScheduler       : [Lifecycle] BREAK → BETTING 체크: 만료된 질문 0건
+2026-02-15T03:32:00.026-08:00 DEBUG 52997 --- [predata-backend] [   scheduling-1] c.p.b.s.QuestionLifecycleScheduler       : [Lifecycle] BREAK 상태에서 만료된 질문 없음
+2026-02-15T03:32:00.028-08:00  INFO 52997 --- [predata-backend] [   scheduling-1] c.p.b.s.QuestionLifecycleScheduler       : [Lifecycle] BETTING → SETTLED 체크: 만료된 질문 0건
+2026-02-15T03:32:00.028-08:00 DEBUG 52997 --- [predata-backend] [   scheduling-1] c.p.b.s.QuestionLifecycleScheduler       : [Lifecycle] BETTING 상태에서 만료된 질문 없음
+2026-02-15T03:32:00.030-08:00  INFO 52997 --- [predata-backend] [   scheduling-1] c.p.b.s.QuestionLifecycleScheduler       : [Lifecycle] 스케줄러 실행 완료
+[Scheduler] ===== 🔴 실시간 스코어 업데이트 시작 =====
+[AutoGen] 완료된 경기 결과 업데이트 시작
+[AutoGen] 결과 업데이트 완료: 0 건
+[Scheduler] ===== 🔴 실시간 스코어 업데이트 시작 =====
+[AutoGen] 완료된 경기 결과 업데이트 시작
+[AutoGen] 결과 업데이트 완료: 0 건
+2026-02-15T03:33:00.004-08:00  INFO 52997 --- [predata-backend] [   scheduling-1] c.p.b.s.QuestionLifecycleScheduler       : ========================================
+2026-02-15T03:33:00.005-08:00  INFO 52997 --- [predata-backend] [   scheduling-1] c.p.b.s.QuestionLifecycleScheduler       : [Lifecycle] 스케줄러 실행 시각: 2026-02-15T03:33:00.004843
+2026-02-15T03:33:00.005-08:00  INFO 52997 --- [predata-backend] [   scheduling-1] c.p.b.s.QuestionLifecycleScheduler       : ========================================
+2026-02-15T03:33:00.008-08:00  INFO 52997 --- [predata-backend] [   scheduling-1] c.p.b.s.QuestionLifecycleScheduler       : [Lifecycle] VOTING → BREAK 체크: 만료된 질문 0건
+2026-02-15T03:33:00.008-08:00 DEBUG 52997 --- [predata-backend] [   scheduling-1] c.p.b.s.QuestionLifecycleScheduler       : [Lifecycle] VOTING 상태에서 만료된 질문 없음
+2026-02-15T03:33:00.011-08:00  INFO 52997 --- [predata-backend] [   scheduling-1] c.p.b.s.QuestionLifecycleScheduler       : [Lifecycle] BREAK → BETTING 체크: 만료된 질문 0건
+2026-02-15T03:33:00.012-08:00 DEBUG 52997 --- [predata-backend] [   scheduling-1] c.p.b.s.QuestionLifecycleScheduler       : [Lifecycle] BREAK 상태에서 만료된 질문 없음
+2026-02-15T03:33:00.014-08:00  INFO 52997 --- [predata-backend] [   scheduling-1] c.p.b.s.QuestionLifecycleScheduler       : [Lifecycle] BETTING → SETTLED 체크: 만료된 질문 0건
+2026-02-15T03:33:00.014-08:00 DEBUG 52997 --- [predata-backend] [   scheduling-1] c.p.b.s.QuestionLifecycleScheduler       : [Lifecycle] BETTING 상태에서 만료된 질문 없음
+2026-02-15T03:33:00.017-08:00  INFO 52997 --- [predata-backend] [   scheduling-1] c.p.b.s.QuestionLifecycleScheduler       : [Lifecycle] 스케줄러 실행 완료
+[Scheduler] ===== ⚡ 즉시 자동 정산 체크 =====
+[AutoGen] 스포츠 질문 자동 정산 시작
+[AutoGen] 자동 정산 완료: 0 건
 [Scheduler] ===== 🔴 실시간 스코어 업데이트 시작 =====
 [AutoGen] 완료된 경기 결과 업데이트 시작
 [AutoGen] 결과 업데이트 완료: 0 건
@@ -404,33 +135,16 @@ Caused by: java.io.IOException: Broken pipe
 [Scheduler] ===== ⚡ 즉시 자동 정산 체크 =====
 [AutoGen] 스포츠 질문 자동 정산 시작
 [AutoGen] 자동 정산 완료: 0 건
-2026-02-14T22:38:00.026+09:00  INFO 93537 --- [predata-backend] [   scheduling-1] c.p.b.s.QuestionLifecycleScheduler       : ========================================
-2026-02-14T22:38:00.026+09:00  INFO 93537 --- [predata-backend] [   scheduling-1] c.p.b.s.QuestionLifecycleScheduler       : [Lifecycle] 스케줄러 실행 시각: 2026-02-14T22:38:00.026775
-2026-02-14T22:38:00.026+09:00  INFO 93537 --- [predata-backend] [   scheduling-1] c.p.b.s.QuestionLifecycleScheduler       : ========================================
-2026-02-14T22:38:00.027+09:00  INFO 93537 --- [predata-backend] [   scheduling-1] c.p.b.s.QuestionLifecycleScheduler       : [Lifecycle] VOTING → BREAK 체크: 만료된 질문 0건
-2026-02-14T22:38:00.027+09:00 DEBUG 93537 --- [predata-backend] [   scheduling-1] c.p.b.s.QuestionLifecycleScheduler       : [Lifecycle] VOTING 상태에서 만료된 질문 없음
-2026-02-14T22:38:00.028+09:00  INFO 93537 --- [predata-backend] [   scheduling-1] c.p.b.s.QuestionLifecycleScheduler       : [Lifecycle] BREAK → BETTING 체크: 만료된 질문 1건
-2026-02-14T22:38:00.028+09:00  INFO 93537 --- [predata-backend] [   scheduling-1] c.p.b.s.QuestionLifecycleScheduler       : [Lifecycle] BREAK 만료 1건 발견 → BETTING 전환 시작
-2026-02-14T22:38:00.029+09:00  INFO 93537 --- [predata-backend] [   scheduling-1] c.p.b.s.QuestionLifecycleScheduler       : [Lifecycle] 질문 #258 '애플이 2026년 안에 폴더블 아이폰을 출시할까?' → BETTING (베팅 시작)
-2026-02-14T22:38:00.031+09:00  INFO 93537 --- [predata-backend] [   scheduling-1] c.p.b.s.QuestionLifecycleScheduler       : [Lifecycle] BETTING → SETTLED 체크: 만료된 질문 0건
-2026-02-14T22:38:00.031+09:00 DEBUG 93537 --- [predata-backend] [   scheduling-1] c.p.b.s.QuestionLifecycleScheduler       : [Lifecycle] BETTING 상태에서 만료된 질문 없음
-2026-02-14T22:38:00.032+09:00  INFO 93537 --- [predata-backend] [   scheduling-1] c.p.b.s.QuestionLifecycleScheduler       : [Lifecycle] 스케줄러 실행 완료
-[Scheduler] ===== 🔴 실시간 스코어 업데이트 시작 =====
-[AutoGen] 완료된 경기 결과 업데이트 시작
-[AutoGen] 결과 업데이트 완료: 0 건
-[Scheduler] ===== ⚡ 즉시 자동 정산 체크 =====
-[AutoGen] 스포츠 질문 자동 정산 시작
-[AutoGen] 자동 정산 완료: 0 건
-2026-02-14T22:39:00.014+09:00  INFO 93537 --- [predata-backend] [   scheduling-1] c.p.b.s.QuestionLifecycleScheduler       : ========================================
-2026-02-14T22:39:00.014+09:00  INFO 93537 --- [predata-backend] [   scheduling-1] c.p.b.s.QuestionLifecycleScheduler       : [Lifecycle] 스케줄러 실행 시각: 2026-02-14T22:39:00.014069
-2026-02-14T22:39:00.014+09:00  INFO 93537 --- [predata-backend] [   scheduling-1] c.p.b.s.QuestionLifecycleScheduler       : ========================================
-2026-02-14T22:39:00.023+09:00  INFO 93537 --- [predata-backend] [   scheduling-1] c.p.b.s.QuestionLifecycleScheduler       : [Lifecycle] VOTING → BREAK 체크: 만료된 질문 0건
-2026-02-14T22:39:00.023+09:00 DEBUG 93537 --- [predata-backend] [   scheduling-1] c.p.b.s.QuestionLifecycleScheduler       : [Lifecycle] VOTING 상태에서 만료된 질문 없음
-2026-02-14T22:39:00.025+09:00  INFO 93537 --- [predata-backend] [   scheduling-1] c.p.b.s.QuestionLifecycleScheduler       : [Lifecycle] BREAK → BETTING 체크: 만료된 질문 0건
-2026-02-14T22:39:00.025+09:00 DEBUG 93537 --- [predata-backend] [   scheduling-1] c.p.b.s.QuestionLifecycleScheduler       : [Lifecycle] BREAK 상태에서 만료된 질문 없음
-2026-02-14T22:39:00.026+09:00  INFO 93537 --- [predata-backend] [   scheduling-1] c.p.b.s.QuestionLifecycleScheduler       : [Lifecycle] BETTING → SETTLED 체크: 만료된 질문 0건
-2026-02-14T22:39:00.026+09:00 DEBUG 93537 --- [predata-backend] [   scheduling-1] c.p.b.s.QuestionLifecycleScheduler       : [Lifecycle] BETTING 상태에서 만료된 질문 없음
-2026-02-14T22:39:00.027+09:00  INFO 93537 --- [predata-backend] [   scheduling-1] c.p.b.s.QuestionLifecycleScheduler       : [Lifecycle] 스케줄러 실행 완료
+2026-02-15T03:34:00.006-08:00  INFO 52997 --- [predata-backend] [   scheduling-1] c.p.b.s.QuestionLifecycleScheduler       : ========================================
+2026-02-15T03:34:00.006-08:00  INFO 52997 --- [predata-backend] [   scheduling-1] c.p.b.s.QuestionLifecycleScheduler       : [Lifecycle] 스케줄러 실행 시각: 2026-02-15T03:34:00.006721
+2026-02-15T03:34:00.006-08:00  INFO 52997 --- [predata-backend] [   scheduling-1] c.p.b.s.QuestionLifecycleScheduler       : ========================================
+2026-02-15T03:34:00.012-08:00  INFO 52997 --- [predata-backend] [   scheduling-1] c.p.b.s.QuestionLifecycleScheduler       : [Lifecycle] VOTING → BREAK 체크: 만료된 질문 0건
+2026-02-15T03:34:00.013-08:00 DEBUG 52997 --- [predata-backend] [   scheduling-1] c.p.b.s.QuestionLifecycleScheduler       : [Lifecycle] VOTING 상태에서 만료된 질문 없음
+2026-02-15T03:34:00.015-08:00  INFO 52997 --- [predata-backend] [   scheduling-1] c.p.b.s.QuestionLifecycleScheduler       : [Lifecycle] BREAK → BETTING 체크: 만료된 질문 0건
+2026-02-15T03:34:00.015-08:00 DEBUG 52997 --- [predata-backend] [   scheduling-1] c.p.b.s.QuestionLifecycleScheduler       : [Lifecycle] BREAK 상태에서 만료된 질문 없음
+2026-02-15T03:34:00.018-08:00  INFO 52997 --- [predata-backend] [   scheduling-1] c.p.b.s.QuestionLifecycleScheduler       : [Lifecycle] BETTING → SETTLED 체크: 만료된 질문 0건
+2026-02-15T03:34:00.018-08:00 DEBUG 52997 --- [predata-backend] [   scheduling-1] c.p.b.s.QuestionLifecycleScheduler       : [Lifecycle] BETTING 상태에서 만료된 질문 없음
+2026-02-15T03:34:00.020-08:00  INFO 52997 --- [predata-backend] [   scheduling-1] c.p.b.s.QuestionLifecycleScheduler       : [Lifecycle] 스케줄러 실행 완료
 [Scheduler] ===== 🔴 실시간 스코어 업데이트 시작 =====
 [AutoGen] 완료된 경기 결과 업데이트 시작
 [AutoGen] 결과 업데이트 완료: 0 건
@@ -449,16 +163,16 @@ Caused by: java.io.IOException: Broken pipe
 [AutoGen] 스포츠 질문 자동 정산 시작
 [AutoGen] 자동 정산 완료: 0 건
 [Scheduler] 테스트 자동 정산: 0건
-2026-02-14T22:40:00.008+09:00  INFO 93537 --- [predata-backend] [   scheduling-1] c.p.b.s.QuestionLifecycleScheduler       : ========================================
-2026-02-14T22:40:00.009+09:00  INFO 93537 --- [predata-backend] [   scheduling-1] c.p.b.s.QuestionLifecycleScheduler       : [Lifecycle] 스케줄러 실행 시각: 2026-02-14T22:40:00.008806
-2026-02-14T22:40:00.009+09:00  INFO 93537 --- [predata-backend] [   scheduling-1] c.p.b.s.QuestionLifecycleScheduler       : ========================================
-2026-02-14T22:40:00.011+09:00  INFO 93537 --- [predata-backend] [   scheduling-1] c.p.b.s.QuestionLifecycleScheduler       : [Lifecycle] VOTING → BREAK 체크: 만료된 질문 0건
-2026-02-14T22:40:00.012+09:00 DEBUG 93537 --- [predata-backend] [   scheduling-1] c.p.b.s.QuestionLifecycleScheduler       : [Lifecycle] VOTING 상태에서 만료된 질문 없음
-2026-02-14T22:40:00.013+09:00  INFO 93537 --- [predata-backend] [   scheduling-1] c.p.b.s.QuestionLifecycleScheduler       : [Lifecycle] BREAK → BETTING 체크: 만료된 질문 0건
-2026-02-14T22:40:00.013+09:00 DEBUG 93537 --- [predata-backend] [   scheduling-1] c.p.b.s.QuestionLifecycleScheduler       : [Lifecycle] BREAK 상태에서 만료된 질문 없음
-2026-02-14T22:40:00.014+09:00  INFO 93537 --- [predata-backend] [   scheduling-1] c.p.b.s.QuestionLifecycleScheduler       : [Lifecycle] BETTING → SETTLED 체크: 만료된 질문 0건
-2026-02-14T22:40:00.014+09:00 DEBUG 93537 --- [predata-backend] [   scheduling-1] c.p.b.s.QuestionLifecycleScheduler       : [Lifecycle] BETTING 상태에서 만료된 질문 없음
-2026-02-14T22:40:00.026+09:00  INFO 93537 --- [predata-backend] [   scheduling-1] c.p.b.s.QuestionLifecycleScheduler       : [Lifecycle] 스케줄러 실행 완료
+2026-02-15T03:35:00.002-08:00  INFO 52997 --- [predata-backend] [   scheduling-1] c.p.b.s.QuestionLifecycleScheduler       : ========================================
+2026-02-15T03:35:00.002-08:00  INFO 52997 --- [predata-backend] [   scheduling-1] c.p.b.s.QuestionLifecycleScheduler       : [Lifecycle] 스케줄러 실행 시각: 2026-02-15T03:35:00.002072
+2026-02-15T03:35:00.002-08:00  INFO 52997 --- [predata-backend] [   scheduling-1] c.p.b.s.QuestionLifecycleScheduler       : ========================================
+2026-02-15T03:35:00.006-08:00  INFO 52997 --- [predata-backend] [   scheduling-1] c.p.b.s.QuestionLifecycleScheduler       : [Lifecycle] VOTING → BREAK 체크: 만료된 질문 0건
+2026-02-15T03:35:00.007-08:00 DEBUG 52997 --- [predata-backend] [   scheduling-1] c.p.b.s.QuestionLifecycleScheduler       : [Lifecycle] VOTING 상태에서 만료된 질문 없음
+2026-02-15T03:35:00.011-08:00  INFO 52997 --- [predata-backend] [   scheduling-1] c.p.b.s.QuestionLifecycleScheduler       : [Lifecycle] BREAK → BETTING 체크: 만료된 질문 0건
+2026-02-15T03:35:00.011-08:00 DEBUG 52997 --- [predata-backend] [   scheduling-1] c.p.b.s.QuestionLifecycleScheduler       : [Lifecycle] BREAK 상태에서 만료된 질문 없음
+2026-02-15T03:35:00.014-08:00  INFO 52997 --- [predata-backend] [   scheduling-1] c.p.b.s.QuestionLifecycleScheduler       : [Lifecycle] BETTING → SETTLED 체크: 만료된 질문 0건
+2026-02-15T03:35:00.015-08:00 DEBUG 52997 --- [predata-backend] [   scheduling-1] c.p.b.s.QuestionLifecycleScheduler       : [Lifecycle] BETTING 상태에서 만료된 질문 없음
+2026-02-15T03:35:00.019-08:00  INFO 52997 --- [predata-backend] [   scheduling-1] c.p.b.s.QuestionLifecycleScheduler       : [Lifecycle] 스케줄러 실행 완료
 [Scheduler] ===== ⚡ 즉시 자동 정산 체크 =====
 [AutoGen] 스포츠 질문 자동 정산 시작
 [AutoGen] 자동 정산 완료: 0 건
@@ -471,32 +185,108 @@ Caused by: java.io.IOException: Broken pipe
 [Scheduler] ===== ⚡ 즉시 자동 정산 체크 =====
 [AutoGen] 스포츠 질문 자동 정산 시작
 [AutoGen] 자동 정산 완료: 0 건
+2026-02-15T03:36:00.005-08:00  INFO 52997 --- [predata-backend] [   scheduling-1] c.p.b.s.QuestionLifecycleScheduler       : ========================================
+2026-02-15T03:36:00.006-08:00  INFO 52997 --- [predata-backend] [   scheduling-1] c.p.b.s.QuestionLifecycleScheduler       : [Lifecycle] 스케줄러 실행 시각: 2026-02-15T03:36:00.005963
+2026-02-15T03:36:00.006-08:00  INFO 52997 --- [predata-backend] [   scheduling-1] c.p.b.s.QuestionLifecycleScheduler       : ========================================
+2026-02-15T03:36:00.008-08:00  INFO 52997 --- [predata-backend] [   scheduling-1] c.p.b.s.QuestionLifecycleScheduler       : [Lifecycle] VOTING → BREAK 체크: 만료된 질문 0건
+2026-02-15T03:36:00.009-08:00 DEBUG 52997 --- [predata-backend] [   scheduling-1] c.p.b.s.QuestionLifecycleScheduler       : [Lifecycle] VOTING 상태에서 만료된 질문 없음
+2026-02-15T03:36:00.012-08:00  INFO 52997 --- [predata-backend] [   scheduling-1] c.p.b.s.QuestionLifecycleScheduler       : [Lifecycle] BREAK → BETTING 체크: 만료된 질문 0건
+2026-02-15T03:36:00.012-08:00 DEBUG 52997 --- [predata-backend] [   scheduling-1] c.p.b.s.QuestionLifecycleScheduler       : [Lifecycle] BREAK 상태에서 만료된 질문 없음
+2026-02-15T03:36:00.015-08:00  INFO 52997 --- [predata-backend] [   scheduling-1] c.p.b.s.QuestionLifecycleScheduler       : [Lifecycle] BETTING → SETTLED 체크: 만료된 질문 0건
+2026-02-15T03:36:00.015-08:00 DEBUG 52997 --- [predata-backend] [   scheduling-1] c.p.b.s.QuestionLifecycleScheduler       : [Lifecycle] BETTING 상태에서 만료된 질문 없음
+2026-02-15T03:36:00.019-08:00  INFO 52997 --- [predata-backend] [   scheduling-1] c.p.b.s.QuestionLifecycleScheduler       : [Lifecycle] 스케줄러 실행 완료
 [Scheduler] ===== 🔴 실시간 스코어 업데이트 시작 =====
 [AutoGen] 완료된 경기 결과 업데이트 시작
 [AutoGen] 결과 업데이트 완료: 0 건
-2026-02-14T22:41:00.031+09:00  INFO 93537 --- [predata-backend] [   scheduling-1] c.p.b.s.QuestionLifecycleScheduler       : ========================================
-2026-02-14T22:41:00.032+09:00  INFO 93537 --- [predata-backend] [   scheduling-1] c.p.b.s.QuestionLifecycleScheduler       : [Lifecycle] 스케줄러 실행 시각: 2026-02-14T22:41:00.031794
-2026-02-14T22:41:00.032+09:00  INFO 93537 --- [predata-backend] [   scheduling-1] c.p.b.s.QuestionLifecycleScheduler       : ========================================
-2026-02-14T22:41:00.033+09:00  INFO 93537 --- [predata-backend] [   scheduling-1] c.p.b.s.QuestionLifecycleScheduler       : [Lifecycle] VOTING → BREAK 체크: 만료된 질문 0건
-2026-02-14T22:41:00.033+09:00 DEBUG 93537 --- [predata-backend] [   scheduling-1] c.p.b.s.QuestionLifecycleScheduler       : [Lifecycle] VOTING 상태에서 만료된 질문 없음
-2026-02-14T22:41:00.037+09:00  INFO 93537 --- [predata-backend] [   scheduling-1] c.p.b.s.QuestionLifecycleScheduler       : [Lifecycle] BREAK → BETTING 체크: 만료된 질문 0건
-2026-02-14T22:41:00.037+09:00 DEBUG 93537 --- [predata-backend] [   scheduling-1] c.p.b.s.QuestionLifecycleScheduler       : [Lifecycle] BREAK 상태에서 만료된 질문 없음
-2026-02-14T22:41:00.038+09:00  INFO 93537 --- [predata-backend] [   scheduling-1] c.p.b.s.QuestionLifecycleScheduler       : [Lifecycle] BETTING → SETTLED 체크: 만료된 질문 0건
-2026-02-14T22:41:00.038+09:00 DEBUG 93537 --- [predata-backend] [   scheduling-1] c.p.b.s.QuestionLifecycleScheduler       : [Lifecycle] BETTING 상태에서 만료된 질문 없음
-2026-02-14T22:41:00.039+09:00  INFO 93537 --- [predata-backend] [   scheduling-1] c.p.b.s.QuestionLifecycleScheduler       : [Lifecycle] 스케줄러 실행 완료
 [Scheduler] ===== 🔴 실시간 스코어 업데이트 시작 =====
 [AutoGen] 완료된 경기 결과 업데이트 시작
 [AutoGen] 결과 업데이트 완료: 0 건
-2026-02-14T22:42:00.010+09:00  INFO 93537 --- [predata-backend] [   scheduling-1] c.p.b.s.QuestionLifecycleScheduler       : ========================================
-2026-02-14T22:42:00.011+09:00  INFO 93537 --- [predata-backend] [   scheduling-1] c.p.b.s.QuestionLifecycleScheduler       : [Lifecycle] 스케줄러 실행 시각: 2026-02-14T22:42:00.010641
-2026-02-14T22:42:00.011+09:00  INFO 93537 --- [predata-backend] [   scheduling-1] c.p.b.s.QuestionLifecycleScheduler       : ========================================
-2026-02-14T22:42:00.023+09:00  INFO 93537 --- [predata-backend] [   scheduling-1] c.p.b.s.QuestionLifecycleScheduler       : [Lifecycle] VOTING → BREAK 체크: 만료된 질문 0건
-2026-02-14T22:42:00.023+09:00 DEBUG 93537 --- [predata-backend] [   scheduling-1] c.p.b.s.QuestionLifecycleScheduler       : [Lifecycle] VOTING 상태에서 만료된 질문 없음
-2026-02-14T22:42:00.024+09:00  INFO 93537 --- [predata-backend] [   scheduling-1] c.p.b.s.QuestionLifecycleScheduler       : [Lifecycle] BREAK → BETTING 체크: 만료된 질문 0건
-2026-02-14T22:42:00.024+09:00 DEBUG 93537 --- [predata-backend] [   scheduling-1] c.p.b.s.QuestionLifecycleScheduler       : [Lifecycle] BREAK 상태에서 만료된 질문 없음
-2026-02-14T22:42:00.025+09:00  INFO 93537 --- [predata-backend] [   scheduling-1] c.p.b.s.QuestionLifecycleScheduler       : [Lifecycle] BETTING → SETTLED 체크: 만료된 질문 0건
-2026-02-14T22:42:00.025+09:00 DEBUG 93537 --- [predata-backend] [   scheduling-1] c.p.b.s.QuestionLifecycleScheduler       : [Lifecycle] BETTING 상태에서 만료된 질문 없음
-2026-02-14T22:42:00.026+09:00  INFO 93537 --- [predata-backend] [   scheduling-1] c.p.b.s.QuestionLifecycleScheduler       : [Lifecycle] 스케줄러 실행 완료
+2026-02-15T03:37:00.001-08:00  INFO 52997 --- [predata-backend] [   scheduling-1] c.p.b.s.QuestionLifecycleScheduler       : ========================================
+2026-02-15T03:37:00.001-08:00  INFO 52997 --- [predata-backend] [   scheduling-1] c.p.b.s.QuestionLifecycleScheduler       : [Lifecycle] 스케줄러 실행 시각: 2026-02-15T03:37:00.001647
+2026-02-15T03:37:00.001-08:00  INFO 52997 --- [predata-backend] [   scheduling-1] c.p.b.s.QuestionLifecycleScheduler       : ========================================
+2026-02-15T03:37:00.004-08:00  INFO 52997 --- [predata-backend] [   scheduling-1] c.p.b.s.QuestionLifecycleScheduler       : [Lifecycle] VOTING → BREAK 체크: 만료된 질문 0건
+2026-02-15T03:37:00.005-08:00 DEBUG 52997 --- [predata-backend] [   scheduling-1] c.p.b.s.QuestionLifecycleScheduler       : [Lifecycle] VOTING 상태에서 만료된 질문 없음
+2026-02-15T03:37:00.008-08:00  INFO 52997 --- [predata-backend] [   scheduling-1] c.p.b.s.QuestionLifecycleScheduler       : [Lifecycle] BREAK → BETTING 체크: 만료된 질문 0건
+2026-02-15T03:37:00.009-08:00 DEBUG 52997 --- [predata-backend] [   scheduling-1] c.p.b.s.QuestionLifecycleScheduler       : [Lifecycle] BREAK 상태에서 만료된 질문 없음
+2026-02-15T03:37:00.011-08:00  INFO 52997 --- [predata-backend] [   scheduling-1] c.p.b.s.QuestionLifecycleScheduler       : [Lifecycle] BETTING → SETTLED 체크: 만료된 질문 0건
+2026-02-15T03:37:00.011-08:00 DEBUG 52997 --- [predata-backend] [   scheduling-1] c.p.b.s.QuestionLifecycleScheduler       : [Lifecycle] BETTING 상태에서 만료된 질문 없음
+2026-02-15T03:37:00.013-08:00  INFO 52997 --- [predata-backend] [   scheduling-1] c.p.b.s.QuestionLifecycleScheduler       : [Lifecycle] 스케줄러 실행 완료
+[Scheduler] ===== ⚡ 즉시 자동 정산 체크 =====
+[AutoGen] 스포츠 질문 자동 정산 시작
+[AutoGen] 자동 정산 완료: 0 건
+[Scheduler] ===== 🔴 실시간 스코어 업데이트 시작 =====
+[AutoGen] 완료된 경기 결과 업데이트 시작
+[AutoGen] 결과 업데이트 완료: 0 건
+[Scheduler] ===== 🔴 실시간 스코어 업데이트 시작 =====
+[AutoGen] 완료된 경기 결과 업데이트 시작
+[AutoGen] 결과 업데이트 완료: 0 건
+2026-02-15T03:38:00.003-08:00  INFO 52997 --- [predata-backend] [   scheduling-1] c.p.b.s.QuestionLifecycleScheduler       : ========================================
+2026-02-15T03:38:00.004-08:00  INFO 52997 --- [predata-backend] [   scheduling-1] c.p.b.s.QuestionLifecycleScheduler       : [Lifecycle] 스케줄러 실행 시각: 2026-02-15T03:38:00.003648
+2026-02-15T03:38:00.004-08:00  INFO 52997 --- [predata-backend] [   scheduling-1] c.p.b.s.QuestionLifecycleScheduler       : ========================================
+2026-02-15T03:38:00.009-08:00  INFO 52997 --- [predata-backend] [   scheduling-1] c.p.b.s.QuestionLifecycleScheduler       : [Lifecycle] VOTING → BREAK 체크: 만료된 질문 0건
+2026-02-15T03:38:00.009-08:00 DEBUG 52997 --- [predata-backend] [   scheduling-1] c.p.b.s.QuestionLifecycleScheduler       : [Lifecycle] VOTING 상태에서 만료된 질문 없음
+2026-02-15T03:38:00.013-08:00  INFO 52997 --- [predata-backend] [   scheduling-1] c.p.b.s.QuestionLifecycleScheduler       : [Lifecycle] BREAK → BETTING 체크: 만료된 질문 0건
+2026-02-15T03:38:00.013-08:00 DEBUG 52997 --- [predata-backend] [   scheduling-1] c.p.b.s.QuestionLifecycleScheduler       : [Lifecycle] BREAK 상태에서 만료된 질문 없음
+2026-02-15T03:38:00.017-08:00  INFO 52997 --- [predata-backend] [   scheduling-1] c.p.b.s.QuestionLifecycleScheduler       : [Lifecycle] BETTING → SETTLED 체크: 만료된 질문 0건
+2026-02-15T03:38:00.017-08:00 DEBUG 52997 --- [predata-backend] [   scheduling-1] c.p.b.s.QuestionLifecycleScheduler       : [Lifecycle] BETTING 상태에서 만료된 질문 없음
+2026-02-15T03:38:00.020-08:00  INFO 52997 --- [predata-backend] [   scheduling-1] c.p.b.s.QuestionLifecycleScheduler       : [Lifecycle] 스케줄러 실행 완료
+[Scheduler] ===== ⚡ 즉시 자동 정산 체크 =====
+[AutoGen] 스포츠 질문 자동 정산 시작
+[AutoGen] 자동 정산 완료: 0 건
+[Scheduler] ===== 🔴 실시간 스코어 업데이트 시작 =====
+[AutoGen] 완료된 경기 결과 업데이트 시작
+[AutoGen] 결과 업데이트 완료: 0 건
+[Scheduler] ===== 🔴 실시간 스코어 업데이트 시작 =====
+[AutoGen] 완료된 경기 결과 업데이트 시작
+[AutoGen] 결과 업데이트 완료: 0 건
+[Scheduler] ===== 🔴 실시간 스코어 업데이트 시작 =====
+[AutoGen] 완료된 경기 결과 업데이트 시작
+[AutoGen] 결과 업데이트 완료: 0 건
+[Scheduler] ===== ⚡ 즉시 자동 정산 체크 =====
+[AutoGen] 스포츠 질문 자동 정산 시작
+[AutoGen] 자동 정산 완료: 0 건
+2026-02-15T03:39:00.027-08:00  INFO 52997 --- [predata-backend] [   scheduling-1] c.p.b.s.QuestionLifecycleScheduler       : ========================================
+2026-02-15T03:39:00.028-08:00  INFO 52997 --- [predata-backend] [   scheduling-1] c.p.b.s.QuestionLifecycleScheduler       : [Lifecycle] 스케줄러 실행 시각: 2026-02-15T03:39:00.027638
+2026-02-15T03:39:00.028-08:00  INFO 52997 --- [predata-backend] [   scheduling-1] c.p.b.s.QuestionLifecycleScheduler       : ========================================
+2026-02-15T03:39:00.034-08:00  INFO 52997 --- [predata-backend] [   scheduling-1] c.p.b.s.QuestionLifecycleScheduler       : [Lifecycle] VOTING → BREAK 체크: 만료된 질문 0건
+2026-02-15T03:39:00.034-08:00 DEBUG 52997 --- [predata-backend] [   scheduling-1] c.p.b.s.QuestionLifecycleScheduler       : [Lifecycle] VOTING 상태에서 만료된 질문 없음
+2026-02-15T03:39:00.037-08:00  INFO 52997 --- [predata-backend] [   scheduling-1] c.p.b.s.QuestionLifecycleScheduler       : [Lifecycle] BREAK → BETTING 체크: 만료된 질문 0건
+2026-02-15T03:39:00.037-08:00 DEBUG 52997 --- [predata-backend] [   scheduling-1] c.p.b.s.QuestionLifecycleScheduler       : [Lifecycle] BREAK 상태에서 만료된 질문 없음
+2026-02-15T03:39:00.039-08:00  INFO 52997 --- [predata-backend] [   scheduling-1] c.p.b.s.QuestionLifecycleScheduler       : [Lifecycle] BETTING → SETTLED 체크: 만료된 질문 0건
+2026-02-15T03:39:00.039-08:00 DEBUG 52997 --- [predata-backend] [   scheduling-1] c.p.b.s.QuestionLifecycleScheduler       : [Lifecycle] BETTING 상태에서 만료된 질문 없음
+2026-02-15T03:39:00.041-08:00  INFO 52997 --- [predata-backend] [   scheduling-1] c.p.b.s.QuestionLifecycleScheduler       : [Lifecycle] 스케줄러 실행 완료
+[Scheduler] ===== 🔴 실시간 스코어 업데이트 시작 =====
+[AutoGen] 완료된 경기 결과 업데이트 시작
+[AutoGen] 결과 업데이트 완료: 0 건
+2026-02-15T03:40:00.006-08:00  INFO 52997 --- [predata-backend] [   scheduling-1] c.p.b.s.QuestionLifecycleScheduler       : ========================================
+2026-02-15T03:40:00.006-08:00  INFO 52997 --- [predata-backend] [   scheduling-1] c.p.b.s.QuestionLifecycleScheduler       : [Lifecycle] 스케줄러 실행 시각: 2026-02-15T03:40:00.006447
+2026-02-15T03:40:00.006-08:00  INFO 52997 --- [predata-backend] [   scheduling-1] c.p.b.s.QuestionLifecycleScheduler       : ========================================
+2026-02-15T03:40:00.014-08:00  INFO 52997 --- [predata-backend] [   scheduling-1] c.p.b.s.QuestionLifecycleScheduler       : [Lifecycle] VOTING → BREAK 체크: 만료된 질문 0건
+2026-02-15T03:40:00.014-08:00 DEBUG 52997 --- [predata-backend] [   scheduling-1] c.p.b.s.QuestionLifecycleScheduler       : [Lifecycle] VOTING 상태에서 만료된 질문 없음
+2026-02-15T03:40:00.022-08:00  INFO 52997 --- [predata-backend] [   scheduling-1] c.p.b.s.QuestionLifecycleScheduler       : [Lifecycle] BREAK → BETTING 체크: 만료된 질문 0건
+2026-02-15T03:40:00.022-08:00 DEBUG 52997 --- [predata-backend] [   scheduling-1] c.p.b.s.QuestionLifecycleScheduler       : [Lifecycle] BREAK 상태에서 만료된 질문 없음
+2026-02-15T03:40:00.027-08:00  INFO 52997 --- [predata-backend] [   scheduling-1] c.p.b.s.QuestionLifecycleScheduler       : [Lifecycle] BETTING → SETTLED 체크: 만료된 질문 0건
+2026-02-15T03:40:00.027-08:00 DEBUG 52997 --- [predata-backend] [   scheduling-1] c.p.b.s.QuestionLifecycleScheduler       : [Lifecycle] BETTING 상태에서 만료된 질문 없음
+2026-02-15T03:40:00.029-08:00  INFO 52997 --- [predata-backend] [   scheduling-1] c.p.b.s.QuestionLifecycleScheduler       : [Lifecycle] 스케줄러 실행 완료
+[Scheduler] ===== ⚡ 즉시 자동 정산 체크 =====
+[AutoGen] 스포츠 질문 자동 정산 시작
+[AutoGen] 자동 정산 완료: 0 건
+[Scheduler] ===== 🔴 실시간 스코어 업데이트 시작 =====
+[AutoGen] 완료된 경기 결과 업데이트 시작
+[AutoGen] 결과 업데이트 완료: 0 건
+[Scheduler] ===== 🔴 실시간 스코어 업데이트 시작 =====
+[AutoGen] 완료된 경기 결과 업데이트 시작
+[AutoGen] 결과 업데이트 완료: 0 건
+2026-02-15T03:41:00.004-08:00  INFO 52997 --- [predata-backend] [   scheduling-1] c.p.b.s.QuestionLifecycleScheduler       : ========================================
+2026-02-15T03:41:00.004-08:00  INFO 52997 --- [predata-backend] [   scheduling-1] c.p.b.s.QuestionLifecycleScheduler       : [Lifecycle] 스케줄러 실행 시각: 2026-02-15T03:41:00.004451
+2026-02-15T03:41:00.004-08:00  INFO 52997 --- [predata-backend] [   scheduling-1] c.p.b.s.QuestionLifecycleScheduler       : ========================================
+2026-02-15T03:41:00.007-08:00  INFO 52997 --- [predata-backend] [   scheduling-1] c.p.b.s.QuestionLifecycleScheduler       : [Lifecycle] VOTING → BREAK 체크: 만료된 질문 0건
+2026-02-15T03:41:00.007-08:00 DEBUG 52997 --- [predata-backend] [   scheduling-1] c.p.b.s.QuestionLifecycleScheduler       : [Lifecycle] VOTING 상태에서 만료된 질문 없음
+2026-02-15T03:41:00.010-08:00  INFO 52997 --- [predata-backend] [   scheduling-1] c.p.b.s.QuestionLifecycleScheduler       : [Lifecycle] BREAK → BETTING 체크: 만료된 질문 0건
+2026-02-15T03:41:00.011-08:00 DEBUG 52997 --- [predata-backend] [   scheduling-1] c.p.b.s.QuestionLifecycleScheduler       : [Lifecycle] BREAK 상태에서 만료된 질문 없음
+2026-02-15T03:41:00.015-08:00  INFO 52997 --- [predata-backend] [   scheduling-1] c.p.b.s.QuestionLifecycleScheduler       : [Lifecycle] BETTING → SETTLED 체크: 만료된 질문 0건
+2026-02-15T03:41:00.016-08:00 DEBUG 52997 --- [predata-backend] [   scheduling-1] c.p.b.s.QuestionLifecycleScheduler       : [Lifecycle] BETTING 상태에서 만료된 질문 없음
+2026-02-15T03:41:00.019-08:00  INFO 52997 --- [predata-backend] [   scheduling-1] c.p.b.s.QuestionLifecycleScheduler       : [Lifecycle] 스케줄러 실행 완료
 [Scheduler] ===== ⚡ 즉시 자동 정산 체크 =====
 [AutoGen] 스포츠 질문 자동 정산 시작
 [AutoGen] 자동 정산 완료: 0 건
@@ -509,92 +299,16 @@ Caused by: java.io.IOException: Broken pipe
 [Scheduler] ===== ⚡ 즉시 자동 정산 체크 =====
 [AutoGen] 스포츠 질문 자동 정산 시작
 [AutoGen] 자동 정산 완료: 0 건
-2026-02-14T22:43:00.030+09:00  INFO 93537 --- [predata-backend] [   scheduling-1] c.p.b.s.QuestionLifecycleScheduler       : ========================================
-2026-02-14T22:43:00.031+09:00  INFO 93537 --- [predata-backend] [   scheduling-1] c.p.b.s.QuestionLifecycleScheduler       : [Lifecycle] 스케줄러 실행 시각: 2026-02-14T22:43:00.030562
-2026-02-14T22:43:00.031+09:00  INFO 93537 --- [predata-backend] [   scheduling-1] c.p.b.s.QuestionLifecycleScheduler       : ========================================
-2026-02-14T22:43:00.034+09:00  INFO 93537 --- [predata-backend] [   scheduling-1] c.p.b.s.QuestionLifecycleScheduler       : [Lifecycle] VOTING → BREAK 체크: 만료된 질문 0건
-2026-02-14T22:43:00.035+09:00 DEBUG 93537 --- [predata-backend] [   scheduling-1] c.p.b.s.QuestionLifecycleScheduler       : [Lifecycle] VOTING 상태에서 만료된 질문 없음
-2026-02-14T22:43:00.036+09:00  INFO 93537 --- [predata-backend] [   scheduling-1] c.p.b.s.QuestionLifecycleScheduler       : [Lifecycle] BREAK → BETTING 체크: 만료된 질문 0건
-2026-02-14T22:43:00.036+09:00 DEBUG 93537 --- [predata-backend] [   scheduling-1] c.p.b.s.QuestionLifecycleScheduler       : [Lifecycle] BREAK 상태에서 만료된 질문 없음
-2026-02-14T22:43:00.037+09:00  INFO 93537 --- [predata-backend] [   scheduling-1] c.p.b.s.QuestionLifecycleScheduler       : [Lifecycle] BETTING → SETTLED 체크: 만료된 질문 0건
-2026-02-14T22:43:00.037+09:00 DEBUG 93537 --- [predata-backend] [   scheduling-1] c.p.b.s.QuestionLifecycleScheduler       : [Lifecycle] BETTING 상태에서 만료된 질문 없음
-2026-02-14T22:43:00.045+09:00  INFO 93537 --- [predata-backend] [   scheduling-1] c.p.b.s.QuestionLifecycleScheduler       : [Lifecycle] 스케줄러 실행 완료
-[Scheduler] ===== 🔴 실시간 스코어 업데이트 시작 =====
-[AutoGen] 완료된 경기 결과 업데이트 시작
-[AutoGen] 결과 업데이트 완료: 0 건
-[Scheduler] ===== 🔴 실시간 스코어 업데이트 시작 =====
-[AutoGen] 완료된 경기 결과 업데이트 시작
-[AutoGen] 결과 업데이트 완료: 0 건
-2026-02-14T22:44:00.018+09:00  INFO 93537 --- [predata-backend] [   scheduling-1] c.p.b.s.QuestionLifecycleScheduler       : ========================================
-2026-02-14T22:44:00.018+09:00  INFO 93537 --- [predata-backend] [   scheduling-1] c.p.b.s.QuestionLifecycleScheduler       : [Lifecycle] 스케줄러 실행 시각: 2026-02-14T22:44:00.017985
-2026-02-14T22:44:00.018+09:00  INFO 93537 --- [predata-backend] [   scheduling-1] c.p.b.s.QuestionLifecycleScheduler       : ========================================
-2026-02-14T22:44:00.021+09:00  INFO 93537 --- [predata-backend] [   scheduling-1] c.p.b.s.QuestionLifecycleScheduler       : [Lifecycle] VOTING → BREAK 체크: 만료된 질문 0건
-2026-02-14T22:44:00.021+09:00 DEBUG 93537 --- [predata-backend] [   scheduling-1] c.p.b.s.QuestionLifecycleScheduler       : [Lifecycle] VOTING 상태에서 만료된 질문 없음
-2026-02-14T22:44:00.022+09:00  INFO 93537 --- [predata-backend] [   scheduling-1] c.p.b.s.QuestionLifecycleScheduler       : [Lifecycle] BREAK → BETTING 체크: 만료된 질문 0건
-2026-02-14T22:44:00.022+09:00 DEBUG 93537 --- [predata-backend] [   scheduling-1] c.p.b.s.QuestionLifecycleScheduler       : [Lifecycle] BREAK 상태에서 만료된 질문 없음
-2026-02-14T22:44:00.024+09:00  INFO 93537 --- [predata-backend] [   scheduling-1] c.p.b.s.QuestionLifecycleScheduler       : [Lifecycle] BETTING → SETTLED 체크: 만료된 질문 0건
-2026-02-14T22:44:00.024+09:00 DEBUG 93537 --- [predata-backend] [   scheduling-1] c.p.b.s.QuestionLifecycleScheduler       : [Lifecycle] BETTING 상태에서 만료된 질문 없음
-2026-02-14T22:44:00.025+09:00  INFO 93537 --- [predata-backend] [   scheduling-1] c.p.b.s.QuestionLifecycleScheduler       : [Lifecycle] 스케줄러 실행 완료
-[Scheduler] ===== 🔴 실시간 스코어 업데이트 시작 =====
-[AutoGen] 완료된 경기 결과 업데이트 시작
-[AutoGen] 결과 업데이트 완료: 0 건
-[Scheduler] ===== ⚡ 즉시 자동 정산 체크 =====
-[AutoGen] 스포츠 질문 자동 정산 시작
-[AutoGen] 자동 정산 완료: 0 건
-[Scheduler] ===== 🔴 실시간 스코어 업데이트 시작 =====
-[AutoGen] 완료된 경기 결과 업데이트 시작
-[AutoGen] 결과 업데이트 완료: 0 건
-[Scheduler] ===== ⚡ 즉시 자동 정산 체크 =====
-[AutoGen] 스포츠 질문 자동 정산 시작
-[AutoGen] 자동 정산 완료: 0 건
-2026-02-14T22:45:00.026+09:00  INFO 93537 --- [predata-backend] [   scheduling-1] c.p.b.s.QuestionLifecycleScheduler       : ========================================
-2026-02-14T22:45:00.027+09:00  INFO 93537 --- [predata-backend] [   scheduling-1] c.p.b.s.QuestionLifecycleScheduler       : [Lifecycle] 스케줄러 실행 시각: 2026-02-14T22:45:00.026880
-2026-02-14T22:45:00.027+09:00  INFO 93537 --- [predata-backend] [   scheduling-1] c.p.b.s.QuestionLifecycleScheduler       : ========================================
-2026-02-14T22:45:00.038+09:00  INFO 93537 --- [predata-backend] [   scheduling-1] c.p.b.s.QuestionLifecycleScheduler       : [Lifecycle] VOTING → BREAK 체크: 만료된 질문 0건
-2026-02-14T22:45:00.039+09:00 DEBUG 93537 --- [predata-backend] [   scheduling-1] c.p.b.s.QuestionLifecycleScheduler       : [Lifecycle] VOTING 상태에서 만료된 질문 없음
-2026-02-14T22:45:00.040+09:00  INFO 93537 --- [predata-backend] [   scheduling-1] c.p.b.s.QuestionLifecycleScheduler       : [Lifecycle] BREAK → BETTING 체크: 만료된 질문 0건
-2026-02-14T22:45:00.040+09:00 DEBUG 93537 --- [predata-backend] [   scheduling-1] c.p.b.s.QuestionLifecycleScheduler       : [Lifecycle] BREAK 상태에서 만료된 질문 없음
-2026-02-14T22:45:00.041+09:00  INFO 93537 --- [predata-backend] [   scheduling-1] c.p.b.s.QuestionLifecycleScheduler       : [Lifecycle] BETTING → SETTLED 체크: 만료된 질문 0건
-2026-02-14T22:45:00.041+09:00 DEBUG 93537 --- [predata-backend] [   scheduling-1] c.p.b.s.QuestionLifecycleScheduler       : [Lifecycle] BETTING 상태에서 만료된 질문 없음
-2026-02-14T22:45:00.042+09:00  INFO 93537 --- [predata-backend] [   scheduling-1] c.p.b.s.QuestionLifecycleScheduler       : [Lifecycle] 스케줄러 실행 완료
-[Scheduler] ===== 🔴 실시간 스코어 업데이트 시작 =====
-[AutoGen] 완료된 경기 결과 업데이트 시작
-[AutoGen] 결과 업데이트 완료: 0 건
-[Scheduler] ===== 🔴 실시간 스코어 업데이트 시작 =====
-[AutoGen] 완료된 경기 결과 업데이트 시작
-[AutoGen] 결과 업데이트 완료: 0 건
-2026-02-14T22:46:00.016+09:00  INFO 93537 --- [predata-backend] [   scheduling-1] c.p.b.s.QuestionLifecycleScheduler       : ========================================
-2026-02-14T22:46:00.017+09:00  INFO 93537 --- [predata-backend] [   scheduling-1] c.p.b.s.QuestionLifecycleScheduler       : [Lifecycle] 스케줄러 실행 시각: 2026-02-14T22:46:00.016612
-2026-02-14T22:46:00.017+09:00  INFO 93537 --- [predata-backend] [   scheduling-1] c.p.b.s.QuestionLifecycleScheduler       : ========================================
-2026-02-14T22:46:00.021+09:00  INFO 93537 --- [predata-backend] [   scheduling-1] c.p.b.s.QuestionLifecycleScheduler       : [Lifecycle] VOTING → BREAK 체크: 만료된 질문 0건
-2026-02-14T22:46:00.021+09:00 DEBUG 93537 --- [predata-backend] [   scheduling-1] c.p.b.s.QuestionLifecycleScheduler       : [Lifecycle] VOTING 상태에서 만료된 질문 없음
-2026-02-14T22:46:00.028+09:00  INFO 93537 --- [predata-backend] [   scheduling-1] c.p.b.s.QuestionLifecycleScheduler       : [Lifecycle] BREAK → BETTING 체크: 만료된 질문 0건
-2026-02-14T22:46:00.028+09:00 DEBUG 93537 --- [predata-backend] [   scheduling-1] c.p.b.s.QuestionLifecycleScheduler       : [Lifecycle] BREAK 상태에서 만료된 질문 없음
-2026-02-14T22:46:00.029+09:00  INFO 93537 --- [predata-backend] [   scheduling-1] c.p.b.s.QuestionLifecycleScheduler       : [Lifecycle] BETTING → SETTLED 체크: 만료된 질문 0건
-2026-02-14T22:46:00.029+09:00 DEBUG 93537 --- [predata-backend] [   scheduling-1] c.p.b.s.QuestionLifecycleScheduler       : [Lifecycle] BETTING 상태에서 만료된 질문 없음
-2026-02-14T22:46:00.030+09:00  INFO 93537 --- [predata-backend] [   scheduling-1] c.p.b.s.QuestionLifecycleScheduler       : [Lifecycle] 스케줄러 실행 완료
-[Scheduler] ===== ⚡ 즉시 자동 정산 체크 =====
-[AutoGen] 스포츠 질문 자동 정산 시작
-[AutoGen] 자동 정산 완료: 0 건
-[Scheduler] ===== 🔴 실시간 스코어 업데이트 시작 =====
-[AutoGen] 완료된 경기 결과 업데이트 시작
-[AutoGen] 결과 업데이트 완료: 0 건
-[Scheduler] ===== 🔴 실시간 스코어 업데이트 시작 =====
-[AutoGen] 완료된 경기 결과 업데이트 시작
-[AutoGen] 결과 업데이트 완료: 0 건
-[Scheduler] ===== ⚡ 즉시 자동 정산 체크 =====
-[AutoGen] 스포츠 질문 자동 정산 시작
-[AutoGen] 자동 정산 완료: 0 건
-2026-02-14T22:47:00.029+09:00  INFO 93537 --- [predata-backend] [   scheduling-1] c.p.b.s.QuestionLifecycleScheduler       : ========================================
-2026-02-14T22:47:00.030+09:00  INFO 93537 --- [predata-backend] [   scheduling-1] c.p.b.s.QuestionLifecycleScheduler       : [Lifecycle] 스케줄러 실행 시각: 2026-02-14T22:47:00.029707
-2026-02-14T22:47:00.031+09:00  INFO 93537 --- [predata-backend] [   scheduling-1] c.p.b.s.QuestionLifecycleScheduler       : ========================================
-2026-02-14T22:47:00.035+09:00  INFO 93537 --- [predata-backend] [   scheduling-1] c.p.b.s.QuestionLifecycleScheduler       : [Lifecycle] VOTING → BREAK 체크: 만료된 질문 0건
-2026-02-14T22:47:00.035+09:00 DEBUG 93537 --- [predata-backend] [   scheduling-1] c.p.b.s.QuestionLifecycleScheduler       : [Lifecycle] VOTING 상태에서 만료된 질문 없음
-2026-02-14T22:47:00.036+09:00  INFO 93537 --- [predata-backend] [   scheduling-1] c.p.b.s.QuestionLifecycleScheduler       : [Lifecycle] BREAK → BETTING 체크: 만료된 질문 0건
-2026-02-14T22:47:00.036+09:00 DEBUG 93537 --- [predata-backend] [   scheduling-1] c.p.b.s.QuestionLifecycleScheduler       : [Lifecycle] BREAK 상태에서 만료된 질문 없음
-2026-02-14T22:47:00.037+09:00  INFO 93537 --- [predata-backend] [   scheduling-1] c.p.b.s.QuestionLifecycleScheduler       : [Lifecycle] BETTING → SETTLED 체크: 만료된 질문 0건
-2026-02-14T22:47:00.037+09:00 DEBUG 93537 --- [predata-backend] [   scheduling-1] c.p.b.s.QuestionLifecycleScheduler       : [Lifecycle] BETTING 상태에서 만료된 질문 없음
-2026-02-14T22:47:00.041+09:00  INFO 93537 --- [predata-backend] [   scheduling-1] c.p.b.s.QuestionLifecycleScheduler       : [Lifecycle] 스케줄러 실행 완료
+2026-02-15T03:42:00.031-08:00  INFO 52997 --- [predata-backend] [   scheduling-1] c.p.b.s.QuestionLifecycleScheduler       : ========================================
+2026-02-15T03:42:00.032-08:00  INFO 52997 --- [predata-backend] [   scheduling-1] c.p.b.s.QuestionLifecycleScheduler       : [Lifecycle] 스케줄러 실행 시각: 2026-02-15T03:42:00.031791
+2026-02-15T03:42:00.032-08:00  INFO 52997 --- [predata-backend] [   scheduling-1] c.p.b.s.QuestionLifecycleScheduler       : ========================================
+2026-02-15T03:42:00.038-08:00  INFO 52997 --- [predata-backend] [   scheduling-1] c.p.b.s.QuestionLifecycleScheduler       : [Lifecycle] VOTING → BREAK 체크: 만료된 질문 0건
+2026-02-15T03:42:00.038-08:00 DEBUG 52997 --- [predata-backend] [   scheduling-1] c.p.b.s.QuestionLifecycleScheduler       : [Lifecycle] VOTING 상태에서 만료된 질문 없음
+2026-02-15T03:42:00.051-08:00  INFO 52997 --- [predata-backend] [   scheduling-1] c.p.b.s.QuestionLifecycleScheduler       : [Lifecycle] BREAK → BETTING 체크: 만료된 질문 0건
+2026-02-15T03:42:00.051-08:00 DEBUG 52997 --- [predata-backend] [   scheduling-1] c.p.b.s.QuestionLifecycleScheduler       : [Lifecycle] BREAK 상태에서 만료된 질문 없음
+2026-02-15T03:42:00.054-08:00  INFO 52997 --- [predata-backend] [   scheduling-1] c.p.b.s.QuestionLifecycleScheduler       : [Lifecycle] BETTING → SETTLED 체크: 만료된 질문 0건
+2026-02-15T03:42:00.054-08:00 DEBUG 52997 --- [predata-backend] [   scheduling-1] c.p.b.s.QuestionLifecycleScheduler       : [Lifecycle] BETTING 상태에서 만료된 질문 없음
+2026-02-15T03:42:00.057-08:00  INFO 52997 --- [predata-backend] [   scheduling-1] c.p.b.s.QuestionLifecycleScheduler       : [Lifecycle] 스케줄러 실행 완료
 [Scheduler] ===== 🔴 실시간 스코어 업데이트 시작 =====
 [AutoGen] 완료된 경기 결과 업데이트 시작
 [AutoGen] 결과 업데이트 완료: 0 건
