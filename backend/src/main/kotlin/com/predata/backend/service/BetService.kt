@@ -35,12 +35,7 @@ class BetService(
      * - 판돈 업데이트 (비관적 락)
      */
     @Transactional
-    fun bet(request: BetRequest, clientIp: String? = null): ActivityResponse {
-        // 0. memberId 검증
-        val memberId = request.memberId ?: return ActivityResponse(
-            success = false,
-            message = "회원 ID가 필요합니다."
-        )
+    fun bet(memberId: Long, request: BetRequest, clientIp: String? = null): ActivityResponse {
 
         // 1. 멤버 조회 및 밴/잔액 확인
         val member = memberRepository.findById(memberId)

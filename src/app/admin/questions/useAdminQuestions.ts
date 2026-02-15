@@ -246,7 +246,7 @@ export function useAdminQuestions(isAdmin: boolean) {
 
     setLoading(true);
     try {
-      const response = await authFetch(`${API_BASE_URL}/questions/${settleTarget.id}/settle`, {
+      const response = await authFetch(`${API_BASE_URL}/admin/settlements/questions/${settleTarget.id}/settle`, {
         method: 'POST',
         body: JSON.stringify({
           finalResult: settleFinalResult,
@@ -276,7 +276,7 @@ export function useAdminQuestions(isAdmin: boolean) {
     if (!confirm('정산을 확정하시겠습니까? 배당금이 분배됩니다.')) return;
 
     try {
-      const response = await authFetch(`${API_BASE_URL}/questions/${id}/settle/finalize`, {
+      const response = await authFetch(`${API_BASE_URL}/admin/settlements/questions/${id}/finalize`, {
         method: 'POST',
         body: JSON.stringify({ force: true }),
       });
@@ -300,7 +300,7 @@ export function useAdminQuestions(isAdmin: boolean) {
     if (!confirm('정산을 취소하시겠습니까? 질문이 OPEN 상태로 돌아갑니다.')) return;
 
     try {
-      const response = await authFetch(`${API_BASE_URL}/questions/${id}/settle/cancel`, {
+      const response = await authFetch(`${API_BASE_URL}/admin/settlements/questions/${id}/cancel`, {
         method: 'POST',
       });
       const data = (await response.json()) as ApiResult;

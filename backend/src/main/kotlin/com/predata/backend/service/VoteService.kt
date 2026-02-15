@@ -27,12 +27,7 @@ class VoteService(
      * - 중복 투표 방지
      */
     @Transactional
-    fun vote(request: VoteRequest, clientIp: String? = null): ActivityResponse {
-        // 0. memberId 검증
-        val memberId = request.memberId ?: return ActivityResponse(
-            success = false,
-            message = "회원 ID가 필요합니다."
-        )
+    fun vote(memberId: Long, request: VoteRequest, clientIp: String? = null): ActivityResponse {
 
         // 1. 밴 체크
         val member = memberRepository.findById(memberId).orElse(null)

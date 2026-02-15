@@ -9,9 +9,6 @@ import jakarta.validation.constraints.NotBlank
 
 // 투표 요청
 data class VoteRequest(
-    // memberId는 JWT에서 주입되므로 nullable (클라이언트가 보낸 값은 무시됨)
-    val memberId: Long? = null,
-
     @field:NotNull(message = "질문 ID는 필수입니다.")
     @field:Min(value = 1, message = "유효하지 않은 질문 ID입니다.")
     val questionId: Long,
@@ -24,9 +21,6 @@ data class VoteRequest(
 
 // 베팅 요청
 data class BetRequest(
-    // memberId는 JWT에서 주입되므로 nullable (클라이언트가 보낸 값은 무시됨)
-    val memberId: Long? = null,
-
     @field:NotNull(message = "질문 ID는 필수입니다.")
     @field:Min(value = 1, message = "유효하지 않은 질문 ID입니다.")
     val questionId: Long,
@@ -44,9 +38,6 @@ data class BetRequest(
 
 // 베팅 판매 요청
 data class SellBetRequest(
-    // memberId는 JWT에서 주입되므로 nullable (클라이언트가 보낸 값은 무시됨)
-    val memberId: Long? = null,
-
     @field:NotNull(message = "베팅 ID는 필수입니다.")
     @field:Min(value = 1, message = "유효하지 않은 베팅 ID입니다.")
     val betId: Long

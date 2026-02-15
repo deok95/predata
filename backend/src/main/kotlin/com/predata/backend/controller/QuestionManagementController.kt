@@ -1,6 +1,5 @@
 package com.predata.backend.controller
 
-import com.predata.backend.domain.FinalResult
 import com.predata.backend.service.*
 import org.springframework.data.domain.Page
 import org.springframework.data.domain.PageRequest
@@ -13,8 +12,7 @@ import org.springframework.web.bind.annotation.*
 @RequestMapping("/api/admin/questions")
 @CrossOrigin(origins = ["http://localhost:3000"])
 class QuestionManagementController(
-    private val questionManagementService: QuestionManagementService,
-    private val settlementService: SettlementService
+    private val questionManagementService: QuestionManagementService
 ) {
 
     /**
@@ -149,54 +147,4 @@ class QuestionManagementController(
         return ResponseEntity.ok(questions)
     }
 
-    /**
-     * 관리자 결과 입력 및 정산 시작 (VERIFIABLE 타입 질문용)
-     * POST /api/admin/questions/{id}/result
-     * Request: { result: "YES" or "NO" }
-     */
-    @PostMapping("/{id}/result")
-    fun setQuestionResult(
-        @PathVariable id: Long,
-        @RequestBody request: com.predata.backend.dto.SetQuestionResultRequest
-    ): ResponseEntity<SettlementResult> {
-        return try {
-            val finalResult = when (request.result.uppercase()) {
-                "YES" -> FinalResult.YES
-                "NO" -> FinalResult.NO
-                else -> throw IllegalArgumentException("결과는 YES 또는 NO만 가능합니다.")
-            }
-
-            val settlementResult = settlementService.initiateSettlement(
-                questionId = id,
-                finalResult = finalResult,
-                sourceUrl = "ADMIN_INPUT"
-            )
-
-            ResponseEntity.ok(settlementResult)
-        } catch (e: IllegalArgumentException) {
-            ResponseEntity.badRequest().body(
-                SettlementResult(
-                    questionId = id,
-                    finalResult = "ERROR",
-                    totalBets = 0,
-                    totalWinners = 0,
-                    totalPayout = 0,
-                    voterRewards = 0,
-                    message = e.message ?: "결과 입력에 실패했습니다."
-                )
-            )
-        } catch (e: IllegalStateException) {
-            ResponseEntity.status(HttpStatus.CONFLICT).body(
-                SettlementResult(
-                    questionId = id,
-                    finalResult = "ERROR",
-                    totalBets = 0,
-                    totalWinners = 0,
-                    totalPayout = 0,
-                    voterRewards = 0,
-                    message = e.message ?: "결과 입력에 실패했습니다."
-                )
-            )
-        }
-    }
 }

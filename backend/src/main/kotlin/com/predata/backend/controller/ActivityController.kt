@@ -43,9 +43,7 @@ class ActivityController(
             )
 
         val clientIp = clientIpService.extractClientIp(httpRequest)
-        // request의 memberId는 무시하고 JWT의 memberId 사용
-        val safeRequest = request.copy(memberId = authenticatedMemberId)
-        val response = voteService.vote(safeRequest, clientIp)
+        val response = voteService.vote(authenticatedMemberId, request, clientIp)
 
         // IP 업데이트
         if (response.success) clientIpService.updateMemberLastIp(authenticatedMemberId, clientIp)
@@ -81,9 +79,8 @@ class ActivityController(
             )
         }
 
-        // 2. 베팅 실행 (request의 memberId는 무시하고 JWT의 memberId 사용)
-        val safeRequest = request.copy(memberId = authenticatedMemberId)
-        val response = betService.bet(safeRequest, clientIp)
+        // 2. 베팅 실행
+        val response = betService.bet(authenticatedMemberId, request, clientIp)
 
         // IP 업데이트
         if (response.success) clientIpService.updateMemberLastIp(authenticatedMemberId, clientIp)
@@ -123,9 +120,22 @@ class ActivityController(
             )
         }
 
-        // request의 memberId는 무시하고 JWT의 memberId 사용
-        val safeRequest = request.copy(memberId = authenticatedMemberId)
-        val response = betSellService.sellBet(safeRequest, clientIp)
+        // 베팅 조회하여 questionId 확인 (쿨다운 체크를 위해)
+        val bet = activityRepository.findById(betId).orElse(null)
+        if (bet != null) {
+            // 베팅 일시 중지 체크 (쿨다운)
+            val suspensionStatus = bettingSuspensionService.isBettingSuspendedByQuestionId(bet.questionId)
+            if (suspensionStatus.suspended) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN).body(
+                    SellBetResponse(
+                        success = false,
+                        message = "⚠️ 골 직후 베팅 판매가 일시 중지되었습니다. ${suspensionStatus.remainingSeconds}초 후 재개됩니다."
+                    )
+                )
+            }
+        }
+
+        val response = betSellService.sellBet(authenticatedMemberId, request, clientIp)
 
         if (response.success) {
             clientIpService.updateMemberLastIp(authenticatedMemberId, clientIp)

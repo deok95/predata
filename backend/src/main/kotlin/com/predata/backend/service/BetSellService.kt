@@ -34,7 +34,7 @@ class BetSellService(
      * - BET_SELL 활동 기록 생성
      */
     @Transactional
-    fun sellBet(request: SellBetRequest, clientIp: String? = null): SellBetResponse {
+    fun sellBet(memberId: Long, request: SellBetRequest, clientIp: String? = null): SellBetResponse {
         // 1. 베팅 조회 및 검증 (비관적 락으로 중복 판매 방지)
         val originalBet = activityRepository.findByIdWithLock(request.betId)
             .orElse(null) ?: return SellBetResponse(
@@ -43,7 +43,7 @@ class BetSellService(
             )
 
         // 소유권 확인
-        if (originalBet.memberId != request.memberId) {
+        if (originalBet.memberId != memberId) {
             return SellBetResponse(
                 success = false,
                 message = "본인의 베팅만 판매할 수 있습니다."
@@ -94,7 +94,7 @@ class BetSellService(
         }
 
         // 3. 회원 조회 및 밴 확인
-        val member = memberRepository.findById(request.memberId)
+        val member = memberRepository.findById(memberId)
             .orElse(null) ?: return SellBetResponse(
                 success = false,
                 message = "회원을 찾을 수 없습니다."
@@ -153,7 +153,7 @@ class BetSellService(
         memberRepository.save(member)
 
         transactionHistoryService.record(
-            memberId = request.memberId,
+            memberId = memberId,
             type = "SETTLEMENT",
             amount = BigDecimal(refundAmount),
             balanceAfter = member.usdcBalance,
@@ -163,7 +163,7 @@ class BetSellService(
 
         // 7. BET_SELL 활동 기록 생성
         val sellActivity = Activity(
-            memberId = request.memberId,
+            memberId = memberId,
             questionId = originalBet.questionId,
             activityType = ActivityType.BET_SELL,
             choice = originalBet.choice,

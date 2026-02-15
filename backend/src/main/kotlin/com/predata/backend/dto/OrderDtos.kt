@@ -10,9 +10,6 @@ import java.time.LocalDateTime
  * 주문 생성 요청
  */
 data class CreateOrderRequest(
-    // memberId는 JWT에서 주입되므로 nullable (클라이언트가 보낸 값은 무시됨)
-    val memberId: Long? = null,
-
     @field:NotNull(message = "질문 ID는 필수입니다")
     val questionId: Long,
 

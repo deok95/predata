@@ -27,12 +27,7 @@ class OrderMatchingService(
      * 2. 매칭되지 않은 수량은 오더북에 추가
      */
     @Transactional
-    fun createOrder(request: CreateOrderRequest): CreateOrderResponse {
-        // 0. memberId 검증
-        val memberId = request.memberId ?: return CreateOrderResponse(
-            success = false,
-            message = "회원 ID가 필요합니다."
-        )
+    fun createOrder(memberId: Long, request: CreateOrderRequest): CreateOrderResponse {
 
         // 1. 베팅 일시 중지 체크 (쿨다운)
         val suspensionStatus = bettingSuspensionService.isBettingSuspendedByQuestionId(request.questionId)

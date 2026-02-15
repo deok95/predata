@@ -8,9 +8,15 @@ spring:
     password: ${DB_PASSWORD:predata}
     driver-class-name: org.mariadb.jdbc.Driver
 
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+    baseline-on-migrate: true
+    baseline-version: 0
+
   jpa:
     hibernate:
-      ddl-auto: update  # 테이블 스키마 자동 업데이트 (개발 전용)
+      ddl-auto: validate  # Flyway가 스키마 관리하므로 validate로 변경
     show-sql: false
     properties:
       hibernate:

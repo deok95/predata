@@ -71,32 +71,32 @@ export const bettingApi = {
     return { success: true, data: Array.isArray(raw) ? raw : [] };
   },
 
-  getActivitiesByMember: async (memberId: number, type?: 'VOTE' | 'BET'): Promise<ApiResponse<Activity[]>> => {
-    const raw = await apiRequest<Activity[]>(`/api/activities/member/${memberId}${type ? `?type=${type}` : ''}`);
+  getActivitiesByMember: async (type?: 'VOTE' | 'BET'): Promise<ApiResponse<Activity[]>> => {
+    const raw = await apiRequest<Activity[]>(`/api/activities/me${type ? `?type=${type}` : ''}`);
     return { success: true, data: Array.isArray(raw) ? raw : [] };
   },
 };
 
 export const settlementApi = {
   settle: (questionId: number, data: SettleQuestionRequest) =>
-    apiRequest<Record<string, unknown>>(`/api/questions/${questionId}/settle`, {
+    apiRequest<Record<string, unknown>>(`/api/admin/settlements/questions/${questionId}/settle`, {
       method: 'POST',
       body: JSON.stringify(data),
     }),
 
   finalize: (questionId: number, force: boolean = false) =>
-    apiRequest<Record<string, unknown>>(`/api/questions/${questionId}/settle/finalize`, {
+    apiRequest<Record<string, unknown>>(`/api/admin/settlements/questions/${questionId}/finalize`, {
       method: 'POST',
       body: JSON.stringify({ force }),
     }),
 
   cancel: (questionId: number) =>
-    apiRequest<Record<string, unknown>>(`/api/questions/${questionId}/settle/cancel`, {
+    apiRequest<Record<string, unknown>>(`/api/admin/settlements/questions/${questionId}/cancel`, {
       method: 'POST',
     }),
 
-  getHistory: async (memberId: number): Promise<ApiResponse<SettlementHistory[]>> => {
-    const raw = await apiRequest<SettlementHistory[]>(`/api/settlements/history/${memberId}`);
+  getHistory: async (): Promise<ApiResponse<SettlementHistory[]>> => {
+    const raw = await apiRequest<SettlementHistory[]>('/api/settlements/history/me');
     return { success: true, data: Array.isArray(raw) ? raw : [] };
   },
 };

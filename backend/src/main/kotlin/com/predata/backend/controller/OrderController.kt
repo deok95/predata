@@ -54,9 +54,7 @@ class OrderController(
             )
         }
 
-        // request의 memberId는 무시하고 JWT의 memberId 사용
-        val safeRequest = request.copy(memberId = authenticatedMemberId)
-        val response = orderMatchingService.createOrder(safeRequest)
+        val response = orderMatchingService.createOrder(authenticatedMemberId, request)
         return if (response.success) {
             ResponseEntity.ok(response)
         } else {

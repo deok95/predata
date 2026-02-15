@@ -15,7 +15,6 @@ export interface OrderBookData {
 }
 
 export interface CreateOrderRequest {
-  memberId: number;
   questionId: number;
   side: 'YES' | 'NO';
   price: number;
@@ -53,15 +52,15 @@ export const orderApi = {
       body: JSON.stringify(data),
     }),
 
-  cancelOrder: (orderId: number, memberId: number) =>
+  cancelOrder: (orderId: number) =>
     apiRequest<{ success: boolean; message?: string; refundedAmount?: number }>(
-      `/api/orders/${orderId}?memberId=${memberId}`,
+      `/api/orders/${orderId}`,
       { method: 'DELETE' }
     ),
 
-  getActiveOrders: (memberId: number) =>
-    apiRequest<OrderData[]>(`/api/orders/member/${memberId}`),
+  getActiveOrders: () =>
+    apiRequest<OrderData[]>('/api/orders/me'),
 
-  getOrdersByQuestion: (memberId: number, questionId: number) =>
-    apiRequest<OrderData[]>(`/api/orders/member/${memberId}/question/${questionId}`),
+  getOrdersByQuestion: (questionId: number) =>
+    apiRequest<OrderData[]>(`/api/orders/me/question/${questionId}`),
 };
