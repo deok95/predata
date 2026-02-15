@@ -101,6 +101,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     persistUser(guestMember);
   }, [persistUser]);
 
+  const logout = useCallback(() => {
+    setUser(null);
+    safeLocalStorage.removeItem(STORAGE_KEY);
+    safeLocalStorage.removeItem('token');
+    safeLocalStorage.removeItem('memberId');
+    clearAllAuthCookies();
+
+    // 지갑 연결 해제
+    if (disconnect) {
+      disconnect();
+    }
+
+    window.location.href = '/';
+  }, [disconnect]);
+
   const loginById = useCallback(async (memberId: number) => {
     setIsLoading(true);
     try {
@@ -197,21 +212,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
     return null;
   }, [persistUser]);
-
-  const logout = useCallback(() => {
-    setUser(null);
-    safeLocalStorage.removeItem(STORAGE_KEY);
-    safeLocalStorage.removeItem('token');
-    safeLocalStorage.removeItem('memberId');
-    clearAllAuthCookies();
-
-    // 지갑 연결 해제
-    if (disconnect) {
-      disconnect();
-    }
-
-    window.location.href = '/';
-  }, [disconnect]);
 
   const refreshUser = useCallback(async () => {
     if (!user || checkIsGuest(user)) return;
