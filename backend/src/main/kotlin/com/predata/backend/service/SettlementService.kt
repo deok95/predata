@@ -61,14 +61,17 @@ class SettlementService(
         }
         questionRepository.save(question)
 
-        val bets = activityRepository.findByQuestionIdAndActivityType(
-            questionId, com.predata.backend.domain.ActivityType.BET
-        )
+        // Position 기준으로 정산 대상 확인
+        val positions = positionService.getPositionsByQuestionId(questionId)
+
+        if (positions.isEmpty()) {
+            throw IllegalStateException("정산 대상 포지션이 없습니다.")
+        }
 
         return SettlementResult(
             questionId = questionId,
             finalResult = finalResult.name,
-            totalBets = bets.size,
+            totalBets = positions.size,
             totalWinners = 0,
             totalPayout = 0,
             voterRewards = 0,

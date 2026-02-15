@@ -100,23 +100,51 @@ class OrderMatchingService(
         // 4. 주문 타입 결정
         val orderType = request.orderType ?: OrderType.LIMIT  // 기본값: LIMIT
 
-        // 5. 주문 생성
+        // 5. MARKET 주문일 경우 상대 오더북의 최우선 가격으로 체결
+        val orderPrice = if (orderType == OrderType.MARKET) {
+            // 상대 오더북에서 최우선 가격 가져오기
+            val oppositeSide = if (request.side == OrderSide.YES) OrderSide.NO else OrderSide.YES
+            val oppositeOrders = orderRepository.findMatchableOrdersWithLock(
+                questionId = request.questionId,
+                side = oppositeSide,
+                price = BigDecimal.ZERO  // 모든 가격 조회
+            )
+
+            if (oppositeOrders.isEmpty()) {
+                // 호가가 없으면 체결 실패
+                member.usdcBalance = member.usdcBalance.add(BigDecimal(totalCost))  // 환불
+                memberRepository.save(member)
+
+                return CreateOrderResponse(
+                    success = false,
+                    message = "시장가 주문 실패: 체결 가능한 호가가 없습니다."
+                )
+            }
+
+            // 상대 호가의 최우선 가격 (= 내 주문의 체결 가격)
+            val oppositePrice = oppositeOrders.first().price
+            BigDecimal.ONE.subtract(oppositePrice)  // 역가격 계산
+        } else {
+            request.price
+        }
+
+        // 6. 주문 생성
         val order = Order(
             memberId = memberId,
             questionId = request.questionId,
             orderType = orderType,
             side = request.side,
-            price = request.price,
+            price = orderPrice,
             amount = request.amount,
             remainingAmount = request.amount
         )
 
         val savedOrder = orderRepository.save(order)
 
-        // 6. 매칭 실행
+        // 7. 매칭 실행
         val matchResult = matchOrder(savedOrder, question)
 
-        // 7. MARKET 주문인 경우 미체결분 자동 취소 (IOC)
+        // 8. MARKET 주문인 경우 미체결분 자동 취소 (IOC)
         if (orderType == OrderType.MARKET && savedOrder.remainingAmount > 0) {
             savedOrder.status = OrderStatus.CANCELLED
             savedOrder.remainingAmount = 0

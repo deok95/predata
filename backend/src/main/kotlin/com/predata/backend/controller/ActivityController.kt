@@ -77,7 +77,7 @@ class ActivityController(
                 com.predata.backend.domain.Choice.YES -> com.predata.backend.domain.OrderSide.YES
                 com.predata.backend.domain.Choice.NO -> com.predata.backend.domain.OrderSide.NO
             },
-            price = java.math.BigDecimal("0.50"),  // 시장가는 중간가로 설정 (실제론 즉시 체결되므로 무관)
+            price = java.math.BigDecimal.ZERO,  // MARKET 주문은 가격 무시됨 (OrderMatchingService에서 호가로 결정)
             amount = request.amount,
             orderType = com.predata.backend.domain.OrderType.MARKET  // 시장가 IOC
         )

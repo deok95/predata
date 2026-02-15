@@ -15,11 +15,12 @@ interface OrderRepository : JpaRepository<Order, Long> {
 
     /**
      * 오더북 조회: YES 측 Bids (매수) - 높은 가격 우선
+     * LIMIT 주문만 오더북에 적재됨
      */
     @Query("""
         SELECT o FROM Order o
         WHERE o.questionId = :questionId
-        AND o.side = 'YES' AND o.orderType = 'BUY'
+        AND o.side = 'YES' AND o.orderType = 'LIMIT'
         AND o.status IN ('OPEN', 'PARTIAL')
         ORDER BY o.price DESC, o.createdAt ASC
     """)
@@ -27,11 +28,12 @@ interface OrderRepository : JpaRepository<Order, Long> {
 
     /**
      * 오더북 조회: NO 측 Asks (매도) - 낮은 가격 우선
+     * LIMIT 주문만 오더북에 적재됨
      */
     @Query("""
         SELECT o FROM Order o
         WHERE o.questionId = :questionId
-        AND o.side = 'NO' AND o.orderType = 'BUY'
+        AND o.side = 'NO' AND o.orderType = 'LIMIT'
         AND o.status IN ('OPEN', 'PARTIAL')
         ORDER BY o.price ASC, o.createdAt ASC
     """)
@@ -40,12 +42,13 @@ interface OrderRepository : JpaRepository<Order, Long> {
     /**
      * 매칭 가능한 반대 주문 조회 (비관적 락)
      * YES 주문 시: NO 주문 중 (1 - price) 이상인 것들
+     * LIMIT 주문만 매칭 대상
      */
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("""
         SELECT o FROM Order o
         WHERE o.questionId = :questionId
-        AND o.side = :side AND o.orderType = 'BUY'
+        AND o.side = :side AND o.orderType = 'LIMIT'
         AND o.status IN ('OPEN', 'PARTIAL')
         AND o.price >= :price
         ORDER BY o.price DESC, o.createdAt ASC
