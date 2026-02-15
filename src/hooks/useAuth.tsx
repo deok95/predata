@@ -111,8 +111,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         return response.data;
       }
     } catch (error: any) {
-      // 404: 토큰은 있지만 사용자가 삭제됨 → 로그아웃
-      if (error?.status === 404) {
+      // 401/404: 토큰 만료 또는 사용자 삭제됨 → 로그아웃
+      if (error?.status === 404 || error?.status === 401) {
         logout();
       }
       // Backend unavailable or other errors
@@ -221,8 +221,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         persistUser(response.data);
       }
     } catch (error: any) {
-      // 404: 토큰은 있지만 사용자가 삭제됨 → 로그아웃
-      if (error?.status === 404) {
+      // 401/404: 토큰 만료 또는 사용자 삭제됨 → 로그아웃
+      if (error?.status === 404 || error?.status === 401) {
         logout();
       }
       // Backend unavailable or other errors
