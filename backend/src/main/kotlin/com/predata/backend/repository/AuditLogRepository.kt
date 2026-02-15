@@ -40,4 +40,14 @@ interface AuditLogRepository : JpaRepository<AuditLog, Long> {
         to: LocalDateTime,
         pageable: Pageable
     ): Page<AuditLog>
+
+    /**
+     * 특정 기간 내 특정 액션 개수 (대시보드용)
+     */
+    fun countByActionAndCreatedAtBetween(action: AuditAction, from: LocalDateTime, to: LocalDateTime): Long
+
+    /**
+     * 특정 액션 및 detail 패턴으로 개수 조회 (실패 건수 등)
+     */
+    fun countByActionAndDetailContaining(action: AuditAction, detailPattern: String): Long
 }

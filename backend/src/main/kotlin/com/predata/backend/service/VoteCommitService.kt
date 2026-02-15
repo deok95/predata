@@ -30,7 +30,9 @@ class VoteCommitService(
     private val questionRepository: QuestionRepository,
     private val memberRepository: MemberRepository,
     private val votingConfig: com.predata.backend.config.VotingConfig,
-    private val auditService: AuditService
+    private val auditService: AuditService,
+    private val pauseService: PauseService,
+    private val circuitBreaker: VotingCircuitBreaker
 ) {
     private val logger = LoggerFactory.getLogger(VoteCommitService::class.java)
 
@@ -41,15 +43,28 @@ class VoteCommitService(
      */
     @Transactional
     fun commit(memberId: Long, request: VoteCommitRequest): VoteCommitResponse {
+        // 0. 투표 중지 상태 체크
+        if (pauseService.isPaused(request.questionId) || circuitBreaker.isOpen()) {
+            circuitBreaker.recordFailure()
+            return VoteCommitResponse(
+                success = false,
+                message = "시스템 점검 중입니다."
+            )
+        }
+
         // 1. 회원 존재 확인
         val member = memberRepository.findById(memberId).orElse(null)
-            ?: return VoteCommitResponse(
-                success = false,
-                message = "회원을 찾을 수 없습니다."
-            )
+            ?: run {
+                circuitBreaker.recordFailure()
+                return VoteCommitResponse(
+                    success = false,
+                    message = "회원을 찾을 수 없습니다."
+                )
+            }
 
         // 2. 밴 체크
         if (member.isBanned) {
+            circuitBreaker.recordFailure()
             return VoteCommitResponse(
                 success = false,
                 message = "계정이 정지되었습니다. 사유: ${member.banReason ?: "이용약관 위반"}"
@@ -58,18 +73,23 @@ class VoteCommitService(
 
         // 3. 질문 존재 확인
         val question = questionRepository.findById(request.questionId).orElse(null)
-            ?: return VoteCommitResponse(
-                success = false,
-                message = "질문을 찾을 수 없습니다."
-            )
+            ?: run {
+                circuitBreaker.recordFailure()
+                return VoteCommitResponse(
+                    success = false,
+                    message = "질문을 찾을 수 없습니다."
+                )
+            }
 
         // 4. 투표 단계 확인 (VOTING_COMMIT_OPEN만 가능)
         if (question.votingPhase != VotingPhase.VOTING_COMMIT_OPEN) {
+            circuitBreaker.recordFailure()
             throw IllegalStateException("현재 투표 접수 기간이 아닙니다.")
         }
 
         // 5. 중복 투표 체크 (UNIQUE 제약으로 자동 방지)
         if (voteCommitRepository.existsByMemberIdAndQuestionId(memberId, request.questionId)) {
+            circuitBreaker.recordFailure()
             return VoteCommitResponse(
                 success = false,
                 message = "이미 투표하셨습니다."
@@ -87,6 +107,7 @@ class VoteCommitService(
 
         if (todayCount >= votingConfig.dailyLimit) {
             logger.warn("Daily vote limit exceeded: memberId=$memberId, count=$todayCount, limit=${votingConfig.dailyLimit}")
+            circuitBreaker.recordFailure()
             return VoteCommitResponse(
                 success = false,
                 message = "일일 투표 한도(${votingConfig.dailyLimit}개)를 초과했습니다."
@@ -118,6 +139,9 @@ class VoteCommitService(
                 detail = "투표 커밋: questionId=${request.questionId}"
             )
 
+            // 서킷브레이커 성공 기록
+            circuitBreaker.recordSuccess()
+
             VoteCommitResponse(
                 success = true,
                 message = "투표 커밋이 완료되었습니다.",
@@ -126,6 +150,7 @@ class VoteCommitService(
             )
         } catch (e: DataIntegrityViolationException) {
             logger.warn("Duplicate vote commit attempt: memberId=$memberId, questionId=${request.questionId}")
+            circuitBreaker.recordFailure()
             VoteCommitResponse(
                 success = false,
                 message = "이미 투표하셨습니다."
@@ -140,15 +165,28 @@ class VoteCommitService(
      */
     @Transactional
     fun reveal(memberId: Long, request: VoteRevealRequest): VoteRevealResponse {
+        // 0. 투표 중지 상태 체크
+        if (pauseService.isPaused(request.questionId) || circuitBreaker.isOpen()) {
+            circuitBreaker.recordFailure()
+            return VoteRevealResponse(
+                success = false,
+                message = "시스템 점검 중입니다."
+            )
+        }
+
         // 1. VoteCommit 조회
         val voteCommit = voteCommitRepository.findByMemberIdAndQuestionId(memberId, request.questionId)
-            ?: return VoteRevealResponse(
-                success = false,
-                message = "커밋된 투표를 찾을 수 없습니다."
-            )
+            ?: run {
+                circuitBreaker.recordFailure()
+                return VoteRevealResponse(
+                    success = false,
+                    message = "커밋된 투표를 찾을 수 없습니다."
+                )
+            }
 
         // 2. 이미 공개했는지 확인
         if (voteCommit.status == VoteCommitStatus.REVEALED) {
+            circuitBreaker.recordFailure()
             return VoteRevealResponse(
                 success = false,
                 message = "이미 투표를 공개하셨습니다."
@@ -157,13 +195,17 @@ class VoteCommitService(
 
         // 3. 질문 존재 확인
         val question = questionRepository.findById(request.questionId).orElse(null)
-            ?: return VoteRevealResponse(
-                success = false,
-                message = "질문을 찾을 수 없습니다."
-            )
+            ?: run {
+                circuitBreaker.recordFailure()
+                return VoteRevealResponse(
+                    success = false,
+                    message = "질문을 찾을 수 없습니다."
+                )
+            }
 
         // 4. 투표 단계 확인 (VOTING_REVEAL_OPEN만 가능)
         if (question.votingPhase != VotingPhase.VOTING_REVEAL_OPEN) {
+            circuitBreaker.recordFailure()
             throw IllegalStateException("현재 투표 공개 기간이 아닙니다.")
         }
 
@@ -171,6 +213,7 @@ class VoteCommitService(
         val computedHash = hashChoiceWithSalt(request.choice.name, request.salt)
         if (computedHash != voteCommit.commitHash) {
             logger.warn("Vote reveal hash mismatch: memberId=$memberId, questionId=${request.questionId}")
+            circuitBreaker.recordFailure()
             return VoteRevealResponse(
                 success = false,
                 message = "투표 검증에 실패했습니다. (해시 불일치)"
@@ -194,6 +237,9 @@ class VoteCommitService(
             entityId = voteCommit.id,
             detail = "투표 공개: questionId=${request.questionId}, choice=${request.choice}"
         )
+
+        // 서킷브레이커 성공 기록
+        circuitBreaker.recordSuccess()
 
         return VoteRevealResponse(
             success = true,

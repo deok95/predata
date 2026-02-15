@@ -117,3 +117,8 @@ app:
       4: 2.0
       5: 3.0
     min-payout: 0.01  # 최소 지급 금액 (0.01 미만 절사)
+
+  # 시빌 공격 완화 설정
+  sybil:
+    min-account-age-days: 3  # 보상 대상 최소 계정 생성 후 경과 일수
+    min-vote-history: 3      # 보상 대상 최소 투표 이력 (다른 질문)

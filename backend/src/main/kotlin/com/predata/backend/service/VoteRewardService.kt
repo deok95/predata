@@ -23,7 +23,8 @@ class VoteRewardService(
     private val voteCommitRepository: VoteCommitRepository,
     private val memberRepository: MemberRepository,
     private val feePoolService: FeePoolService,
-    private val rewardConfig: RewardConfig
+    private val rewardConfig: RewardConfig,
+    private val sybilGuardService: SybilGuardService
 ) {
     private val logger = LoggerFactory.getLogger(VoteRewardService::class.java)
 
@@ -71,14 +72,23 @@ class VoteRewardService(
             )
         }
 
-        // 3. 투표자별 레벨 조회 및 가중치 합산
-        val memberIds = revealedVotes.map { it.memberId }
-        val members = memberRepository.findAllById(memberIds).associateBy { it.id }
+        // 3. 시빌 가드: 보상 대상 필터링
+        val allMemberIds = revealedVotes.map { it.memberId }
+        val eligibleMemberIds = sybilGuardService.filterEligibleMembers(allMemberIds)
+        val eligibleMemberIdSet = eligibleMemberIds.toSet()
+
+        logger.info("Sybil guard applied: questionId=$questionId, total=${allMemberIds.size}, eligible=${eligibleMemberIds.size}")
+
+        // 4. 투표자별 레벨 조회 및 가중치 합산 (보상 대상만)
+        val members = memberRepository.findAllById(eligibleMemberIds).associateBy { it.id }
 
         var totalWeightSum = BigDecimal.ZERO
         val weightMap = mutableMapOf<Long, BigDecimal>()
 
         for (vote in revealedVotes) {
+            // 보상 대상이 아니면 스킵
+            if (vote.memberId !in eligibleMemberIdSet) continue
+
             val member = members[vote.memberId] ?: continue
             val weight = rewardConfig.getWeight(member.level)
             weightMap[vote.memberId] = weight
@@ -98,12 +108,15 @@ class VoteRewardService(
             )
         }
 
-        // 4. 개인별 보상 계산: (리워드풀 × 가중치) / 가중치합계
+        // 5. 개인별 보상 계산: (리워드풀 × 가중치) / 가중치합계
         val individualRewards = mutableListOf<RewardCalculation>()
         var totalDistributed = BigDecimal.ZERO
         var totalTruncated = BigDecimal.ZERO
 
         for (vote in revealedVotes) {
+            // 보상 대상이 아니면 스킵
+            if (vote.memberId !in eligibleMemberIdSet) continue
+
             val member = members[vote.memberId] ?: continue
             val weight = weightMap[vote.memberId] ?: BigDecimal.ZERO
 
@@ -136,7 +149,7 @@ class VoteRewardService(
             }
         }
 
-        // 5. 캡: 총 분배액 <= 리워드 풀 잔액 검증
+        // 6. 캡: 총 분배액 <= 리워드 풀 잔액 검증
         if (totalDistributed > rewardPool) {
             logger.error("Total distributed ($totalDistributed) exceeds reward pool ($rewardPool) for questionId=$questionId")
             throw IllegalStateException("보상 총액이 리워드 풀 잔액을 초과했습니다.")
