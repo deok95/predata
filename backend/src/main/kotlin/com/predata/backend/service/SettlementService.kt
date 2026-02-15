@@ -27,7 +27,8 @@ class SettlementService(
     private val positionService: PositionService,
     private val resolutionAdapterRegistry: com.predata.backend.service.settlement.adapters.ResolutionAdapterRegistry,
     private val auditService: AuditService,
-    private val feePoolService: FeePoolService
+    private val feePoolService: FeePoolService,
+    private val voteRewardDistributionService: VoteRewardDistributionService
 ) {
     private val logger = org.slf4j.LoggerFactory.getLogger(SettlementService::class.java)
 
@@ -303,56 +304,37 @@ class SettlementService(
             }
         }
 
-        // === 메모리 처리 3: 보상 분배 (RewardService 로직 인라인) ===
+        // === 메모리 처리 3: 수수료 수집 및 보상 분배 (새 엔진 사용) ===
         if (votes.isNotEmpty()) {
             val totalBetAmount = question.totalBetPool
             val totalFee = (totalBetAmount * RewardService.FEE_PERCENTAGE).toLong()
             val rewardPool = (totalFee * RewardService.REWARD_POOL_PERCENTAGE).toLong()
             totalRewardPool = rewardPool
 
-            // 수수료 풀에 수수료 기록 (투표 시스템 연동)
+            // 1. 수수료 풀에 수수료 기록 (투표 시스템 연동)
             if (totalFee > 0) {
                 try {
                     feePoolService.collectFee(questionId, BigDecimal(totalFee))
+                    logger.info("[Settlement] Fee collected: questionId={}, totalFee={}", questionId, totalFee)
                 } catch (e: Exception) {
                     logger.warn("[Settlement] FeePool 수수료 기록 실패 questionId={}: {}", questionId, e.message)
                 }
             }
 
-            // 티어 가중치 합계 계산
-            var totalWeight = BigDecimal.ZERO
-            val voterWeights = mutableMapOf<Long, BigDecimal>()
-            votes.forEach { vote ->
-                val member = membersMap[vote.memberId]
-                if (member != null) {
-                    voterWeights[vote.memberId] = member.tierWeight
-                    totalWeight = totalWeight.add(member.tierWeight)
-                }
+            // 2. 새로운 보상 분배 엔진 사용 (VoteRewardDistributionService)
+            // - 레벨 기반 가중치, idempotency 보장, 재시도 메커니즘
+            // - 분배 실패해도 정산은 롤백하지 않음 (수동 재시도 가능)
+            try {
+                val distributionResult = voteRewardDistributionService.distributeRewards(questionId)
+                logger.info("[Settlement] Reward distribution completed: questionId={}, result={}", questionId, distributionResult)
+            } catch (e: Exception) {
+                logger.error("[Settlement] 보상 분배 실패 (수동 재시도 필요) questionId={}: {}", questionId, e.message, e)
+                // 분배 실패해도 정산 자체는 성공 처리 (관리자가 /api/admin/rewards/retry로 재시도 가능)
             }
 
-            // 가중치에 따라 보상 분배
-            if (totalWeight > BigDecimal.ZERO) {
-                voterWeights.forEach { (memberId, weight) ->
-                    val member = membersMap[memberId]
-                    if (member != null) {
-                        val rewardAmount = BigDecimal(rewardPool)
-                            .multiply(weight)
-                            .divide(totalWeight, 0, java.math.RoundingMode.DOWN)
-                            .toLong()
-                        member.usdcBalance = member.usdcBalance.add(BigDecimal(rewardAmount))
-                        if (rewardAmount > 0) {
-                            transactionHistoryService.record(
-                                memberId = memberId,
-                                type = "SETTLEMENT",
-                                amount = BigDecimal(rewardAmount),
-                                balanceAfter = member.usdcBalance,
-                                description = "투표 보상 - Question #$questionId",
-                                questionId = questionId
-                            )
-                        }
-                    }
-                }
-            }
+            // @Deprecated: 레거시 티어 가중치 기반 보상 분배 로직 제거됨
+            // - 새로운 VoteRewardDistributionService가 레벨 기반 가중치로 처리
+            // - 기존 로직은 usdcBalance에 직접 추가했지만, 새 엔진은 pointBalance에 적립
         }
 
         // managed 엔티티 → @Transactional 커밋 시 자동 dirty-check flush
