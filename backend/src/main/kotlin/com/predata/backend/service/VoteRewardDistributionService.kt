@@ -2,6 +2,7 @@ package com.predata.backend.service
 
 import com.predata.backend.domain.*
 import com.predata.backend.repository.FeePoolLedgerRepository
+import com.predata.backend.repository.FeePoolRepository
 import com.predata.backend.repository.MemberRepository
 import com.predata.backend.repository.RewardDistributionRepository
 import org.slf4j.LoggerFactory
@@ -23,6 +24,7 @@ class VoteRewardDistributionService(
     private val rewardDistributionRepository: RewardDistributionRepository,
     private val memberRepository: MemberRepository,
     private val feePoolLedgerRepository: FeePoolLedgerRepository,
+    private val feePoolRepository: FeePoolRepository,
     private val feePoolService: FeePoolService,
     private val auditService: AuditService
 ) {
@@ -67,14 +69,25 @@ class VoteRewardDistributionService(
 
         var successCount = 0
         var failCount = 0
+        var actualDistributed = BigDecimal.ZERO
         val errors = mutableListOf<String>()
 
         // 2. 각 투표자에게 포인트 지급
         for (reward in summary.individualRewards) {
             try {
+                // attempts 체크: 3회 이상 실패한 건은 skip
+                val idempotencyKey = generateIdempotencyKey(questionId, reward.memberId)
+                val existing = rewardDistributionRepository.findByIdempotencyKey(idempotencyKey)
+                if (existing != null && existing.attempts >= MAX_RETRY_ATTEMPTS) {
+                    logger.warn("Skipping distribution for memberId=${reward.memberId}: max attempts reached (${existing.attempts})")
+                    failCount++
+                    continue
+                }
+
                 val distributed = distributeSingleReward(questionId, reward.memberId, reward.rewardAmount)
                 if (distributed) {
                     successCount++
+                    actualDistributed = actualDistributed.add(reward.rewardAmount)
                 } else {
                     failCount++
                 }
@@ -85,26 +98,36 @@ class VoteRewardDistributionService(
             }
         }
 
-        // 3. FeePoolLedger에 REWARD_DISTRIBUTED 기록 (총 분배액)
-        if (summary.totalDistributed > BigDecimal.ZERO) {
+        // 3. FeePoolLedger에 REWARD_DISTRIBUTED 기록 (실제 성공한 분배액만)
+        if (actualDistributed > BigDecimal.ZERO) {
             try {
-                val feePool = feePoolService.getPoolSummary(questionId)
-                val feePoolId = (feePool["questionId"] as? Long) ?: questionId
-
-                val ledger = FeePoolLedger(
-                    feePoolId = feePoolId,
-                    action = FeePoolAction.REWARD_DISTRIBUTED,
-                    amount = summary.totalDistributed,
-                    balance = summary.totalRewardPool.subtract(summary.totalDistributed),
-                    description = "리워드 분배 완료 - 성공: $successCount, 실패: $failCount"
-                )
-                feePoolLedgerRepository.save(ledger)
+                // FeePool 조회하여 실제 feePoolId 사용
+                val feePool = feePoolRepository.findByQuestionId(questionId).orElse(null)
+                if (feePool != null) {
+                    val ledger = FeePoolLedger(
+                        feePoolId = feePool.id!!,
+                        action = FeePoolAction.REWARD_DISTRIBUTED,
+                        amount = actualDistributed,
+                        balance = summary.totalRewardPool.subtract(actualDistributed),
+                        description = "리워드 분배 완료 - 성공: $successCount, 실패: $failCount"
+                    )
+                    feePoolLedgerRepository.save(ledger)
+                }
             } catch (e: Exception) {
                 logger.error("Failed to record fee pool ledger for questionId=$questionId: ${e.message}", e)
             }
         }
 
-        logger.info("Reward distribution completed: questionId=$questionId, success=$successCount, failed=$failCount")
+        // 4. 절사 잔여분 리저브로 할당
+        if (summary.truncatedAmount > BigDecimal.ZERO) {
+            try {
+                feePoolService.allocateToReserve(questionId, summary.truncatedAmount)
+            } catch (e: Exception) {
+                logger.error("Failed to allocate truncated amount to reserve for questionId=$questionId: ${e.message}", e)
+            }
+        }
+
+        logger.info("Reward distribution completed: questionId=$questionId, success=$successCount, failed=$failCount, truncated=${summary.truncatedAmount}")
 
         return mapOf(
             "success" to true,
@@ -112,7 +135,7 @@ class VoteRewardDistributionService(
             "totalRewards" to summary.individualRewards.size,
             "distributed" to successCount,
             "failed" to failCount,
-            "totalAmount" to summary.totalDistributed,
+            "totalAmount" to actualDistributed,
             "errors" to errors
         )
     }
@@ -252,8 +275,9 @@ class VoteRewardDistributionService(
 
     /**
      * Idempotency key 생성
+     * - 패턴: questionId_memberId_reward
      */
     private fun generateIdempotencyKey(questionId: Long, memberId: Long): String {
-        return "reward:$questionId:$memberId"
+        return "${questionId}_${memberId}_reward"
     }
 }

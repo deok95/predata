@@ -26,7 +26,8 @@ class SettlementService(
     private val settlementPolicyFactory: SettlementPolicyFactory,
     private val positionService: PositionService,
     private val resolutionAdapterRegistry: com.predata.backend.service.settlement.adapters.ResolutionAdapterRegistry,
-    private val auditService: AuditService
+    private val auditService: AuditService,
+    private val feePoolService: FeePoolService
 ) {
     private val logger = org.slf4j.LoggerFactory.getLogger(SettlementService::class.java)
 
@@ -308,6 +309,15 @@ class SettlementService(
             val totalFee = (totalBetAmount * RewardService.FEE_PERCENTAGE).toLong()
             val rewardPool = (totalFee * RewardService.REWARD_POOL_PERCENTAGE).toLong()
             totalRewardPool = rewardPool
+
+            // 수수료 풀에 수수료 기록 (투표 시스템 연동)
+            if (totalFee > 0) {
+                try {
+                    feePoolService.collectFee(questionId, BigDecimal(totalFee))
+                } catch (e: Exception) {
+                    logger.warn("[Settlement] FeePool 수수료 기록 실패 questionId={}: {}", questionId, e.message)
+                }
+            }
 
             // 티어 가중치 합계 계산
             var totalWeight = BigDecimal.ZERO

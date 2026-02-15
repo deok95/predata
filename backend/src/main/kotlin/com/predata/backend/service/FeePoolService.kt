@@ -139,6 +139,37 @@ class FeePoolService(
     }
 
     /**
+     * 리저브로 잔여분 할당
+     * - 보상 분배 시 0.01 미만 절사된 금액을 리저브로 적립
+     */
+    @Transactional
+    fun allocateToReserve(questionId: Long, amount: BigDecimal) {
+        if (amount <= BigDecimal.ZERO) {
+            return
+        }
+
+        val feePool = feePoolRepository.findByQuestionId(questionId).orElseThrow {
+            IllegalArgumentException("수수료 풀을 찾을 수 없습니다.")
+        }
+
+        feePool.reserveShare = feePool.reserveShare.add(amount)
+        feePool.updatedAt = LocalDateTime.now()
+        feePoolRepository.save(feePool)
+
+        // 원장 기록
+        val ledger = FeePoolLedger(
+            feePoolId = feePool.id!!,
+            action = FeePoolAction.RESERVE_ALLOCATED,
+            amount = amount,
+            balance = feePool.totalFees,
+            description = "보상 절사 잔여분 리저브 할당"
+        )
+        feePoolLedgerRepository.save(ledger)
+
+        logger.info("Reserve allocated: questionId=$questionId, amount=$amount")
+    }
+
+    /**
      * 풀 현황 조회
      */
     @Transactional(readOnly = true)
