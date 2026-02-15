@@ -312,3 +312,41 @@
 [Scheduler] ===== 🔴 실시간 스코어 업데이트 시작 =====
 [AutoGen] 완료된 경기 결과 업데이트 시작
 [AutoGen] 결과 업데이트 완료: 0 건
+[Scheduler] ===== 🔴 실시간 스코어 업데이트 시작 =====
+[AutoGen] 완료된 경기 결과 업데이트 시작
+[AutoGen] 결과 업데이트 완료: 0 건
+2026-02-15T03:43:00.002-08:00  INFO 52997 --- [predata-backend] [   scheduling-1] c.p.b.s.QuestionLifecycleScheduler       : ========================================
+2026-02-15T03:43:00.002-08:00  INFO 52997 --- [predata-backend] [   scheduling-1] c.p.b.s.QuestionLifecycleScheduler       : [Lifecycle] 스케줄러 실행 시각: 2026-02-15T03:43:00.002570
+2026-02-15T03:43:00.003-08:00  INFO 52997 --- [predata-backend] [   scheduling-1] c.p.b.s.QuestionLifecycleScheduler       : ========================================
+2026-02-15T03:43:00.007-08:00  INFO 52997 --- [predata-backend] [   scheduling-1] c.p.b.s.QuestionLifecycleScheduler       : [Lifecycle] VOTING → BREAK 체크: 만료된 질문 0건
+2026-02-15T03:43:00.007-08:00 DEBUG 52997 --- [predata-backend] [   scheduling-1] c.p.b.s.QuestionLifecycleScheduler       : [Lifecycle] VOTING 상태에서 만료된 질문 없음
+2026-02-15T03:43:00.010-08:00  INFO 52997 --- [predata-backend] [   scheduling-1] c.p.b.s.QuestionLifecycleScheduler       : [Lifecycle] BREAK → BETTING 체크: 만료된 질문 0건
+2026-02-15T03:43:00.010-08:00 DEBUG 52997 --- [predata-backend] [   scheduling-1] c.p.b.s.QuestionLifecycleScheduler       : [Lifecycle] BREAK 상태에서 만료된 질문 없음
+2026-02-15T03:43:00.012-08:00  INFO 52997 --- [predata-backend] [   scheduling-1] c.p.b.s.QuestionLifecycleScheduler       : [Lifecycle] BETTING → SETTLED 체크: 만료된 질문 0건
+2026-02-15T03:43:00.012-08:00 DEBUG 52997 --- [predata-backend] [   scheduling-1] c.p.b.s.QuestionLifecycleScheduler       : [Lifecycle] BETTING 상태에서 만료된 질문 없음
+2026-02-15T03:43:00.014-08:00  INFO 52997 --- [predata-backend] [   scheduling-1] c.p.b.s.QuestionLifecycleScheduler       : [Lifecycle] 스케줄러 실행 완료
+[Scheduler] ===== ⚡ 즉시 자동 정산 체크 =====
+[AutoGen] 스포츠 질문 자동 정산 시작
+[AutoGen] 자동 정산 완료: 0 건
+[Scheduler] ===== 🔴 실시간 스코어 업데이트 시작 =====
+[AutoGen] 완료된 경기 결과 업데이트 시작
+[AutoGen] 결과 업데이트 완료: 0 건
+[Scheduler] ===== 🔴 실시간 스코어 업데이트 시작 =====
+[AutoGen] 완료된 경기 결과 업데이트 시작
+[AutoGen] 결과 업데이트 완료: 0 건
+[Scheduler] ===== ⚡ 즉시 자동 정산 체크 =====
+[AutoGen] 스포츠 질문 자동 정산 시작
+[AutoGen] 자동 정산 완료: 0 건
+2026-02-15T03:44:00.011-08:00  INFO 52997 --- [predata-backend] [   scheduling-1] c.p.b.s.QuestionLifecycleScheduler       : ========================================
+2026-02-15T03:44:00.012-08:00  INFO 52997 --- [predata-backend] [   scheduling-1] c.p.b.s.QuestionLifecycleScheduler       : [Lifecycle] 스케줄러 실행 시각: 2026-02-15T03:44:00.011964
+2026-02-15T03:44:00.012-08:00  INFO 52997 --- [predata-backend] [   scheduling-1] c.p.b.s.QuestionLifecycleScheduler       : ========================================
+2026-02-15T03:44:00.015-08:00  INFO 52997 --- [predata-backend] [   scheduling-1] c.p.b.s.QuestionLifecycleScheduler       : [Lifecycle] VOTING → BREAK 체크: 만료된 질문 0건
+2026-02-15T03:44:00.015-08:00 DEBUG 52997 --- [predata-backend] [   scheduling-1] c.p.b.s.QuestionLifecycleScheduler       : [Lifecycle] VOTING 상태에서 만료된 질문 없음
+2026-02-15T03:44:00.018-08:00  INFO 52997 --- [predata-backend] [   scheduling-1] c.p.b.s.QuestionLifecycleScheduler       : [Lifecycle] BREAK → BETTING 체크: 만료된 질문 0건
+2026-02-15T03:44:00.018-08:00 DEBUG 52997 --- [predata-backend] [   scheduling-1] c.p.b.s.QuestionLifecycleScheduler       : [Lifecycle] BREAK 상태에서 만료된 질문 없음
+2026-02-15T03:44:00.020-08:00  INFO 52997 --- [predata-backend] [   scheduling-1] c.p.b.s.QuestionLifecycleScheduler       : [Lifecycle] BETTING → SETTLED 체크: 만료된 질문 0건
+2026-02-15T03:44:00.021-08:00 DEBUG 52997 --- [predata-backend] [   scheduling-1] c.p.b.s.QuestionLifecycleScheduler       : [Lifecycle] BETTING 상태에서 만료된 질문 없음
+2026-02-15T03:44:00.024-08:00  INFO 52997 --- [predata-backend] [   scheduling-1] c.p.b.s.QuestionLifecycleScheduler       : [Lifecycle] 스케줄러 실행 완료
+[Scheduler] ===== 🔴 실시간 스코어 업데이트 시작 =====
+[AutoGen] 완료된 경기 결과 업데이트 시작
+[AutoGen] 결과 업데이트 완료: 0 건
