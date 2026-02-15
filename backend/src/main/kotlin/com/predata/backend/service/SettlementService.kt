@@ -6,10 +6,10 @@ import com.predata.backend.domain.FinalResult
 import com.predata.backend.repository.ActivityRepository
 import com.predata.backend.repository.QuestionRepository
 import com.predata.backend.repository.MemberRepository
+import com.predata.backend.service.settlement.SettlementPolicyFactory
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import java.math.BigDecimal
-import java.math.RoundingMode
 import java.time.LocalDateTime
 
 @Service
@@ -21,7 +21,8 @@ class SettlementService(
     private val rewardService: RewardService,
     private val blockchainService: BlockchainService,
     private val badgeService: BadgeService,
-    private val transactionHistoryService: TransactionHistoryService
+    private val transactionHistoryService: TransactionHistoryService,
+    private val settlementPolicyFactory: SettlementPolicyFactory
 ) {
     private val logger = org.slf4j.LoggerFactory.getLogger(SettlementService::class.java)
 
@@ -100,7 +101,8 @@ class SettlementService(
         }
 
         val finalResult = question.finalResult
-        val winningChoice = if (finalResult == FinalResult.YES) Choice.YES else Choice.NO
+        val policy = settlementPolicyFactory.getPolicy(question.type)
+        val winningChoice = policy.determineWinningChoice(finalResult)
 
         // 상태 확정 + disputeDeadline null로 설정 (이중 정산 방지 마커)
         question.status = QuestionStatus.SETTLED
@@ -129,7 +131,7 @@ class SettlementService(
         winningBets.forEach { bet ->
             val member = membersMap[bet.memberId]
             if (member != null) {
-                val payout = calculatePayout(
+                val payout = policy.calculatePayout(
                     betAmount = bet.amount,
                     totalPool = question.totalBetPool,
                     winningPool = if (finalResult == FinalResult.YES) question.yesBetPool else question.noBetPool
@@ -227,7 +229,7 @@ class SettlementService(
                 val member = membersMap[bet.memberId] ?: return@forEach
                 val isWinner = bet.choice == winningChoice
                 val payoutRatio = if (isWinner && bet.amount > 0) {
-                    calculatePayout(bet.amount, question.totalBetPool,
+                    policy.calculatePayout(bet.amount, question.totalBetPool,
                         if (finalResult == FinalResult.YES) question.yesBetPool else question.noBetPool
                     ).toDouble() / bet.amount.toDouble()
                 } else 0.0
@@ -296,32 +298,6 @@ class SettlementService(
     }
 
     /**
-     * 배당금 계산
-     * AMM 방식: (베팅 금액 / 실질 승리풀) * 실질 전체풀 * 0.99 (수수료 1%)
-     * 초기 유동성(하우스 머니)을 제외한 실제 베팅 금액만으로 계산
-     */
-    private fun calculatePayout(
-        betAmount: Long,
-        totalPool: Long,
-        winningPool: Long
-    ): Long {
-        val initialLiquidity = QuestionManagementService.INITIAL_LIQUIDITY
-        val effectiveTotalPool = maxOf(0L, totalPool - initialLiquidity * 2)
-        val effectiveWinningPool = maxOf(0L, winningPool - initialLiquidity)
-
-        if (effectiveWinningPool == 0L) return betAmount // 실질 승리풀이 없으면 원금 반환
-
-        val payoutRatio = BigDecimal(effectiveTotalPool)
-            .divide(BigDecimal(effectiveWinningPool), 10, RoundingMode.HALF_UP)
-            .multiply(BigDecimal("0.99")) // 수수료 1%
-
-        return BigDecimal(betAmount)
-            .multiply(payoutRatio)
-            .setScale(0, RoundingMode.DOWN)
-            .toLong()
-    }
-
-    /**
      * 사용자별 정산 내역 조회
      */
     fun getSettlementHistory(memberId: Long): List<SettlementHistoryItem> {
@@ -333,10 +309,11 @@ class SettlementService(
         return allBets.mapNotNull { bet ->
             val question = questionRepository.findById(bet.questionId).orElse(null)
             if (question != null && question.status == QuestionStatus.SETTLED) {
-                val finalResultChoice = if (question.finalResult == FinalResult.YES) Choice.YES else Choice.NO
+                val policy = settlementPolicyFactory.getPolicy(question.type)
+                val finalResultChoice = policy.determineWinningChoice(question.finalResult)
                 val isWinner = bet.choice == finalResultChoice
                 val payout = if (isWinner) {
-                    calculatePayout(
+                    policy.calculatePayout(
                         betAmount = bet.amount,
                         totalPool = question.totalBetPool,
                         winningPool = if (bet.choice == Choice.YES) question.yesBetPool else question.noBetPool

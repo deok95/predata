@@ -2,6 +2,7 @@ package com.predata.backend.controller
 
 import com.predata.backend.domain.Member
 import com.predata.backend.repository.MemberRepository
+import com.predata.backend.service.ClientIpService
 import com.predata.backend.service.IpTrackingService
 import jakarta.servlet.http.HttpServletRequest
 import jakarta.validation.Valid
@@ -19,7 +20,8 @@ import java.math.BigDecimal
 @CrossOrigin(origins = ["http://localhost:3000", "http://localhost:3001"])
 class MemberController(
     private val memberRepository: MemberRepository,
-    private val ipTrackingService: IpTrackingService
+    private val ipTrackingService: IpTrackingService,
+    private val clientIpService: ClientIpService
 ) {
     private val logger = LoggerFactory.getLogger(MemberController::class.java)
 
@@ -68,7 +70,7 @@ class MemberController(
         }
 
         // IP 추출
-        val clientIp = extractClientIp(httpRequest)
+        val clientIp = clientIpService.extractClientIp(httpRequest)
 
         // 동일 IP 다중가입 경고 (로그)
         val existingFromIp = ipTrackingService.checkSignupIp(clientIp)
@@ -91,14 +93,6 @@ class MemberController(
 
         val savedMember = memberRepository.save(member)
         return ResponseEntity.ok(MemberResponse.from(savedMember))
-    }
-
-    private fun extractClientIp(request: HttpServletRequest): String {
-        val forwarded = request.getHeader("X-Forwarded-For")
-        if (!forwarded.isNullOrBlank()) return forwarded.split(",").first().trim()
-        val realIp = request.getHeader("X-Real-IP")
-        if (!realIp.isNullOrBlank()) return realIp.trim()
-        return request.remoteAddr ?: "unknown"
     }
 
     /**

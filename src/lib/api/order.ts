@@ -1,0 +1,67 @@
+import { apiRequest } from './core';
+
+export interface OrderBookLevel {
+  price: number;
+  amount: number;
+  count: number;
+}
+
+export interface OrderBookData {
+  questionId: number;
+  bids: OrderBookLevel[];
+  asks: OrderBookLevel[];
+  lastPrice?: number;
+  spread?: number;
+}
+
+export interface CreateOrderRequest {
+  memberId: number;
+  questionId: number;
+  side: 'YES' | 'NO';
+  price: number;
+  amount: number;
+}
+
+export interface CreateOrderResponse {
+  success: boolean;
+  message?: string;
+  orderId?: number;
+  filledAmount: number;
+  remainingAmount: number;
+}
+
+export interface OrderData {
+  orderId: number;
+  memberId: number;
+  questionId: number;
+  side: 'YES' | 'NO';
+  price: number;
+  amount: number;
+  remainingAmount: number;
+  status: 'OPEN' | 'FILLED' | 'PARTIAL' | 'CANCELLED';
+  createdAt: string;
+  updatedAt: string;
+}
+
+export const orderApi = {
+  getOrderBook: (questionId: number) =>
+    apiRequest<OrderBookData>(`/api/questions/${questionId}/orderbook`),
+
+  createOrder: (data: CreateOrderRequest) =>
+    apiRequest<CreateOrderResponse>('/api/orders', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+
+  cancelOrder: (orderId: number, memberId: number) =>
+    apiRequest<{ success: boolean; message?: string; refundedAmount?: number }>(
+      `/api/orders/${orderId}?memberId=${memberId}`,
+      { method: 'DELETE' }
+    ),
+
+  getActiveOrders: (memberId: number) =>
+    apiRequest<OrderData[]>(`/api/orders/member/${memberId}`),
+
+  getOrdersByQuestion: (memberId: number, questionId: number) =>
+    apiRequest<OrderData[]>(`/api/orders/member/${memberId}/question/${questionId}`),
+};
