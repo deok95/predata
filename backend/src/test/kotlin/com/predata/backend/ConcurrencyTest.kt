@@ -294,12 +294,12 @@ class ConcurrencyTest {
      * 테스트 4: 잔액 동시 차감 테스트
      *
      * 시나리오:
-     * - 잔액 100인 회원에 대해 3개 스레드가 50씩 동시 차감 시도
-     * - 낙관적 락(@Version)으로 인해 최대 2건만 성공해야 함
-     * - 3번째는 잔액 부족 또는 버전 충돌로 실패
+     * - 잔액 100인 회원에 대해 3개 스레드가 50 share(가격 0.60) 주문 동시 시도
+     * - 주문 비용은 qty * price = 30 USDC이므로 최대 3건까지 성공 가능
+     * - 낙관적 락 충돌이 나더라도 재시도로 최종 잔액 정합성이 맞아야 함
      */
     @Test
-    fun `잔액 동시 차감 테스트 - 잔액 100인 회원에 50씩 3개 스레드 동시 차감시 최대 2건 성공`() {
+    fun `잔액 동시 차감 테스트 - 잔액 100인 회원에 50 share씩 3개 스레드 동시 주문시 잔액 정합성 확인`() {
         // Given: 잔액 100인 회원
         val member = memberRepository.save(
             Member(
@@ -327,8 +327,11 @@ class ConcurrencyTest {
 
         val threadCount = 3
         val amountPerOrder = 50L
+        val orderPrice = BigDecimal("0.60")
+        val costPerOrder = BigDecimal(amountPerOrder).multiply(orderPrice) // qty * price
         val executor = Executors.newFixedThreadPool(threadCount)
         val latch = CountDownLatch(threadCount)
+        val startLatch = CountDownLatch(1)
         val successCount = AtomicInteger(0)
         val failureCount = AtomicInteger(0)
 
@@ -358,11 +361,12 @@ class ConcurrencyTest {
         questions.forEachIndexed { index, question ->
             executor.submit {
                 try {
+                    startLatch.await()
                     val request = CreateOrderRequest(
                         questionId = question.id!!,
                         orderType = OrderType.LIMIT,
                         side = OrderSide.YES,
-                        price = BigDecimal("0.60"),
+                        price = orderPrice,
                         amount = amountPerOrder
                     )
                     val result = orderMatchingService.createOrder(member.id!!, request)
@@ -381,22 +385,22 @@ class ConcurrencyTest {
             }
         }
 
+        startLatch.countDown()
         latch.await(15, TimeUnit.SECONDS)
         executor.shutdown()
 
-        // Then: 최대 2건만 성공 (100 / 50 = 2)
-        assertTrue(successCount.get() <= 2, "최대 2건만 성공해야 합니다 (잔액: 100, 차감액: 50)")
-        assertTrue(failureCount.get() >= 1, "최소 1건은 실패해야 합니다 (잔액 부족)")
+        // Then: 잔액 100, 주문당 비용 30이므로 최대 3건 성공 가능
+        assertTrue(successCount.get() in 1..3, "성공 건수는 1~3 범위여야 합니다")
 
         // 최종 잔액 확인
         val updatedMember = memberRepository.findById(member.id!!).orElseThrow()
-        val expectedMaxBalance = BigDecimal("100.00").subtract(BigDecimal(successCount.get() * amountPerOrder))
+        val expectedBalance = BigDecimal("100.00").subtract(costPerOrder.multiply(BigDecimal(successCount.get())))
         // BigDecimal 비교 시 scale을 맞춰서 비교
         assertEquals(
             0,
-            expectedMaxBalance.compareTo(updatedMember.usdcBalance),
-            "최종 잔액은 ${expectedMaxBalance}이어야 합니다 (실제: ${updatedMember.usdcBalance})"
+            expectedBalance.compareTo(updatedMember.usdcBalance),
+            "최종 잔액은 ${expectedBalance}이어야 합니다 (실제: ${updatedMember.usdcBalance})"
         )
-        println("Final balance: ${updatedMember.usdcBalance}, Success count: ${successCount.get()}")
+        println("Final balance: ${updatedMember.usdcBalance}, Success count: ${successCount.get()}, Failure count: ${failureCount.get()}")
     }
 }

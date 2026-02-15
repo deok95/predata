@@ -3,8 +3,11 @@ package com.predata.backend.service
 import com.predata.backend.domain.*
 import com.predata.backend.dto.*
 import com.predata.backend.repository.*
+import jakarta.persistence.OptimisticLockException
+import org.springframework.orm.ObjectOptimisticLockingFailureException
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
+import org.springframework.transaction.support.TransactionTemplate
 import java.math.BigDecimal
 import java.time.LocalDateTime
 
@@ -21,8 +24,25 @@ class OrderMatchingService(
     private val orderBookService: OrderBookService,
     private val priceHistoryRepository: com.predata.backend.repository.PriceHistoryRepository,
     private val auditService: AuditService,
-    private val riskGuardService: RiskGuardService
+    private val riskGuardService: RiskGuardService,
+    private val transactionTemplate: TransactionTemplate
 ) {
+    private val logger = org.slf4j.LoggerFactory.getLogger(OrderMatchingService::class.java)
+
+    fun <T> retryOnOptimisticLock(maxRetries: Int = 3, action: () -> T): T {
+        repeat(maxRetries) { attempt ->
+            try {
+                return action()
+            } catch (e: OptimisticLockException) {
+                if (attempt == maxRetries - 1) throw e
+                Thread.sleep(50L * (attempt + 1))
+            } catch (e: ObjectOptimisticLockingFailureException) {
+                if (attempt == maxRetries - 1) throw e
+                Thread.sleep(50L * (attempt + 1))
+            }
+        }
+        throw IllegalStateException("Retry exhausted")
+    }
 
     /**
      * Limit Order 생성 및 매칭
@@ -31,9 +51,15 @@ class OrderMatchingService(
      * 1. 0.40 이하의 NO 매수 주문과 매칭 (YES 0.60 = NO 0.40 역가격)
      * 2. 매칭되지 않은 수량은 오더북에 추가
      */
-    @Transactional
     fun createOrder(memberId: Long, request: CreateOrderRequest): CreateOrderResponse {
+        return retryOnOptimisticLock {
+            transactionTemplate.execute {
+                createOrderInternal(memberId, request)
+            } ?: throw IllegalStateException("Transaction returned null")
+        }
+    }
 
+    private fun createOrderInternal(memberId: Long, request: CreateOrderRequest): CreateOrderResponse {
         // 1. 베팅 일시 중지 체크 (쿨다운)
         val suspensionStatus = bettingSuspensionService.isBettingSuspendedByQuestionId(request.questionId)
         if (suspensionStatus.suspended) {
@@ -57,8 +83,9 @@ class OrderMatchingService(
             )
         }
 
-        val totalCost = request.amount
-        if (member.usdcBalance < BigDecimal(totalCost)) {
+        // 주문 비용 = 수량 × 가격
+        val totalCost = BigDecimal(request.amount).multiply(request.price)
+        if (member.usdcBalance < totalCost) {
             return CreateOrderResponse(
                 success = false,
                 message = "잔액이 부족합니다. (보유: ${member.usdcBalance}, 필요: $totalCost)"
@@ -138,23 +165,10 @@ class OrderMatchingService(
             )
         }
 
-        // 3. USDC 차감 (예치)
-        member.usdcBalance = member.usdcBalance.subtract(BigDecimal(totalCost))
-        memberRepository.save(member)
-
-        transactionHistoryService.record(
-            memberId = memberId,
-            type = "BET",
-            amount = BigDecimal(totalCost).negate(),
-            balanceAfter = member.usdcBalance,
-            description = "지정가 주문 - Question #${request.questionId} ${request.side}",
-            questionId = request.questionId
-        )
-
-        // 4. 주문 타입 결정
+        // 3. 주문 타입 결정
         val orderType = request.orderType ?: OrderType.LIMIT  // 기본값: LIMIT
 
-        // 5. MARKET 주문일 경우 상대 오더북의 최우선 가격으로 체결
+        // 4. MARKET 주문일 경우 상대 오더북의 최우선 가격으로 체결
         val orderPrice = if (orderType == OrderType.MARKET) {
             // 상대 오더북에서 최우선 가격 가져오기
             val oppositeSide = if (request.side == OrderSide.YES) OrderSide.NO else OrderSide.YES
@@ -165,10 +179,7 @@ class OrderMatchingService(
             )
 
             if (oppositeOrders.isEmpty()) {
-                // 호가가 없으면 체결 실패
-                member.usdcBalance = member.usdcBalance.add(BigDecimal(totalCost))  // 환불
-                memberRepository.save(member)
-
+                // 호가가 없으면 체결 실패 (차감하지 않고 바로 반환)
                 return CreateOrderResponse(
                     success = false,
                     message = "시장가 주문 실패: 체결 가능한 호가가 없습니다."
@@ -181,6 +192,19 @@ class OrderMatchingService(
         } else {
             request.price
         }
+
+        // 5. USDC 차감 (예치) - MARKET 주문 검증 후 차감
+        member.usdcBalance = member.usdcBalance.subtract(totalCost)
+        memberRepository.save(member)
+
+        transactionHistoryService.record(
+            memberId = memberId,
+            type = "BET",
+            amount = totalCost.negate(),
+            balanceAfter = member.usdcBalance,
+            description = "주문 생성 - Question #${request.questionId} ${request.side} (${orderType})",
+            questionId = request.questionId
+        )
 
         // 6. 주문 생성
         val order = Order(
@@ -214,15 +238,16 @@ class OrderMatchingService(
             savedOrder.updatedAt = LocalDateTime.now()
             orderRepository.save(savedOrder)
 
-            // 미체결분 환불
-            val refundAmount = request.amount - matchResult.filledAmount
-            member.usdcBalance = member.usdcBalance.add(BigDecimal(refundAmount))
+            // 미체결분 환불 = 미체결 수량 × 가격
+            val unfilledQty = request.amount - matchResult.filledAmount
+            val refundAmount = BigDecimal(unfilledQty).multiply(orderPrice)
+            member.usdcBalance = member.usdcBalance.add(refundAmount)
             memberRepository.save(member)
 
             transactionHistoryService.record(
                 memberId = memberId,
                 type = "SETTLEMENT",
-                amount = BigDecimal(refundAmount),
+                amount = refundAmount,
                 balanceAfter = member.usdcBalance,
                 description = "시장가 IOC 주문 미체결분 환불 - Question #${request.questionId}",
                 questionId = request.questionId
@@ -412,17 +437,17 @@ class OrderMatchingService(
             )
         }
 
-        // 남은 수량 환불
-        val refundAmount = order.remainingAmount
+        // 남은 수량 환불 = 미체결 수량 × 가격
+        val refundAmount = BigDecimal(order.remainingAmount).multiply(order.price)
         val member = memberRepository.findById(memberId).orElse(null)
         if (member != null) {
-            member.usdcBalance = member.usdcBalance.add(BigDecimal(refundAmount))
+            member.usdcBalance = member.usdcBalance.add(refundAmount)
             memberRepository.save(member)
 
             transactionHistoryService.record(
                 memberId = memberId,
                 type = "SETTLEMENT",
-                amount = BigDecimal(refundAmount),
+                amount = refundAmount,
                 balanceAfter = member.usdcBalance,
                 description = "주문 취소 환불 - Order #$orderId",
                 questionId = order.questionId
@@ -446,7 +471,7 @@ class OrderMatchingService(
         return CancelOrderResponse(
             success = true,
             message = "주문이 취소되었습니다.",
-            refundedAmount = refundAmount
+            refundedAmount = refundAmount.setScale(0, java.math.RoundingMode.DOWN).toLong()
         )
     }
 
