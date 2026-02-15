@@ -110,13 +110,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setAuthCookies(response.data.role === 'ADMIN');
         return response.data;
       }
-    } catch {
-      // Backend unavailable
+    } catch (error: any) {
+      // 404: 토큰은 있지만 사용자가 삭제됨 → 로그아웃
+      if (error?.status === 404) {
+        logout();
+      }
+      // Backend unavailable or other errors
     } finally {
       setIsLoading(false);
     }
     return null;
-  }, [persistUser]);
+  }, [persistUser, logout]);
 
   const loginWithGoogle = useCallback(async (
     googleToken: string,
@@ -216,10 +220,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (response.success && response.data) {
         persistUser(response.data);
       }
-    } catch {
-      // Backend unavailable
+    } catch (error: any) {
+      // 404: 토큰은 있지만 사용자가 삭제됨 → 로그아웃
+      if (error?.status === 404) {
+        logout();
+      }
+      // Backend unavailable or other errors
     }
-  }, [user, persistUser]);
+  }, [user, persistUser, logout]);
 
   // 자동 잔액 갱신: 10초마다 백엔드에서 최신 사용자 데이터 가져오기
   useEffect(() => {

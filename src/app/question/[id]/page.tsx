@@ -26,19 +26,23 @@ function QuestionDetailContent() {
   const [question, setQuestion] = useState<Question | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshKey, setRefreshKey] = useState(0);
+  const [isMockData, setIsMockData] = useState(false);
 
   const fetchQuestion = useCallback(async () => {
     try {
       const response = await questionApi.getById(questionId);
       if (response.success && response.data) {
         setQuestion(response.data);
+        setIsMockData(false);
       } else {
         const mock = mockQuestions.find(q => q.id === questionId) || null;
         setQuestion(mock);
+        setIsMockData(true);
       }
     } catch {
       const mock = mockQuestions.find(q => q.id === questionId) || null;
       setQuestion(mock);
+      setIsMockData(true);
     } finally {
       setLoading(false);
     }
@@ -50,10 +54,10 @@ function QuestionDetailContent() {
   }, [questionId, fetchQuestion]);
 
   useEffect(() => {
-    if (!question) return;
+    if (!question || isMockData) return;
     const interval = setInterval(() => fetchQuestion(), 5000);
     return () => clearInterval(interval);
-  }, [question, fetchQuestion]);
+  }, [question, isMockData, fetchQuestion]);
 
   const handleTradeComplete = () => {
     fetchQuestion();
