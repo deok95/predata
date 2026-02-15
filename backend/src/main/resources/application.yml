@@ -103,3 +103,7 @@ app:
       trade-count-threshold: 100   # 트리거되는 거래 횟수
       time-window-seconds: 60      # 시간 윈도우 (초)
       cooldown-seconds: 30         # 쿨다운 기간 (초)
+
+  # 투표 시스템 설정
+  voting:
+    daily-limit: 5  # 일일 투표 한도 (UTC 00:00 기준)

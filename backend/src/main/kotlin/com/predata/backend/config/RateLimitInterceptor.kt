@@ -67,7 +67,7 @@ class RateLimitInterceptor(
         // 경로별 제한 분류 (개발/프로덕션 모드에 따라 다른 제한 적용)
         val (bucketType, limit) = when {
             path == "/api/members" && method == "POST" -> "signup" to if (isDevelopmentMode) DEV_SIGNUP_LIMIT else PROD_SIGNUP_LIMIT
-            path in listOf("/api/vote", "/api/bet") -> "activity" to if (isDevelopmentMode) DEV_ACTIVITY_LIMIT else PROD_ACTIVITY_LIMIT
+            path in listOf("/api/vote", "/api/bet", "/api/votes/commit", "/api/votes/reveal") -> "activity" to if (isDevelopmentMode) DEV_ACTIVITY_LIMIT else PROD_ACTIVITY_LIMIT
             else -> "general" to if (isDevelopmentMode) DEV_GENERAL_LIMIT else PROD_GENERAL_LIMIT
         }
 
