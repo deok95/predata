@@ -11,7 +11,10 @@ import java.time.LocalDateTime
 
 @Service
 class PositionService(
-    private val positionRepository: PositionRepository
+    private val positionRepository: PositionRepository,
+    private val auditService: AuditService,
+    private val orderBookService: OrderBookService,
+    private val questionRepository: com.predata.backend.repository.QuestionRepository
 ) {
 
     /**
@@ -42,7 +45,18 @@ class PositionService(
             existingPosition.avgPrice = newAvgPrice
             existingPosition.updatedAt = LocalDateTime.now()
 
-            positionRepository.save(existingPosition)
+            val savedPosition = positionRepository.save(existingPosition)
+
+            // Audit log: 포지션 업데이트
+            auditService.log(
+                memberId = memberId,
+                action = com.predata.backend.domain.AuditAction.POSITION_UPDATE,
+                entityType = "POSITION",
+                entityId = savedPosition.id,
+                detail = "Position updated: ${side} qty=${totalQty} avgPrice=${newAvgPrice}"
+            )
+
+            savedPosition
         } else {
             // 새 포지션 생성
             val newPosition = MarketPosition(
@@ -53,7 +67,18 @@ class PositionService(
                 avgPrice = price,
                 settled = false
             )
-            positionRepository.save(newPosition)
+            val savedPosition = positionRepository.save(newPosition)
+
+            // Audit log: 포지션 생성
+            auditService.log(
+                memberId = memberId,
+                action = com.predata.backend.domain.AuditAction.POSITION_UPDATE,
+                entityType = "POSITION",
+                entityId = savedPosition.id,
+                detail = "Position created: ${side} qty=${qty} avgPrice=${price}"
+            )
+
+            savedPosition
         }
     }
 
@@ -89,5 +114,38 @@ class PositionService(
             position.updatedAt = LocalDateTime.now()
         }
         positionRepository.saveAll(positions)
+    }
+
+    /**
+     * PnL을 포함한 포지션 조회
+     * - currentMidPrice를 기반으로 unrealizedPnL 계산
+     */
+    fun getPositionsWithPnL(memberId: Long): List<com.predata.backend.dto.PositionResponse> {
+        val positions = positionRepository.findByMemberId(memberId)
+        return positions.map { position ->
+            val question = questionRepository.findById(position.questionId).orElse(null)
+            val priceInfo = orderBookService.getPriceInfo(position.questionId)
+            val currentMidPrice = priceInfo.midPrice
+
+            // PnL = (currentMidPrice - avgPrice) * quantity
+            val unrealizedPnL = if (currentMidPrice != null) {
+                (currentMidPrice.subtract(position.avgPrice)).multiply(position.quantity)
+            } else {
+                BigDecimal.ZERO
+            }
+
+            com.predata.backend.dto.PositionResponse(
+                positionId = position.id ?: 0L,
+                questionId = position.questionId,
+                questionTitle = question?.title ?: "Unknown",
+                side = position.side,
+                quantity = position.quantity,
+                avgPrice = position.avgPrice,
+                currentMidPrice = currentMidPrice,
+                unrealizedPnL = unrealizedPnL,
+                createdAt = position.createdAt,
+                updatedAt = position.updatedAt
+            )
+        }
     }
 }

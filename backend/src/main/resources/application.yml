@@ -90,3 +90,13 @@ logging:
   level:
     com.predata.backend: DEBUG
     org.hibernate.SQL: WARN
+
+# 리스크 관리 설정
+app:
+  risk:
+    max-position-per-market: 1000  # 시장당 최대 포지션 크기
+    max-order-value: 500           # 단일 주문 최대 금액
+    circuit-breaker:
+      trade-count-threshold: 100   # 트리거되는 거래 횟수
+      time-window-seconds: 60      # 시간 윈도우 (초)
+      cooldown-seconds: 30         # 쿨다운 기간 (초)

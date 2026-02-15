@@ -25,7 +25,8 @@ class SettlementService(
     private val transactionHistoryService: TransactionHistoryService,
     private val settlementPolicyFactory: SettlementPolicyFactory,
     private val positionService: PositionService,
-    private val resolutionAdapterRegistry: com.predata.backend.service.settlement.adapters.ResolutionAdapterRegistry
+    private val resolutionAdapterRegistry: com.predata.backend.service.settlement.adapters.ResolutionAdapterRegistry,
+    private val auditService: AuditService
 ) {
     private val logger = org.slf4j.LoggerFactory.getLogger(SettlementService::class.java)
 
@@ -84,6 +85,15 @@ class SettlementService(
             LocalDateTime.now().plusHours(DISPUTE_HOURS)
         }
         questionRepository.save(question)
+
+        // Audit log: 정산 시작
+        auditService.log(
+            memberId = null,
+            action = com.predata.backend.domain.AuditAction.SETTLE,
+            entityType = "QUESTION",
+            entityId = questionId,
+            detail = "Settlement initiated: ${finalResult.name}"
+        )
 
         // Position 기준으로 정산 대상 확인
         val positions = positionService.getPositionsByQuestionId(questionId)
@@ -317,6 +327,15 @@ class SettlementService(
         question.sourceUrl = null
         question.disputeDeadline = null
         questionRepository.save(question)
+
+        // Audit log: 정산 취소
+        auditService.log(
+            memberId = null,
+            action = com.predata.backend.domain.AuditAction.CANCEL,
+            entityType = "QUESTION",
+            entityId = questionId,
+            detail = "Settlement cancelled, status restored to ${newStatus.name}"
+        )
 
         return SettlementResult(
             questionId = questionId,

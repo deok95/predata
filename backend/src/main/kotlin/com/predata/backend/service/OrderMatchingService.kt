@@ -19,7 +19,9 @@ class OrderMatchingService(
     private val bettingSuspensionService: BettingSuspensionService,
     private val positionService: PositionService,
     private val orderBookService: OrderBookService,
-    private val priceHistoryRepository: com.predata.backend.repository.PriceHistoryRepository
+    private val priceHistoryRepository: com.predata.backend.repository.PriceHistoryRepository,
+    private val auditService: AuditService,
+    private val riskGuardService: RiskGuardService
 ) {
 
     /**
@@ -84,6 +86,58 @@ class OrderMatchingService(
             )
         }
 
+        // 리스크 가드: 포지션 한도 체크
+        val positionCheck = riskGuardService.checkPositionLimit(
+            memberId = memberId,
+            questionId = request.questionId,
+            additionalQty = BigDecimal(request.amount)
+        )
+        if (!positionCheck.passed) {
+            auditService.log(
+                memberId = memberId,
+                action = com.predata.backend.domain.AuditAction.RISK_LIMIT_EXCEEDED,
+                entityType = "ORDER",
+                entityId = null,
+                detail = positionCheck.message
+            )
+            return CreateOrderResponse(
+                success = false,
+                message = positionCheck.message!!
+            )
+        }
+
+        // 리스크 가드: 주문 금액 한도 체크
+        val orderValueCheck = riskGuardService.checkOrderValueLimit(totalCost.toDouble())
+        if (!orderValueCheck.passed) {
+            auditService.log(
+                memberId = memberId,
+                action = com.predata.backend.domain.AuditAction.RISK_LIMIT_EXCEEDED,
+                entityType = "ORDER",
+                entityId = null,
+                detail = orderValueCheck.message
+            )
+            return CreateOrderResponse(
+                success = false,
+                message = orderValueCheck.message!!
+            )
+        }
+
+        // 리스크 가드: 서킷 브레이커 체크
+        val circuitCheck = riskGuardService.checkCircuitBreaker(request.questionId)
+        if (!circuitCheck.passed) {
+            auditService.log(
+                memberId = memberId,
+                action = com.predata.backend.domain.AuditAction.RISK_LIMIT_EXCEEDED,
+                entityType = "ORDER",
+                entityId = request.questionId,
+                detail = circuitCheck.message
+            )
+            return CreateOrderResponse(
+                success = false,
+                message = circuitCheck.message!!
+            )
+        }
+
         // 3. USDC 차감 (예치)
         member.usdcBalance = member.usdcBalance.subtract(BigDecimal(totalCost))
         memberRepository.save(member)
@@ -140,6 +194,15 @@ class OrderMatchingService(
         )
 
         val savedOrder = orderRepository.save(order)
+
+        // Audit log: 주문 생성
+        auditService.log(
+            memberId = memberId,
+            action = com.predata.backend.domain.AuditAction.ORDER_CREATE,
+            entityType = "ORDER",
+            entityId = savedOrder.id,
+            detail = "${request.side} ${request.amount} @ ${orderPrice} (${orderType})"
+        )
 
         // 7. 매칭 실행
         val matchResult = matchOrder(savedOrder, question)
@@ -370,6 +433,15 @@ class OrderMatchingService(
         order.remainingAmount = 0
         order.updatedAt = LocalDateTime.now()
         orderRepository.save(order)
+
+        // Audit log: 주문 취소
+        auditService.log(
+            memberId = memberId,
+            action = com.predata.backend.domain.AuditAction.ORDER_CANCEL,
+            entityType = "ORDER",
+            entityId = orderId,
+            detail = "Order cancelled, refund: $refundAmount"
+        )
 
         return CancelOrderResponse(
             success = true,

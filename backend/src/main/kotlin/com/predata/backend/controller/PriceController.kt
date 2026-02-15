@@ -9,7 +9,8 @@ import org.springframework.web.bind.annotation.*
 @RequestMapping("/api")
 @CrossOrigin(origins = ["http://localhost:3000", "http://localhost:3001"])
 class PriceController(
-    private val orderBookService: OrderBookService
+    private val orderBookService: OrderBookService,
+    private val priceHistoryRepository: com.predata.backend.repository.PriceHistoryRepository
 ) {
 
     /**
@@ -23,6 +24,35 @@ class PriceController(
             ApiEnvelope(
                 success = true,
                 data = priceInfo
+            )
+        )
+    }
+
+    /**
+     * 가격 이력 조회
+     * GET /api/questions/{id}/price-history?interval=1m&limit=100
+     */
+    @GetMapping("/questions/{id}/price-history")
+    fun getPriceHistory(
+        @PathVariable id: Long,
+        @RequestParam(defaultValue = "1m") interval: String,
+        @RequestParam(defaultValue = "100") limit: Int
+    ): ResponseEntity<ApiEnvelope<List<com.predata.backend.dto.PriceHistoryResponse>>> {
+        // PriceHistoryRepository의 findRecentByQuestionId 메서드 사용
+        val history = priceHistoryRepository.findRecentByQuestionId(id, limit)
+            .map { priceHistory ->
+                com.predata.backend.dto.PriceHistoryResponse(
+                    timestamp = priceHistory.timestamp,
+                    midPrice = priceHistory.midPrice,
+                    lastTradePrice = priceHistory.lastTradePrice,
+                    spread = priceHistory.spread
+                )
+            }
+
+        return ResponseEntity.ok(
+            ApiEnvelope(
+                success = true,
+                data = history
             )
         )
     }

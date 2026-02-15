@@ -9,6 +9,7 @@ import ProbabilityChart from '@/components/market-detail/ProbabilityChart';
 import OrderBook from '@/components/market-detail/OrderBook';
 import TradingPanel from '@/components/market-detail/TradingPanel';
 import ActivityFeed from '@/components/market-detail/ActivityFeed';
+import MyBetsPanel from '@/components/market-detail/MyBetsPanel';
 import { useTheme } from '@/hooks/useTheme';
 import { questionApi } from '@/lib/api';
 import { mockQuestions } from '@/lib/mockData';
@@ -192,10 +193,11 @@ function QuestionDetailContent() {
             totalPool={question.totalBetPool}
             yesPool={question.yesBetPool}
             noPool={question.noBetPool}
-            marketId={question.id}
+            questionId={question.id}
           />
           <OrderBook questionId={question.id} yesPercent={yesPercent} totalPool={question.totalBetPool} />
           <ActivityFeed questionId={question.id} refreshKey={refreshKey} />
+          {user && <MyBetsPanel questionId={question.id} />}
         </div>
         <div className="lg:col-span-4">
           {user && (

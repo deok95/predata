@@ -11,6 +11,8 @@ export {
 } from './api/order';
 export { faucetApi, paymentApi, transactionApi, votingPassApi } from './api/finance';
 export { notificationApi } from './api/notification';
+export { getPriceHistory, PriceHistoryData } from './api/price';
+export { getMyPositions, getMyPositionsByQuestion, PositionData } from './api/position';
 export {
   analysisApi,
   analyticsApi,
@@ -29,6 +31,8 @@ import { bettingApi, questionApi, settlementApi } from './api/market';
 import { orderApi } from './api/order';
 import { faucetApi, paymentApi, transactionApi, votingPassApi } from './api/finance';
 import { notificationApi } from './api/notification';
+import { getPriceHistory } from './api/price';
+import { getMyPositions, getMyPositionsByQuestion } from './api/position';
 import {
   analysisApi,
   analyticsApi,
@@ -64,6 +68,8 @@ export const api = {
   votingPass: votingPassApi,
   payment: paymentApi,
   transaction: transactionApi,
+  price: { getHistory: getPriceHistory },
+  position: { getMyPositions, getMyPositionsByQuestion },
 };
 
 export default api;
