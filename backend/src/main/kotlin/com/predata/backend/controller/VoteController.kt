@@ -6,6 +6,7 @@ import com.predata.backend.dto.VoteCommitRequest
 import com.predata.backend.dto.VoteCommitResponse
 import com.predata.backend.dto.VoteRevealRequest
 import com.predata.backend.dto.VoteRevealResponse
+import com.predata.backend.exception.ServiceUnavailableException
 import com.predata.backend.service.IdempotencyService
 import com.predata.backend.service.VoteCommitService
 import jakarta.servlet.http.HttpServletRequest
@@ -89,6 +90,14 @@ class VoteController(
             }
 
             ResponseEntity.status(status).body(response)
+        } catch (e: ServiceUnavailableException) {
+            // 시스템 점검 중 (pause/circuit breaker) → 503 Service Unavailable
+            ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE).body(
+                VoteCommitResponse(
+                    success = false,
+                    message = e.message ?: "시스템 점검 중입니다."
+                )
+            )
         } catch (e: IllegalStateException) {
             // Phase 검증 실패 → 409 Conflict
             ResponseEntity.status(HttpStatus.CONFLICT).body(
@@ -160,6 +169,14 @@ class VoteController(
             }
 
             ResponseEntity.status(status).body(response)
+        } catch (e: ServiceUnavailableException) {
+            // 시스템 점검 중 (pause/circuit breaker) → 503 Service Unavailable
+            ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE).body(
+                VoteRevealResponse(
+                    success = false,
+                    message = e.message ?: "시스템 점검 중입니다."
+                )
+            )
         } catch (e: IllegalStateException) {
             // Phase 검증 실패 → 409 Conflict
             ResponseEntity.status(HttpStatus.CONFLICT).body(

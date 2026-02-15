@@ -8,6 +8,7 @@ import com.predata.backend.dto.VoteCommitRequest
 import com.predata.backend.dto.VoteCommitResponse
 import com.predata.backend.dto.VoteRevealRequest
 import com.predata.backend.dto.VoteRevealResponse
+import com.predata.backend.exception.ServiceUnavailableException
 import com.predata.backend.repository.MemberRepository
 import com.predata.backend.repository.QuestionRepository
 import com.predata.backend.repository.VoteCommitRepository
@@ -46,10 +47,7 @@ class VoteCommitService(
         // 0. 투표 중지 상태 체크
         if (pauseService.isPaused(request.questionId) || circuitBreaker.isOpen()) {
             circuitBreaker.recordFailure()
-            return VoteCommitResponse(
-                success = false,
-                message = "시스템 점검 중입니다."
-            )
+            throw ServiceUnavailableException("시스템 점검 중입니다.")
         }
 
         // 1. 회원 존재 확인
@@ -168,10 +166,7 @@ class VoteCommitService(
         // 0. 투표 중지 상태 체크
         if (pauseService.isPaused(request.questionId) || circuitBreaker.isOpen()) {
             circuitBreaker.recordFailure()
-            return VoteRevealResponse(
-                success = false,
-                message = "시스템 점검 중입니다."
-            )
+            throw ServiceUnavailableException("시스템 점검 중입니다.")
         }
 
         // 1. VoteCommit 조회
