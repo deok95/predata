@@ -12,7 +12,7 @@ interface DepositModalProps {
   onClose: () => void;
 }
 
-const PRESET_AMOUNTS = [10, 25, 50, 100];
+const PRESET_AMOUNTS = [10, 50, 100, 500];
 
 export default function DepositModal({ isOpen, onClose }: DepositModalProps) {
   const { isDark } = useTheme();
