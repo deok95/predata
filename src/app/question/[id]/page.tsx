@@ -96,9 +96,10 @@ function QuestionDetailContent() {
   const backLabel = question.status === 'VOTING' ? '투표 목록' : '마켓 목록';
 
   const isReadOnlyFallback = isMockData;
+  const isVotingMode = question.status === 'VOTING';
 
   return (
-    <div className="max-w-7xl mx-auto animate-fade-in">
+    <div className={`${isVotingMode ? 'max-w-3xl' : 'max-w-7xl'} mx-auto animate-fade-in`}>
       <Link
         href={backLink}
         className="inline-flex items-center gap-2 text-sm text-slate-400 hover:text-indigo-600 transition mb-6"
@@ -107,38 +108,40 @@ function QuestionDetailContent() {
         {backLabel}
       </Link>
 
-      <div className="mb-8">
-        <div className="flex items-center gap-3 mb-3">
-          {question.category && (
-            <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">
-              {question.category}
+      {!isVotingMode && (
+        <div className="mb-8">
+          <div className="flex items-center gap-3 mb-3">
+            {question.category && (
+              <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">
+                {question.category}
+              </span>
+            )}
+            <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase ${
+              question.status === 'VOTING' || question.status === 'BETTING'
+                ? 'bg-emerald-500/10 text-emerald-500'
+                : question.status === 'BREAK'
+                  ? 'bg-amber-500/10 text-amber-500'
+                  : question.status === 'SETTLED'
+                    ? 'bg-indigo-500/10 text-indigo-500'
+                    : 'bg-slate-500/10 text-slate-500'
+            }`}>
+              {question.status === 'VOTING' ? '투표 진행 중' : question.status === 'BETTING' ? '베팅 진행 중' : question.status === 'BREAK' ? '휴식' : question.status === 'SETTLED' ? '정산 완료' : question.status}
             </span>
-          )}
-          <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase ${
-            question.status === 'VOTING' || question.status === 'BETTING'
-              ? 'bg-emerald-500/10 text-emerald-500'
-              : question.status === 'BREAK'
-                ? 'bg-amber-500/10 text-amber-500'
-                : question.status === 'SETTLED'
-                  ? 'bg-indigo-500/10 text-indigo-500'
-                  : 'bg-slate-500/10 text-slate-500'
-          }`}>
-            {question.status === 'VOTING' ? '투표 진행 중' : question.status === 'BETTING' ? '베팅 진행 중' : question.status === 'BREAK' ? '휴식' : question.status === 'SETTLED' ? '정산 완료' : question.status}
-          </span>
+          </div>
+          <h1 className={`text-2xl font-black mb-3 ${isDark ? 'text-white' : 'text-slate-900'}`}>{question.title}</h1>
+          <div className="flex items-center gap-4 text-sm text-slate-400">
+            {question.status !== 'VOTING' && (
+              <span className="font-bold">Vol. {question.totalBetPool.toLocaleString()} USDC</span>
+            )}
+            {question.expiredAt && (
+              <span className="flex items-center gap-1">
+                <Clock size={14} />
+                {new Date(question.expiredAt).toLocaleDateString('ko-KR')}
+              </span>
+            )}
+          </div>
         </div>
-        <h1 className={`text-2xl font-black mb-3 ${isDark ? 'text-white' : 'text-slate-900'}`}>{question.title}</h1>
-        <div className="flex items-center gap-4 text-sm text-slate-400">
-          {question.status !== 'VOTING' && (
-            <span className="font-bold">Vol. {question.totalBetPool.toLocaleString()} USDC</span>
-          )}
-          {question.expiredAt && (
-            <span className="flex items-center gap-1">
-              <Clock size={14} />
-              {new Date(question.expiredAt).toLocaleDateString('ko-KR')}
-            </span>
-          )}
-        </div>
-      </div>
+      )}
 
       {isReadOnlyFallback && (
         <div className={`mb-6 p-4 rounded-2xl border ${
@@ -205,27 +208,43 @@ function QuestionDetailContent() {
         </div>
       )}
 
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-        <div className="lg:col-span-8 space-y-6">
-          {question.status !== 'VOTING' && (
-            <ProbabilityChart
-              yesPercent={yesPercent}
-              totalPool={question.totalBetPool}
-              yesPool={question.yesBetPool}
-              noPool={question.noBetPool}
-              questionId={question.id}
-              disableApi={isReadOnlyFallback}
-            />
-          )}
-          {question.status !== 'VOTING' && !isReadOnlyFallback && (
-            <OrderBook questionId={question.id} yesPercent={yesPercent} totalPool={question.totalBetPool} />
-          )}
-          {question.status !== 'VOTING' && !isReadOnlyFallback && (
-            <ActivityFeed questionId={question.id} refreshKey={refreshKey} />
-          )}
-          {question.status !== 'VOTING' && !isReadOnlyFallback && user && <MyBetsPanel questionId={question.id} />}
-        </div>
-        <div className="lg:col-span-4">
+      {isVotingMode ? (
+        // VOTING 전용 레이아웃: 중앙 정렬 단일 컬럼
+        <div className="max-w-2xl mx-auto space-y-6">
+          {/* 질문 정보 카드 */}
+          <div className={`rounded-2xl shadow-sm p-6 ${isDark ? 'bg-slate-900 border border-slate-800' : 'bg-white border border-slate-100'}`}>
+            <div className="flex items-center gap-3 mb-4">
+              {question.category && (
+                <span className={`px-3 py-1 rounded-full text-xs font-bold ${isDark ? 'bg-slate-800 text-slate-400' : 'bg-slate-100 text-slate-600'}`}>
+                  {question.category}
+                </span>
+              )}
+              <span className="px-3 py-1 rounded-full text-xs font-bold bg-blue-100 text-blue-700">
+                투표 진행 중
+              </span>
+            </div>
+            <h1 className={`text-2xl font-bold mb-4 ${isDark ? 'text-white' : 'text-slate-900'}`}>
+              {question.title}
+            </h1>
+            {question.votingEndAt && (
+              <div className={`flex items-center gap-2 text-sm ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
+                <Clock size={16} />
+                <span>
+                  투표 종료까지{' '}
+                  {(() => {
+                    const now = new Date().getTime();
+                    const end = new Date(question.votingEndAt).getTime();
+                    const diff = end - now;
+                    if (diff <= 0) return '종료됨';
+                    const hours = Math.floor(diff / (1000 * 60 * 60));
+                    const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+                    return hours > 0 ? `${hours}시간 ${minutes}분` : `${minutes}분`;
+                  })()}
+                </span>
+              </div>
+            )}
+          </div>
+          {/* 투표 패널 */}
           {user && !isReadOnlyFallback && (
             <TradingPanel
               question={question}
@@ -235,15 +254,47 @@ function QuestionDetailContent() {
               onVoted={(choice) => markVoted(question.id, choice)}
             />
           )}
-          {user && isReadOnlyFallback && (
-            <div className={`p-6 rounded-[2.5rem] border ${
-              isDark ? 'bg-slate-900 border-slate-800 text-slate-400' : 'bg-white border-slate-100 text-slate-600 shadow-xl'
-            }`}>
-              서버 마켓 데이터가 없어 거래 패널이 비활성화되었습니다.
-            </div>
-          )}
         </div>
-      </div>
+      ) : (
+        // 기존 베팅 레이아웃: 그리드
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+          <div className="lg:col-span-8 space-y-6">
+            <ProbabilityChart
+              yesPercent={yesPercent}
+              totalPool={question.totalBetPool}
+              yesPool={question.yesBetPool}
+              noPool={question.noBetPool}
+              questionId={question.id}
+              disableApi={isReadOnlyFallback}
+            />
+            {!isReadOnlyFallback && (
+              <OrderBook questionId={question.id} yesPercent={yesPercent} totalPool={question.totalBetPool} />
+            )}
+            {!isReadOnlyFallback && (
+              <ActivityFeed questionId={question.id} refreshKey={refreshKey} />
+            )}
+            {!isReadOnlyFallback && user && <MyBetsPanel questionId={question.id} />}
+          </div>
+          <div className="lg:col-span-4">
+            {user && !isReadOnlyFallback && (
+              <TradingPanel
+                question={question}
+                user={user}
+                onTradeComplete={handleTradeComplete}
+                votedChoice={getChoice(question.id)}
+                onVoted={(choice) => markVoted(question.id, choice)}
+              />
+            )}
+            {user && isReadOnlyFallback && (
+              <div className={`p-6 rounded-[2.5rem] border ${
+                isDark ? 'bg-slate-900 border-slate-800 text-slate-400' : 'bg-white border-slate-100 text-slate-600 shadow-xl'
+              }`}>
+                서버 마켓 데이터가 없어 거래 패널이 비활성화되었습니다.
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

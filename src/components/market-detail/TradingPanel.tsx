@@ -312,22 +312,20 @@ export default function TradingPanel({ question, user, onTradeComplete, votedCho
     const isRevealPhase = votingPhase === 'VOTING_REVEAL_OPEN';
 
     return (
-      <div className={`p-6 rounded-[2.5rem] border sticky top-24 ${isDark ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-100 shadow-xl'}`}>
-        <div className="flex items-center justify-between mb-4">
-          <p className="text-xs font-bold text-slate-400 uppercase">무료 투표</p>
-          {isCommitPhase && (
-            <div className="flex items-center gap-1 text-xs text-emerald-500">
-              <Shield size={12} />
-              <span className="font-bold">Commit</span>
-            </div>
-          )}
-          {isRevealPhase && (
-            <div className="flex items-center gap-1 text-xs text-amber-500">
-              <Shield size={12} />
-              <span className="font-bold">Reveal</span>
-            </div>
-          )}
-        </div>
+      <div className={`p-6 rounded-2xl border ${isDark ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-100 shadow-sm'}`}>
+        {/* 단계 표시 배지 */}
+        {isCommitPhase && (
+          <div className="mb-6 inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-blue-100 text-blue-700">
+            <Shield size={14} />
+            <span className="text-sm font-bold">투표 접수 중</span>
+          </div>
+        )}
+        {isRevealPhase && (
+          <div className="mb-6 inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-green-100 text-green-700">
+            <Shield size={14} />
+            <span className="text-sm font-bold">투표 공개 중</span>
+          </div>
+        )}
 
         {isGuest ? (
           <div className={`text-center py-8 rounded-xl ${isDark ? 'bg-slate-800/50' : 'bg-slate-50'}`}>
@@ -354,47 +352,51 @@ export default function TradingPanel({ question, user, onTradeComplete, votedCho
                   {committedChoice} 투표 커밋 완료
                 </span>
               </div>
-              <div className={`mt-4 p-3 rounded-xl text-xs ${isDark ? 'bg-slate-800 text-slate-400' : 'bg-slate-50 text-slate-500'}`}>
-                <Shield className="inline mr-1" size={12} />
-                투표가 암호화되어 제출되었습니다. Reveal 단계에서 공개됩니다.
+              <div className={`mt-4 p-3 rounded-xl text-sm flex items-start gap-2 ${isDark ? 'bg-slate-800 text-slate-400' : 'bg-slate-50 text-slate-600'}`}>
+                <Shield className="mt-0.5 flex-shrink-0" size={14} />
+                <span>선택은 암호화되어 저장되며, 베팅 종료 후 공개됩니다.</span>
               </div>
             </div>
           ) : (
-            <div className="space-y-3">
-              <button
-                onClick={() => handleVoteCommit('YES')}
-                disabled={loading}
-                className={`w-full py-5 rounded-2xl font-black text-lg transition-all shadow-lg ${isDark ? 'bg-emerald-500/20 text-emerald-400 hover:bg-emerald-500/30 border-2 border-emerald-500/50' : 'bg-emerald-50 text-emerald-600 hover:bg-emerald-100 border-2 border-emerald-200'}`}
-              >
-                {loading ? '처리 중...' : 'Commit Yes'}
-              </button>
-              <button
-                onClick={() => handleVoteCommit('NO')}
-                disabled={loading}
-                className={`w-full py-5 rounded-2xl font-black text-lg transition-all shadow-lg ${isDark ? 'bg-rose-500/20 text-rose-400 hover:bg-rose-500/30 border-2 border-rose-500/50' : 'bg-rose-50 text-rose-600 hover:bg-rose-100 border-2 border-rose-200'}`}
-              >
-                {loading ? '처리 중...' : 'Commit No'}
-              </button>
-              <div className={`mt-2 p-3 rounded-xl text-xs ${isDark ? 'bg-slate-800 text-slate-400' : 'bg-slate-50 text-slate-500'}`}>
-                <Shield className="inline mr-1" size={12} />
-                투표가 암호화되어 제출됩니다. 서버도 결과를 알 수 없습니다.
+            <div>
+              <div className="grid grid-cols-2 gap-4 mb-4">
+                <button
+                  onClick={() => handleVoteCommit('YES')}
+                  disabled={loading}
+                  className="bg-green-500 hover:bg-green-600 text-white py-4 rounded-xl text-lg font-bold transition-all disabled:opacity-50"
+                >
+                  {loading ? '처리 중...' : 'YES 투표'}
+                </button>
+                <button
+                  onClick={() => handleVoteCommit('NO')}
+                  disabled={loading}
+                  className="bg-red-500 hover:bg-red-600 text-white py-4 rounded-xl text-lg font-bold transition-all disabled:opacity-50"
+                >
+                  {loading ? '처리 중...' : 'NO 투표'}
+                </button>
+              </div>
+              <div className={`p-3 rounded-xl text-sm flex items-start gap-2 ${isDark ? 'bg-slate-800 text-slate-400' : 'bg-slate-50 text-slate-600'}`}>
+                <Shield className="mt-0.5 flex-shrink-0" size={14} />
+                <span>선택은 암호화되어 저장되며, 베팅 종료 후 공개됩니다.</span>
               </div>
             </div>
           )
         ) : isRevealPhase ? (
           // Reveal Phase: Show reveal button
           hasCommitted && committedChoice ? (
-            <div className="space-y-3">
+            <div>
+              <div className={`mb-4 p-4 rounded-xl ${isDark ? 'bg-slate-800' : 'bg-slate-50'}`}>
+                <p className={`text-sm ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
+                  투표한 선택: <span className={`font-bold ${committedChoice === 'YES' ? 'text-green-600' : 'text-red-600'}`}>{committedChoice}</span>
+                </p>
+              </div>
               <button
                 onClick={handleVoteReveal}
                 disabled={loading}
-                className="w-full py-5 rounded-2xl font-black text-lg transition-all shadow-lg bg-amber-500 text-white hover:bg-amber-600 border-2 border-amber-600"
+                className="w-full py-4 rounded-xl font-bold text-lg transition-all bg-green-500 hover:bg-green-600 text-white disabled:opacity-50"
               >
-                {loading ? '처리 중...' : `Reveal ${committedChoice} Vote`}
+                {loading ? '처리 중...' : '투표 공개하기'}
               </button>
-              <div className={`p-3 rounded-xl text-xs ${isDark ? 'bg-amber-950/20 border border-amber-900/30 text-amber-400' : 'bg-amber-50 border border-amber-200 text-amber-700'}`}>
-                투표 공개 시간입니다. 커밋한 투표를 공개하세요.
-              </div>
             </div>
           ) : (
             <div className={`text-center py-8 rounded-xl ${isDark ? 'bg-slate-800/50 border border-slate-700' : 'bg-slate-50 border border-slate-200'}`}>

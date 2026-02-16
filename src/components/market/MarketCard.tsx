@@ -90,7 +90,7 @@ export default function MarketCard({ question, votedChoice }: MarketCardProps) {
 
     switch (question.status) {
       case 'VOTING':
-        return { text: '투표 진행 중', color: 'bg-blue-500', description: '투표중' };
+        return { text: '투표 진행 중', color: 'bg-blue-600', description: '투표중' };
       case 'BREAK':
         return { text: '베팅 준비 중', color: 'bg-amber-500', description: '휴식 시간' };
       case 'BETTING':
@@ -151,8 +151,8 @@ export default function MarketCard({ question, votedChoice }: MarketCardProps) {
         )}
         {question.status === 'VOTING' && (
           <div className="mb-4">
-            <div className={`text-center py-4 rounded-xl ${isDark ? 'bg-blue-500/10 border border-blue-500/30' : 'bg-blue-50 border border-blue-200'}`}>
-              <span className="text-blue-500 font-bold text-sm">투표 진행 중</span>
+            <div className={`text-center py-4 rounded-xl ${isDark ? 'bg-blue-600/20 border border-blue-500/40' : 'bg-blue-100 border border-blue-300'}`}>
+              <span className="text-blue-600 font-bold text-sm">참여하기 →</span>
             </div>
           </div>
         )}
