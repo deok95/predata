@@ -55,7 +55,10 @@ function QuestionDetailContent() {
 
   useEffect(() => {
     if (!question || isMockData) return;
-    const interval = setInterval(() => fetchQuestion(), 5000);
+    const interval = setInterval(() => {
+      if (document.visibilityState !== 'visible') return;
+      fetchQuestion();
+    }, 15000); // 비활성 탭 스킵, 15초 폴링
     return () => clearInterval(interval);
   }, [question, isMockData, fetchQuestion]);
 

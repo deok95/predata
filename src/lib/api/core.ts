@@ -59,7 +59,7 @@ export async function apiRequest<T>(endpoint: string, options?: RequestInit): Pr
   const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
 
   try {
-    const response = await fetch(`${API_URL}${endpoint}`, {
+    let response = await fetch(`${API_URL}${endpoint}`, {
       headers: {
         'Content-Type': 'application/json',
         ...(token && { Authorization: `Bearer ${token}` }),
@@ -68,6 +68,22 @@ export async function apiRequest<T>(endpoint: string, options?: RequestInit): Pr
       ...options,
       signal: controller.signal,
     });
+
+    // 429 Rate Limit 대응: Retry-After 헤더 확인 후 1회 재시도
+    if (response.status === 429) {
+      const retryAfter = parseInt(response.headers.get('Retry-After') || '5', 10);
+      await new Promise(r => setTimeout(r, retryAfter * 1000));
+
+      response = await fetch(`${API_URL}${endpoint}`, {
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token && { Authorization: `Bearer ${token}` }),
+          ...options?.headers,
+        },
+        ...options,
+        signal: controller.signal,
+      });
+    }
 
     let data;
     try {

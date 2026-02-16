@@ -25,6 +25,7 @@ export default function AppHeader() {
   const [faucetLoading, setFaucetLoading] = useState(false);
   const searchRef = useRef<HTMLDivElement>(null);
   const notiRef = useRef<HTMLDivElement>(null);
+  const lastFaucetFetchRef = useRef(0);
 
   // 질문 목록 로드
   useEffect(() => {
@@ -48,13 +49,18 @@ export default function AppHeader() {
     setSearchResults(results.slice(0, 5));
   }, [searchQuery, allQuestions]);
 
-  // Faucet 상태 조회
+  // Faucet 상태 조회 (1분 이내 재호출 방지)
   useEffect(() => {
     if (!user || isGuest || !user.id) return;
+
+    // 1분 이내 재호출 skip
+    if (Date.now() - lastFaucetFetchRef.current < 60000) return;
+
+    lastFaucetFetchRef.current = Date.now();
     faucetApi.getStatus(user.id).then(status => {
       setFaucetClaimed(status.claimed);
     }).catch(() => {});
-  }, [user, isGuest]);
+  }, [user?.id, isGuest]); // user 전체가 아닌 user.id만 의존
 
   const handleFaucetClaim = async () => {
     if (!user || !user.id || faucetClaimed || faucetLoading) return;

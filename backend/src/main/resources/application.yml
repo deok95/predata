@@ -82,12 +82,17 @@ sports:
     key: ${SPORTS_API_KEY:}
     enabled: ${SPORTS_API_ENABLED:false}
     rate-limit-delay-ms: ${SPORTS_RATE_LIMIT_MS:500}
-    fetch-window-days: ${SPORTS_FETCH_WINDOW:14}
+    fetch-window-days: ${SPORTS_FETCH_WINDOW:7}
   football-data:
     api-key: ${FOOTBALL_DATA_API_KEY:}
     base-url: ${FOOTBALL_DATA_BASE_URL:https://api.football-data.org/v4}
+    fetch-window-days: ${FOOTBALL_DATA_FETCH_WINDOW:7}
   scheduler:
-    sync-cron: "0 0 6 * * *"
+    sync-cron: "0 0 6 * * *" # 수동 동기화/레거시 호환용
+    auto-sync-check-cron: "0 0 * * * *" # 1시간마다 정책 체크
+    sync-hours: "0,2,4,6,8,10,12,14,16,18" # 경기 있는 날 하루 10회
+    no-match-sync-hour: 12 # 경기 없는 날 12시에 1회
+    zone: "UTC"
     live-poll-interval-ms: 60000
     phase-check-interval-ms: 300000
   legacy-scheduler:
@@ -96,6 +101,12 @@ sports:
 anthropic:
   api:
     key: ${ANTHROPIC_API_KEY:}
+
+openai:
+  api:
+    key: ${OPENAI_API_KEY:}
+    model: ${OPENAI_MODEL:gpt-4o-mini}
+    base-url: ${OPENAI_BASE_URL:https://api.openai.com/v1/chat/completions}
 
 # Polygon USDC 결제 시스템
 polygon:
@@ -113,7 +124,7 @@ logging:
 # 리스크 관리 설정
 app:
   rate-limit:
-    dev-mode: ${RATE_LIMIT_DEV_MODE:false}  # 운영 기본값 false, 로컬 개발 시 true로 오버라이드
+    dev-mode: ${RATE_LIMIT_DEV_MODE:true}  # 개발 기본값 true (로컬/데모 환경), prod 배포 시 환경변수로 false 설정
 
   risk:
     max-position-per-market: 1000  # 시장당 최대 포지션 크기
@@ -142,3 +153,9 @@ app:
   sybil:
     min-account-age-days: 3  # 보상 대상 최소 계정 생성 후 경과 일수
     min-vote-history: 3      # 보상 대상 최소 투표 이력 (다른 질문)
+
+  questiongen:
+    enabled: ${QUESTIONGEN_ENABLED:false}
+    daily-cron: ${QUESTIONGEN_DAILY_CRON:0 5 0 * * *}
+    legacy-interval-enabled: ${QUESTIONGEN_LEGACY_INTERVAL_ENABLED:false}
+    trends-url: ${QUESTIONGEN_TRENDS_URL:https://trends.google.com/trends/api/dailytrends}
