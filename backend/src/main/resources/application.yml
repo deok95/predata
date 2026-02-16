@@ -96,6 +96,9 @@ logging:
 
 # 리스크 관리 설정
 app:
+  rate-limit:
+    dev-mode: ${RATE_LIMIT_DEV_MODE:false}  # 운영 기본값 false, 로컬 개발 시 true로 오버라이드
+
   risk:
     max-position-per-market: 1000  # 시장당 최대 포지션 크기
     max-order-value: 500           # 단일 주문 최대 금액
@@ -107,6 +110,7 @@ app:
   # 투표 시스템 설정
   voting:
     daily-limit: 5  # 일일 투표 한도 (UTC 00:00 기준)
+    idempotency-cleanup-interval-ms: 3600000  # 만료 idempotency key 정리 주기(1시간)
 
   # 리워드 시스템 설정
   reward:

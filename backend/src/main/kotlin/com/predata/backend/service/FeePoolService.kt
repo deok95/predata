@@ -87,7 +87,7 @@ class FeePoolService(
 
     /**
      * 분배 가능한 리워드 풀 잔액 조회
-     * - 리워드 풀 총액 - 이미 분배된 금액
+     * - 리워드 풀 총액 - 이미 분배된 금액 - 리저브로 이관된 절사 잔여분
      */
     @Transactional(readOnly = true)
     fun getAvailableRewardPool(questionId: Long): BigDecimal {
@@ -100,7 +100,15 @@ class FeePoolService(
             FeePoolAction.REWARD_DISTRIBUTED
         ).sumOf { it.amount }
 
-        val available = feePool.rewardPoolShare.subtract(distributed)
+        // 리워드 풀에서 절사 후 리저브로 이관된 금액 계산
+        val reservedFromReward = feePoolLedgerRepository.findByFeePoolIdAndActionOrderByCreatedAtDesc(
+            feePool.id,
+            FeePoolAction.RESERVE_ALLOCATED
+        ).sumOf { it.amount }
+
+        val available = feePool.rewardPoolShare
+            .subtract(distributed)
+            .subtract(reservedFromReward)
         return if (available > BigDecimal.ZERO) available else BigDecimal.ZERO
     }
 

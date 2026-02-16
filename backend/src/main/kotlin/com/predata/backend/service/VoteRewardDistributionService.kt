@@ -7,8 +7,10 @@ import com.predata.backend.repository.MemberRepository
 import com.predata.backend.repository.RewardDistributionRepository
 import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service
-import org.springframework.transaction.annotation.Propagation
+import org.springframework.transaction.PlatformTransactionManager
+import org.springframework.transaction.TransactionDefinition
 import org.springframework.transaction.annotation.Transactional
+import org.springframework.transaction.support.TransactionTemplate
 import java.math.BigDecimal
 import java.time.LocalDateTime
 
@@ -26,12 +28,24 @@ class VoteRewardDistributionService(
     private val feePoolLedgerRepository: FeePoolLedgerRepository,
     private val feePoolRepository: FeePoolRepository,
     private val feePoolService: FeePoolService,
-    private val auditService: AuditService
+    private val auditService: AuditService,
+    private val transactionManager: PlatformTransactionManager
 ) {
     private val logger = LoggerFactory.getLogger(VoteRewardDistributionService::class.java)
+    private val requiresNewTx by lazy {
+        TransactionTemplate(transactionManager).apply {
+            propagationBehavior = TransactionDefinition.PROPAGATION_REQUIRES_NEW
+        }
+    }
 
     companion object {
         private const val MAX_RETRY_ATTEMPTS = 3
+    }
+
+    private enum class DistributionExecutionResult {
+        NEWLY_DISTRIBUTED,
+        ALREADY_DISTRIBUTED,
+        FAILED
     }
 
     /**
@@ -47,6 +61,7 @@ class VoteRewardDistributionService(
 
         // 1. 보상 계산
         val summary = voteRewardService.calculateRewards(questionId)
+        val availableRewardPoolBeforeDistribution = summary.totalRewardPool
 
         // 감사 로그: 보상 계산
         auditService.log(
@@ -84,12 +99,19 @@ class VoteRewardDistributionService(
                     continue
                 }
 
-                val distributed = distributeSingleReward(questionId, reward.memberId, reward.rewardAmount)
-                if (distributed) {
-                    successCount++
-                    actualDistributed = actualDistributed.add(reward.rewardAmount)
-                } else {
-                    failCount++
+                when (distributeSingleRewardInNewTransaction(questionId, reward.memberId, reward.rewardAmount)) {
+                    DistributionExecutionResult.NEWLY_DISTRIBUTED -> {
+                        successCount++
+                        actualDistributed = actualDistributed.add(reward.rewardAmount)
+                    }
+                    DistributionExecutionResult.ALREADY_DISTRIBUTED -> {
+                        // 이미 지급된 건은 중복 차감/중복 원장 기록 없이 성공으로만 처리
+                        successCount++
+                    }
+                    DistributionExecutionResult.FAILED -> {
+                        failCount++
+                        errors.add("memberId=${reward.memberId}: 보상 분배 실패")
+                    }
                 }
             } catch (e: Exception) {
                 logger.error("Failed to distribute reward to memberId=${reward.memberId}: ${e.message}", e)
@@ -99,24 +121,12 @@ class VoteRewardDistributionService(
         }
 
         // 3. FeePoolLedger에 REWARD_DISTRIBUTED 기록 (실제 성공한 분배액만)
-        if (actualDistributed > BigDecimal.ZERO) {
-            try {
-                // FeePool 조회하여 실제 feePoolId 사용
-                val feePool = feePoolRepository.findByQuestionId(questionId).orElse(null)
-                if (feePool != null) {
-                    val ledger = FeePoolLedger(
-                        feePoolId = feePool.id!!,
-                        action = FeePoolAction.REWARD_DISTRIBUTED,
-                        amount = actualDistributed,
-                        balance = summary.totalRewardPool.subtract(actualDistributed),
-                        description = "리워드 분배 완료 - 성공: $successCount, 실패: $failCount"
-                    )
-                    feePoolLedgerRepository.save(ledger)
-                }
-            } catch (e: Exception) {
-                logger.error("Failed to record fee pool ledger for questionId=$questionId: ${e.message}", e)
-            }
-        }
+        recordRewardDistributedLedger(
+            questionId = questionId,
+            distributedAmount = actualDistributed,
+            rewardPoolBalanceBefore = availableRewardPoolBeforeDistribution,
+            description = "리워드 분배 완료 - 성공: $successCount, 실패: $failCount"
+        )
 
         // 4. 절사 잔여분 리저브로 할당
         if (summary.truncatedAmount > BigDecimal.ZERO) {
@@ -142,10 +152,22 @@ class VoteRewardDistributionService(
 
     /**
      * 단일 보상 분배 (idempotency 보장)
-     * - REQUIRES_NEW로 별도 트랜잭션 실행
      */
-    @Transactional(propagation = Propagation.REQUIRES_NEW)
-    fun distributeSingleReward(questionId: Long, memberId: Long, amount: BigDecimal): Boolean {
+    private fun distributeSingleRewardInNewTransaction(
+        questionId: Long,
+        memberId: Long,
+        amount: BigDecimal
+    ): DistributionExecutionResult {
+        return requiresNewTx.execute<DistributionExecutionResult> {
+            distributeSingleReward(questionId, memberId, amount)
+        } ?: DistributionExecutionResult.FAILED
+    }
+
+    private fun distributeSingleReward(
+        questionId: Long,
+        memberId: Long,
+        amount: BigDecimal
+    ): DistributionExecutionResult {
         val idempotencyKey = generateIdempotencyKey(questionId, memberId)
 
         // 중복 지급 체크
@@ -153,7 +175,7 @@ class VoteRewardDistributionService(
         if (existing != null) {
             if (existing.status == RewardDistributionStatus.SUCCESS) {
                 logger.debug("Reward already distributed: questionId=$questionId, memberId=$memberId")
-                return true
+                return DistributionExecutionResult.ALREADY_DISTRIBUTED
             }
             // 실패했던 건은 재시도
             existing.attempts++
@@ -195,7 +217,7 @@ class VoteRewardDistributionService(
                 detail = "보상 분배 성공: questionId=$questionId, amount=$amount"
             )
 
-            return true
+            return DistributionExecutionResult.NEWLY_DISTRIBUTED
 
         } catch (e: Exception) {
             logger.error("Failed to distribute reward: questionId=$questionId, memberId=$memberId, error=${e.message}", e)
@@ -214,7 +236,7 @@ class VoteRewardDistributionService(
                 detail = "보상 분배 실패: questionId=$questionId, error=${e.message}"
             )
 
-            return false
+            return DistributionExecutionResult.FAILED
         }
     }
 
@@ -225,6 +247,7 @@ class VoteRewardDistributionService(
     @Transactional
     fun retryFailedDistributions(questionId: Long): Map<String, Any> {
         logger.info("Retrying failed distributions for questionId=$questionId")
+        val availableRewardPoolBeforeRetry = feePoolService.getAvailableRewardPool(questionId)
 
         val failedDistributions = rewardDistributionRepository.findByQuestionIdAndStatus(
             questionId,
@@ -243,24 +266,39 @@ class VoteRewardDistributionService(
 
         var successCount = 0
         var failCount = 0
+        var actualDistributed = BigDecimal.ZERO
 
         for (distribution in failedDistributions) {
             try {
-                val success = distributeSingleReward(
+                val success = distributeSingleRewardInNewTransaction(
                     distribution.questionId,
                     distribution.memberId,
                     distribution.amount
                 )
-                if (success) {
-                    successCount++
-                } else {
-                    failCount++
+                when (success) {
+                    DistributionExecutionResult.NEWLY_DISTRIBUTED -> {
+                        successCount++
+                        actualDistributed = actualDistributed.add(distribution.amount)
+                    }
+                    DistributionExecutionResult.ALREADY_DISTRIBUTED -> {
+                        successCount++
+                    }
+                    DistributionExecutionResult.FAILED -> {
+                        failCount++
+                    }
                 }
             } catch (e: Exception) {
                 logger.error("Retry failed for distributionId=${distribution.id}: ${e.message}", e)
                 failCount++
             }
         }
+
+        recordRewardDistributedLedger(
+            questionId = questionId,
+            distributedAmount = actualDistributed,
+            rewardPoolBalanceBefore = availableRewardPoolBeforeRetry,
+            description = "리워드 재시도 분배 완료 - 성공: $successCount, 실패: $failCount"
+        )
 
         logger.info("Retry completed: questionId=$questionId, succeeded=$successCount, failed=$failCount")
 
@@ -279,5 +317,33 @@ class VoteRewardDistributionService(
      */
     private fun generateIdempotencyKey(questionId: Long, memberId: Long): String {
         return "${questionId}_${memberId}_reward"
+    }
+
+    private fun recordRewardDistributedLedger(
+        questionId: Long,
+        distributedAmount: BigDecimal,
+        rewardPoolBalanceBefore: BigDecimal,
+        description: String
+    ) {
+        if (distributedAmount <= BigDecimal.ZERO) {
+            return
+        }
+
+        try {
+            val feePool = feePoolRepository.findByQuestionId(questionId).orElse(null) ?: return
+            val balanceAfter = rewardPoolBalanceBefore.subtract(distributedAmount)
+                .let { if (it > BigDecimal.ZERO) it else BigDecimal.ZERO }
+
+            val ledger = FeePoolLedger(
+                feePoolId = feePool.id!!,
+                action = FeePoolAction.REWARD_DISTRIBUTED,
+                amount = distributedAmount,
+                balance = balanceAfter,
+                description = description
+            )
+            feePoolLedgerRepository.save(ledger)
+        } catch (e: Exception) {
+            logger.error("Failed to record fee pool ledger for questionId=$questionId: ${e.message}", e)
+        }
     }
 }

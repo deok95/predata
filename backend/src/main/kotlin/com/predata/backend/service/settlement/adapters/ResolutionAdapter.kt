@@ -17,4 +17,10 @@ interface ResolutionAdapter {
      * 이 어댑터가 지원하는 시장 타입인지 확인
      */
     fun supports(marketType: MarketType): Boolean
+
+    /**
+     * 특정 source 스키마를 지원하는지 확인
+     * 기본값은 false이며, source 기반 분기 어댑터만 override 한다.
+     */
+    fun supportsSource(resolutionSource: String?): Boolean = false
 }

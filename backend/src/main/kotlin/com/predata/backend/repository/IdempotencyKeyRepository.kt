@@ -23,5 +23,5 @@ interface IdempotencyKeyRepository : JpaRepository<IdempotencyKey, Long> {
      */
     @Modifying
     @Query("DELETE FROM IdempotencyKey i WHERE i.expiresAt < :now")
-    fun deleteExpired(now: LocalDateTime)
+    fun deleteExpired(now: LocalDateTime): Int
 }

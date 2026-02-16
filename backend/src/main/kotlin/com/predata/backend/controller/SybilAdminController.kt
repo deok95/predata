@@ -1,7 +1,6 @@
 package com.predata.backend.controller
 
 import com.predata.backend.service.SybilDetectionService
-import com.predata.backend.service.SuspiciousAccount
 import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.*
 

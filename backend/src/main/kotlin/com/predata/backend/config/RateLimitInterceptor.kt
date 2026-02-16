@@ -5,6 +5,8 @@ import com.predata.backend.exception.ErrorResponse
 import jakarta.servlet.http.HttpServletRequest
 import jakarta.servlet.http.HttpServletResponse
 import org.slf4j.LoggerFactory
+import org.springframework.beans.factory.annotation.Value
+import org.springframework.core.env.Environment
 import org.springframework.http.HttpStatus
 import org.springframework.http.MediaType
 import org.springframework.stereotype.Component
@@ -20,7 +22,9 @@ import java.util.concurrent.atomic.AtomicLong
  */
 @Component
 class RateLimitInterceptor(
-    private val objectMapper: ObjectMapper
+    private val objectMapper: ObjectMapper,
+    private val environment: Environment,
+    @Value("\${app.rate-limit.dev-mode:false}") private val rateLimitDevMode: Boolean
 ) : HandlerInterceptor {
 
     private val logger = LoggerFactory.getLogger(RateLimitInterceptor::class.java)
@@ -28,10 +32,12 @@ class RateLimitInterceptor(
     // IP별 요청 카운터: key = "IP:bucket", value = (count, windowStart)
     private val requestCounts = ConcurrentHashMap<String, RateLimitBucket>()
 
-    // 개발 모드 감지 (환경변수 또는 프로파일)
-    private val isDevelopmentMode = System.getProperty("spring.profiles.active")?.contains("dev") != false ||
-                                    System.getenv("APP_ENV")?.lowercase() == "development" ||
-                                    true  // 기본적으로 개발 모드로 설정
+    // 개발 모드 감지: 명시 설정 > active profile > 환경변수
+    private val isDevelopmentMode by lazy {
+        rateLimitDevMode ||
+            environment.activeProfiles.any { it.equals("dev", ignoreCase = true) } ||
+            System.getenv("APP_ENV")?.equals("development", ignoreCase = true) == true
+    }
 
     init {
         val mode = if (isDevelopmentMode) "개발 모드 (관대한 제한)" else "프로덕션 모드 (엄격한 제한)"

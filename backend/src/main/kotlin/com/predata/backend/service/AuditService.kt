@@ -9,6 +9,7 @@ import org.springframework.scheduling.annotation.Async
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Propagation
 import org.springframework.transaction.annotation.Transactional
+import org.slf4j.LoggerFactory
 import java.time.LocalDateTime
 
 /**
@@ -20,6 +21,7 @@ import java.time.LocalDateTime
 class AuditService(
     private val auditLogRepository: AuditLogRepository
 ) {
+    private val logger = LoggerFactory.getLogger(AuditService::class.java)
 
     /**
      * 감사 로그 기록
@@ -49,7 +51,7 @@ class AuditService(
         } catch (e: Exception) {
             // 감사 로그 실패가 메인 로직에 영향을 주지 않도록
             // 에러는 로깅만 하고 던지지 않음
-            println("Failed to save audit log: ${e.message}")
+            logger.warn("Failed to save audit log: {}", e.message)
         }
     }
 

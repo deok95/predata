@@ -399,7 +399,7 @@ class OrderMatchingService(
             priceHistoryRepository.save(priceHistory)
         } catch (e: Exception) {
             // 가격 이력 기록 실패는 치명적이지 않으므로 로그만 남김
-            println("[PriceHistory] 가격 이력 기록 실패: ${e.message}")
+            logger.warn("[PriceHistory] 가격 이력 기록 실패: {}", e.message)
         }
     }
 

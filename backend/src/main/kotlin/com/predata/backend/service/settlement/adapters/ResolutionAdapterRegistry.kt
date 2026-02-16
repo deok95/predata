@@ -27,11 +27,9 @@ class ResolutionAdapterRegistry(
     private fun getAdapter(marketType: MarketType, resolutionSource: String?): ResolutionAdapter? {
         // resolutionSource 기반 특정 어댑터 선택 (예: stock://)
         if (resolutionSource != null) {
-            adapters.forEach { adapter ->
-                if (adapter is StockResolutionAdapter && adapter.supportsSource(resolutionSource)) {
-                    return adapter
-                }
-            }
+            adapters.firstOrNull {
+                it.supports(marketType) && it.supportsSource(resolutionSource)
+            }?.let { return it }
         }
 
         // marketType 기반 일반 어댑터 선택

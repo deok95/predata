@@ -16,7 +16,7 @@ class StockResolutionAdapter : ResolutionAdapter {
         return marketType == MarketType.VERIFIABLE
     }
 
-    fun supportsSource(resolutionSource: String?): Boolean {
+    override fun supportsSource(resolutionSource: String?): Boolean {
         return resolutionSource?.startsWith("stock://") == true
     }
 
