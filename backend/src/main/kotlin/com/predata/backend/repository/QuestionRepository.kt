@@ -52,6 +52,9 @@ interface QuestionRepository : JpaRepository<Question, Long> {
     @Query("SELECT q FROM Question q WHERE q.match IS NOT NULL ORDER BY q.createdAt DESC")
     fun findAllMatchQuestions(): List<Question>
 
+    // 최근 질문 조회 (중복 검사 최적화용)
+    fun findByCreatedAtAfter(createdAt: LocalDateTime): List<Question>
+
     // Admin 질문 목록 조회 (페이지네이션 + 투표/베팅 수 집계)
     @Query("""
         SELECT q.id as id,

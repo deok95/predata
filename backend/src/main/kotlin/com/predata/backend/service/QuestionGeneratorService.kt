@@ -41,6 +41,14 @@ class QuestionGeneratorService(
         const val SETTING_INTERVAL = "question_generator_interval"
         const val SETTING_CATEGORIES = "question_generator_categories"
         const val SETTING_LAST_GENERATED = "question_generator_last_generated"
+        const val SETTING_AUTO_ENABLED = "question_generator_auto_enabled"
+        const val SETTING_REGION = "question_generator_region"
+        const val SETTING_DAILY_COUNT = "question_generator_daily_count"
+        const val SETTING_OPINION_COUNT = "question_generator_opinion_count"
+        const val SETTING_VOTING_HOURS = "question_generator_voting_hours"
+        const val SETTING_BETTING_HOURS = "question_generator_betting_hours"
+        const val SETTING_BREAK_MINUTES = "question_generator_break_minutes"
+        const val SETTING_REVEAL_MINUTES = "question_generator_reveal_minutes"
 
         const val INITIAL_LIQUIDITY = 500L
         const val DEFAULT_VOTING_DURATION = 3600L
@@ -87,11 +95,25 @@ class QuestionGeneratorService(
             .map { it.trim() }
             .filter { it.isNotEmpty() }
         val lastGenerated = getSetting(SETTING_LAST_GENERATED, null)
+        val region = getSetting(SETTING_REGION, "US")
+        val dailyCount = getSetting(SETTING_DAILY_COUNT, "3").toIntOrNull() ?: 3
+        val opinionCount = getSetting(SETTING_OPINION_COUNT, "1").toIntOrNull() ?: 1
+        val votingHours = getSetting(SETTING_VOTING_HOURS, "24").toIntOrNull() ?: 24
+        val bettingHours = getSetting(SETTING_BETTING_HOURS, "24").toIntOrNull() ?: 24
+        val breakMinutes = getSetting(SETTING_BREAK_MINUTES, "30").toIntOrNull() ?: 30
+        val revealMinutes = getSetting(SETTING_REVEAL_MINUTES, "30").toIntOrNull() ?: 30
 
         return QuestionGeneratorSettingsResponse(
             enabled = enabled,
             intervalSeconds = interval,
             categories = categories,
+            region = region,
+            dailyCount = dailyCount,
+            opinionCount = opinionCount,
+            votingHours = votingHours,
+            bettingHours = bettingHours,
+            breakMinutes = breakMinutes,
+            revealMinutes = revealMinutes,
             lastGeneratedAt = lastGenerated,
             isDemoMode = isDemoMode()
         )
@@ -99,8 +121,24 @@ class QuestionGeneratorService(
 
     @Transactional
     fun updateSettings(request: UpdateQuestionGeneratorSettingsRequest): QuestionGeneratorSettingsResponse {
+        // 설정값 교차 검증: opinionCount <= dailyCount
+        val currentDailyCount = getSetting(SETTING_DAILY_COUNT, "3").toIntOrNull() ?: 3
+        val currentOpinionCount = getSetting(SETTING_OPINION_COUNT, "1").toIntOrNull() ?: 1
+
+        val newDailyCount = request.dailyCount ?: currentDailyCount
+        val newOpinionCount = request.opinionCount ?: currentOpinionCount
+
+        if (newDailyCount < 1) {
+            throw IllegalArgumentException("dailyCount는 1 이상이어야 합니다")
+        }
+
+        if (newOpinionCount > newDailyCount) {
+            throw IllegalArgumentException("opinionCount는 dailyCount 이하여야 합니다 (opinionCount: $newOpinionCount, dailyCount: $newDailyCount)")
+        }
+
         request.enabled?.let {
             saveSetting(SETTING_ENABLED, it.toString())
+            saveSetting(SETTING_AUTO_ENABLED, it.toString()) // 신규 배치 생성기 토글과 동기화
         }
         request.intervalSeconds?.let {
             saveSetting(SETTING_INTERVAL, it.toString())
@@ -111,6 +149,27 @@ class QuestionGeneratorService(
                 throw IllegalArgumentException("유효한 카테고리가 없습니다. 허용: $VALID_CATEGORIES")
             }
             saveSetting(SETTING_CATEGORIES, validCategories.joinToString(",") { it.uppercase() })
+        }
+        request.region?.let {
+            saveSetting(SETTING_REGION, it.uppercase())
+        }
+        request.dailyCount?.let {
+            saveSetting(SETTING_DAILY_COUNT, it.toString())
+        }
+        request.opinionCount?.let {
+            saveSetting(SETTING_OPINION_COUNT, it.toString())
+        }
+        request.votingHours?.let {
+            saveSetting(SETTING_VOTING_HOURS, it.toString())
+        }
+        request.bettingHours?.let {
+            saveSetting(SETTING_BETTING_HOURS, it.toString())
+        }
+        request.breakMinutes?.let {
+            saveSetting(SETTING_BREAK_MINUTES, it.toString())
+        }
+        request.revealMinutes?.let {
+            saveSetting(SETTING_REVEAL_MINUTES, it.toString())
         }
 
         return getSettings()
@@ -302,6 +361,9 @@ class QuestionGeneratorService(
             categoryWeight = BigDecimal.ONE,
             status = QuestionStatus.VOTING,
             type = QuestionType.OPINION,
+            marketType = com.predata.backend.domain.MarketType.OPINION,
+            resolutionRule = "투표 Reveal 결과에서 YES 득표가 NO 득표보다 많으면 YES",
+            voteResultSettlement = true,
             votingEndAt = votingEndAt,
             bettingStartAt = bettingStartAt,
             bettingEndAt = bettingEndAt,
