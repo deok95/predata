@@ -11,6 +11,7 @@ interface ProbabilityChartProps {
   yesPool: number;
   noPool: number;
   questionId: number;
+  disableApi?: boolean;
 }
 
 interface ChartDataPoint {
@@ -24,7 +25,8 @@ export default function ProbabilityChart({
   totalPool,
   yesPool,
   noPool,
-  questionId
+  questionId,
+  disableApi = false
 }: ProbabilityChartProps) {
   const { isDark } = useTheme();
   const [chartData, setChartData] = useState<ChartDataPoint[]>([]);
@@ -33,6 +35,25 @@ export default function ProbabilityChart({
   useEffect(() => {
     const fetchPriceHistory = async () => {
       setLoading(true);
+
+      if (disableApi) {
+        const mockData: ChartDataPoint[] = Array.from({ length: 24 }, (_, i) => {
+          const now = new Date();
+          const timeAgo = new Date(now.getTime() - (23 - i) * 3600000);
+          const hours = timeAgo.getHours().toString().padStart(2, '0');
+          const mins = timeAgo.getMinutes().toString().padStart(2, '0');
+
+          return {
+            time: `${hours}:${mins}`,
+            probability: yesPercent,
+            lastTrade: null,
+          };
+        });
+        setChartData(mockData);
+        setLoading(false);
+        return;
+      }
+
       try {
         const history = await getPriceHistory(questionId, '1m', 100);
 
@@ -80,7 +101,7 @@ export default function ProbabilityChart({
     };
 
     fetchPriceHistory();
-  }, [questionId, yesPercent]);
+  }, [questionId, yesPercent, disableApi]);
 
   const yesChange = yesPercent >= 50 ? `+${yesPercent - 50}` : `${yesPercent - 50}`;
   const isPositive = yesPercent >= 50;
@@ -141,7 +162,7 @@ export default function ProbabilityChart({
                 tick={{ fill: isDark ? '#64748b' : '#94a3b8', fontSize: 10 }}
               />
               <Tooltip
-                formatter={(value: any) => typeof value === 'number' ? `${value.toFixed(1)}%` : String(value ?? '')}
+                formatter={(value: unknown) => typeof value === 'number' ? `${value.toFixed(1)}%` : String(value ?? '')}
                 contentStyle={{
                   backgroundColor: isDark ? '#1e293b' : '#ffffff',
                   border: `1px solid ${isDark ? '#334155' : '#e2e8f0'}`,

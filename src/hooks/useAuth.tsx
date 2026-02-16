@@ -9,6 +9,7 @@ import type { Member } from '@/types/api';
 import { useDisconnect } from 'wagmi';
 
 const STORAGE_KEY = 'predataUser';
+const USER_REFRESH_INTERVAL_MS = 30000;
 
 export interface AuthState {
   user: Member | null;
@@ -116,7 +117,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     persistUser(guestMember);
   }, [persistUser]);
 
-  const loginById = useCallback(async (memberId: number) => {
+  const loginById = useCallback(async (_memberId: number) => {
+    void _memberId;
     setIsLoading(true);
     try {
       const response = await memberApi.getMe();
@@ -125,9 +127,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setAuthCookies(response.data.role === 'ADMIN');
         return response.data;
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const status = error instanceof ApiError ? error.status : undefined;
       // 401/404: 토큰 만료 또는 사용자 삭제됨 → 로그아웃
-      if (error?.status === 404 || error?.status === 401) {
+      if (status === 404 || status === 401) {
         logout();
       }
       // Backend unavailable or other errors
@@ -207,9 +210,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (response.success && response.data) {
         persistUser(response.data);
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const status = error instanceof ApiError ? error.status : undefined;
       // 401/404: 토큰 만료 또는 사용자 삭제됨 → 로그아웃
-      if (error?.status === 404 || error?.status === 401) {
+      if (status === 404 || status === 401) {
         logout();
       }
       // Backend unavailable or other errors
@@ -221,8 +225,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (!user || checkIsGuest(user)) return;
 
     const interval = setInterval(() => {
+      if (typeof document !== 'undefined' && document.visibilityState !== 'visible') {
+        return;
+      }
       refreshUser();
-    }, 10000); // 10초마다 갱신
+    }, USER_REFRESH_INTERVAL_MS); // 30초마다 갱신
 
     return () => clearInterval(interval);
   }, [user, refreshUser]);
