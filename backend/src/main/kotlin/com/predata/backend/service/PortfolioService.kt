@@ -74,6 +74,9 @@ class PortfolioService(
                     )
                     unrealizedValue += estimatedPayout
                 }
+                QuestionStatus.CANCELLED -> {
+                    // 취소된 질문은 포트폴리오 계산에서 제외
+                }
             }
         }
 

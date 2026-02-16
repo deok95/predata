@@ -401,6 +401,11 @@ class AutoQuestionGenerationService(
 
                 // txHash가 null이면 블록체인 트랜잭션 실패로 처리
                 if (txHash == null) {
+                    // 이미 DB에 저장된 질문이 있으면 CANCELLED로 마킹
+                    if (draft.publishedQuestionId != null) {
+                        savedQuestion.status = QuestionStatus.CANCELLED
+                        questionRepository.save(savedQuestion)
+                    }
                     throw RuntimeException("블록체인 트랜잭션 실패: txHash가 null입니다")
                 }
 

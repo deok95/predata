@@ -46,6 +46,9 @@ data class Question(
     @Column(name = "dispute_until")
     var disputeUntil: LocalDateTime? = null,
 
+    @Column(name = "vote_result_settlement", nullable = false, columnDefinition = "BOOLEAN NOT NULL DEFAULT FALSE")
+    var voteResultSettlement: Boolean = false,
+
     @Column(name = "voting_end_at", nullable = false)
     var votingEndAt: LocalDateTime,
 
@@ -100,10 +103,11 @@ data class Question(
 )
 
 enum class QuestionStatus {
-    VOTING,   // 투표 진행 중
-    BREAK,    // 투표 마감 후 대기 기간
-    BETTING,  // 베팅 진행 중
-    SETTLED   // 정산 완료
+    VOTING,     // 투표 진행 중
+    BREAK,      // 투표 마감 후 대기 기간
+    BETTING,    // 베팅 진행 중
+    SETTLED,    // 정산 완료
+    CANCELLED   // 블록체인 실패 등으로 취소됨
 }
 
 enum class QuestionType {
