@@ -79,7 +79,7 @@ describe('Field Mappers', () => {
       email: 'test@test.com',
       countryCode: 'KR',
       tier: 'GOLD',
-      pointBalance: 5000,
+      usdcBalance: 5000,
     };
 
     const mapped = {
@@ -87,11 +87,11 @@ describe('Field Mappers', () => {
       email: raw.email,
       countryCode: raw.countryCode,
       tier: raw.tier ?? 'BRONZE',
-      pointBalance: raw.pointBalance ?? 0,
+      usdcBalance: raw.usdcBalance ?? 0,
     };
 
     expect(mapped.id).toBe(42);
     expect(mapped.tier).toBe('GOLD');
-    expect(mapped.pointBalance).toBe(5000);
+    expect(mapped.usdcBalance).toBe(5000);
   });
 });

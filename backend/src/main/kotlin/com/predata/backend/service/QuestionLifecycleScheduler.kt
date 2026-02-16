@@ -148,56 +148,36 @@ class QuestionLifecycleScheduler(
                 val locked = questionRepository.findByIdWithLock(question.id!!)
                 if (locked != null && locked.status == QuestionStatus.BETTING && locked.bettingEndAt.isBefore(now)) {
 
-                    when (locked.type) {
-                        QuestionType.OPINION -> {
-                            // OPINION 타입: 투표 결과로 자동 정산
-                            try {
-                                val votes = activityRepository.findByQuestionIdAndActivityType(
-                                    locked.id!!,
-                                    ActivityType.VOTE
-                                )
-
-                                val yesVotes = votes.count { it.choice == Choice.YES }
-                                val noVotes = votes.count { it.choice == Choice.NO }
-
-                                val result = if (yesVotes > noVotes) FinalResult.YES else FinalResult.NO
-
-                                val settlementResult = settlementService.initiateSettlement(
-                                    questionId = locked.id!!,
-                                    finalResult = result,
-                                    sourceUrl = "AUTO_SETTLEMENT_OPINION"
-                                )
-                                logger.info(
-                                    "[Lifecycle] OPINION 질문 #{} '{}' → 투표 결과로 자동 정산 (YES: {}, NO: {}, 결과: {})",
-                                    locked.id,
-                                    locked.title,
-                                    yesVotes,
-                                    noVotes,
-                                    result
-                                )
-                                logger.info("[Lifecycle] 정산 메시지: {}", settlementResult.message)
-
-                                // 즉시 배당금 지급
-                                val finalResult = settlementService.finalizeSettlement(
-                                    questionId = locked.id!!,
-                                    skipDeadlineCheck = true
-                                )
-                                logger.info("[Lifecycle] 배당금 지급 완료: 승자 {}명, 총 배당금 {}P", finalResult.totalWinners, finalResult.totalPayout)
-                            } catch (settlementError: Exception) {
-                                logger.error(
-                                    "[Lifecycle] OPINION 질문 #{} 정산 시작 실패: {}",
-                                    locked.id,
-                                    settlementError.message
-                                )
-                                locked.status = QuestionStatus.SETTLED
-                                questionRepository.save(locked)
-                            }
+                    // Auto-first + Fail-safe 자동 정산 시도
+                    try {
+                        val settlementResult = settlementService.autoSettleWithVerification(locked.id!!)
+                        if (settlementResult != null) {
+                            // 자동 정산 성공
+                            logger.info(
+                                "[Lifecycle] 질문 #{} '{}' → Auto-first 자동 정산 완료 (결과: {})",
+                                locked.id,
+                                locked.title,
+                                settlementResult.finalResult
+                            )
+                            logger.info("[Lifecycle] 배당금 지급 완료: 승자 {}명, 총 배당금 {}P", settlementResult.totalWinners, settlementResult.totalPayout)
+                        } else {
+                            // 자동 정산 조건 미충족 → 수동 정산 대기
+                            logger.info(
+                                "[Lifecycle] 질문 #{} '{}' → 자동 정산 조건 미충족, 수동 정산 대기 (재시도 예정)",
+                                locked.id,
+                                locked.title
+                            )
+                            // TODO: 재시도 큐에 등록 (최대 3회, 간격 5분)
                         }
-
-                        QuestionType.VERIFIABLE -> {
-                            // VERIFIABLE 타입: Claude API 또는 투표 결과로 자동 정산
-                            settleVerifiableQuestion(locked)
-                        }
+                    } catch (settlementError: Exception) {
+                        logger.error(
+                            "[Lifecycle] 질문 #{} 자동 정산 실패: {}",
+                            locked.id,
+                            settlementError.message
+                        )
+                        // 실패 시 수동 정산 대기 (SETTLED 강제 마킹 제거)
+                        logger.warn("[Lifecycle] 질문 #{} 수동 정산 필요 - 관리자 확인 요망", locked.id)
+                        // TODO: 관리자 알림 로직 추가
                     }
                 }
             } catch (e: Exception) {
@@ -329,8 +309,6 @@ class QuestionLifecycleScheduler(
             logger.info("[Lifecycle] 배당금 지급 완료: 승자 {}명, 총 배당금 {}P", finalResult.totalWinners, finalResult.totalPayout)
         } catch (e: Exception) {
             logger.error("[Lifecycle] VERIFIABLE 질문 #{} 정산 실패: {}", question.id, e.message)
-            question.status = QuestionStatus.SETTLED
-            questionRepository.save(question)
         }
     }
 
@@ -354,8 +332,6 @@ class QuestionLifecycleScheduler(
             logger.info("[Lifecycle] 배당금 지급 완료: 승자 {}명, 총 배당금 {}P", finalResult.totalWinners, finalResult.totalPayout)
         } catch (e: Exception) {
             logger.error("[Lifecycle] 질문 #{} 자동 정산 실패: {}", question.id, e.message)
-            question.status = QuestionStatus.SETTLED
-            questionRepository.save(question)
         }
     }
 

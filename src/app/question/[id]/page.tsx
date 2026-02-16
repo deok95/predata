@@ -9,6 +9,7 @@ import ProbabilityChart from '@/components/market-detail/ProbabilityChart';
 import OrderBook from '@/components/market-detail/OrderBook';
 import TradingPanel from '@/components/market-detail/TradingPanel';
 import ActivityFeed from '@/components/market-detail/ActivityFeed';
+import MyBetsPanel from '@/components/market-detail/MyBetsPanel';
 import { useTheme } from '@/hooks/useTheme';
 import { questionApi } from '@/lib/api';
 import { mockQuestions } from '@/lib/mockData';
@@ -25,19 +26,23 @@ function QuestionDetailContent() {
   const [question, setQuestion] = useState<Question | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshKey, setRefreshKey] = useState(0);
+  const [isMockData, setIsMockData] = useState(false);
 
   const fetchQuestion = useCallback(async () => {
     try {
       const response = await questionApi.getById(questionId);
       if (response.success && response.data) {
         setQuestion(response.data);
+        setIsMockData(false);
       } else {
         const mock = mockQuestions.find(q => q.id === questionId) || null;
         setQuestion(mock);
+        setIsMockData(true);
       }
     } catch {
       const mock = mockQuestions.find(q => q.id === questionId) || null;
       setQuestion(mock);
+      setIsMockData(true);
     } finally {
       setLoading(false);
     }
@@ -49,10 +54,10 @@ function QuestionDetailContent() {
   }, [questionId, fetchQuestion]);
 
   useEffect(() => {
-    if (!question) return;
+    if (!question || isMockData) return;
     const interval = setInterval(() => fetchQuestion(), 5000);
     return () => clearInterval(interval);
-  }, [question, fetchQuestion]);
+  }, [question, isMockData, fetchQuestion]);
 
   const handleTradeComplete = () => {
     fetchQuestion();
@@ -87,6 +92,8 @@ function QuestionDetailContent() {
   const backLink = question.status === 'VOTING' ? '/vote' : '/marketplace';
   const backLabel = question.status === 'VOTING' ? '투표 목록' : '마켓 목록';
 
+  const isReadOnlyFallback = isMockData;
+
   return (
     <div className="max-w-7xl mx-auto animate-fade-in">
       <Link
@@ -118,7 +125,7 @@ function QuestionDetailContent() {
         </div>
         <h1 className={`text-2xl font-black mb-3 ${isDark ? 'text-white' : 'text-slate-900'}`}>{question.title}</h1>
         <div className="flex items-center gap-4 text-sm text-slate-400">
-          <span className="font-bold">Vol. {question.totalBetPool.toLocaleString()} P</span>
+          <span className="font-bold">Vol. {question.totalBetPool.toLocaleString()} USDC</span>
           {question.expiredAt && (
             <span className="flex items-center gap-1">
               <Clock size={14} />
@@ -127,6 +134,14 @@ function QuestionDetailContent() {
           )}
         </div>
       </div>
+
+      {isReadOnlyFallback && (
+        <div className={`mb-6 p-4 rounded-2xl border ${
+          isDark ? 'bg-amber-950/20 border-amber-900/30 text-amber-400' : 'bg-amber-50 border-amber-200 text-amber-700'
+        }`}>
+          현재 질문은 서버에서 찾을 수 없어 읽기 전용으로 표시됩니다. 실거래/주문/활동 내역 API 호출은 비활성화됩니다.
+        </div>
+      )}
 
       {question.status === 'SETTLED' && question.finalResult && question.disputeDeadline && new Date(question.disputeDeadline) > new Date() && (
         <div className={`mb-6 p-5 rounded-2xl ${isDark ? 'bg-amber-950/20 border border-amber-900/30' : 'bg-amber-50 border border-amber-100'}`}>
@@ -192,13 +207,19 @@ function QuestionDetailContent() {
             totalPool={question.totalBetPool}
             yesPool={question.yesBetPool}
             noPool={question.noBetPool}
-            marketId={question.id}
+            questionId={question.id}
+            disableApi={isReadOnlyFallback}
           />
-          <OrderBook questionId={question.id} yesPercent={yesPercent} totalPool={question.totalBetPool} />
-          <ActivityFeed questionId={question.id} refreshKey={refreshKey} />
+          {!isReadOnlyFallback && (
+            <OrderBook questionId={question.id} yesPercent={yesPercent} totalPool={question.totalBetPool} />
+          )}
+          {!isReadOnlyFallback && (
+            <ActivityFeed questionId={question.id} refreshKey={refreshKey} />
+          )}
+          {!isReadOnlyFallback && user && <MyBetsPanel questionId={question.id} />}
         </div>
         <div className="lg:col-span-4">
-          {user && (
+          {user && !isReadOnlyFallback && (
             <TradingPanel
               question={question}
               user={user}
@@ -206,6 +227,13 @@ function QuestionDetailContent() {
               votedChoice={getChoice(question.id)}
               onVoted={(choice) => markVoted(question.id, choice)}
             />
+          )}
+          {user && isReadOnlyFallback && (
+            <div className={`p-6 rounded-[2.5rem] border ${
+              isDark ? 'bg-slate-900 border-slate-800 text-slate-400' : 'bg-white border-slate-100 text-slate-600 shadow-xl'
+            }`}>
+              서버 마켓 데이터가 없어 거래 패널이 비활성화되었습니다.
+            </div>
           )}
         </div>
       </div>

@@ -18,7 +18,7 @@ interface LeaderboardEntry {
   accuracyPercentage: number;
   totalPredictions: number;
   correctPredictions: number;
-  pointBalance: number;
+  usdcBalance: number;
 }
 
 const tierBadge: Record<string, { label: string; color: string }> = {
@@ -45,12 +45,12 @@ function LeaderboardContent() {
 
   useEffect(() => {
     leaderboardApi.getTop(50).then(res => {
-      if (res.success && res.data) setEntries(res.data);
+      if (res.success && res.data) setEntries(res.data as unknown as LeaderboardEntry[]);
     }).catch(() => {}).finally(() => setLoading(false));
 
     if (user && !user.email?.includes('guest')) {
       leaderboardApi.getMemberRank(user.id).then(res => {
-        if (res.success && res.data) setMyRank(res.data);
+        if (res.success && res.data) setMyRank(res.data as unknown as LeaderboardEntry);
       }).catch(() => {});
     }
   }, [user]);
@@ -78,7 +78,7 @@ function LeaderboardContent() {
               </div>
             </div>
             <div className="text-right">
-              <p className="text-lg font-black text-indigo-600">{myRank.pointBalance.toLocaleString()} P</p>
+              <p className="text-lg font-black text-indigo-600">${myRank.usdcBalance.toLocaleString()} USDC</p>
               <p className="text-xs text-slate-400">{myRank.totalPredictions}{t('leaderboard.predictions')}</p>
             </div>
           </div>
@@ -141,7 +141,7 @@ function LeaderboardContent() {
                   <span className="text-sm font-black text-emerald-500">{entry.accuracyPercentage.toFixed(1)}%</span>
                 </div>
                 <div className="col-span-3 text-right">
-                  <span className={`text-sm font-bold ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>{entry.pointBalance.toLocaleString()} P</span>
+                  <span className={`text-sm font-bold ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>${entry.usdcBalance.toLocaleString()} USDC</span>
                 </div>
               </div>
             );

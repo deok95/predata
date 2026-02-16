@@ -17,6 +17,11 @@ interface QuestionRepository : JpaRepository<Question, Long> {
 
     fun findByStatus(status: QuestionStatus): List<Question>
 
+    /**
+     * 특정 상태가 아닌 질문 개수 (대시보드용)
+     */
+    fun countByStatusNot(status: QuestionStatus): Long
+
     // Legacy queries (kept for compatibility)
     @Query("SELECT q FROM Question q WHERE q.status = 'OPEN' AND q.expiredAt < :time")
     fun findOpenExpiredBefore(time: LocalDateTime): List<Question>

@@ -28,6 +28,16 @@ class JwtAuthInterceptor(
     ): Boolean {
         if (request.method == "OPTIONS") return true
 
+        // GET /api/questions/** 패턴만 인증 제외 (POST/PUT/DELETE는 인증 필요)
+        if (request.method == "GET" && request.requestURI.matches(Regex("^/api/questions(/.*)?$"))) {
+            return true
+        }
+
+        // GET /api/members/{숫자ID} 패턴만 인증 제외 (me, by-email 등은 인증 필요)
+        if (request.method == "GET" && request.requestURI.matches(Regex("^/api/members/\\d+$"))) {
+            return true
+        }
+
         val authHeader = request.getHeader("Authorization")
         if (authHeader == null || !authHeader.startsWith("Bearer ")) {
             writeError(response, HttpStatus.UNAUTHORIZED, "UNAUTHORIZED", "인증이 필요합니다.")
@@ -41,9 +51,20 @@ class JwtAuthInterceptor(
             return false
         }
 
-        request.setAttribute(ATTR_MEMBER_ID, jwtUtil.getMemberId(claims))
-        request.setAttribute(ATTR_EMAIL, jwtUtil.getEmail(claims))
-        request.setAttribute(ATTR_ROLE, jwtUtil.getRole(claims))
+        // Extract claims with NPE protection
+        try {
+            val memberId = jwtUtil.getMemberId(claims)
+            val email = jwtUtil.getEmail(claims)
+            val role = jwtUtil.getRole(claims)
+
+            request.setAttribute(ATTR_MEMBER_ID, memberId)
+            request.setAttribute(ATTR_EMAIL, email)
+            request.setAttribute(ATTR_ROLE, role)
+        } catch (e: Exception) {
+            // Handle malformed JWT (missing subject, email, or role claims)
+            writeError(response, HttpStatus.UNAUTHORIZED, "INVALID_TOKEN", "토큰 형식이 올바르지 않습니다.")
+            return false
+        }
 
         return true
     }

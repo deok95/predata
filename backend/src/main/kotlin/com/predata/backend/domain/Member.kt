@@ -12,6 +12,9 @@ data class Member(
     @Column(name = "member_id")
     val id: Long? = null,
 
+    @Version
+    var version: Long? = null,
+
     @Column(nullable = false, unique = true)
     val email: String,
 
@@ -39,6 +42,12 @@ data class Member(
     @Column(name = "tier_weight", precision = 3, scale = 2)
     var tierWeight: BigDecimal = BigDecimal("1.00"),
 
+    @Column(name = "level", nullable = false, columnDefinition = "INT NOT NULL DEFAULT 1")
+    var level: Int = 1, // 레벨 (1~5, 보상 가중치 계산용)
+
+    @Column(name = "point_balance", precision = 18, scale = 6, nullable = false, columnDefinition = "DECIMAL(18,6) NOT NULL DEFAULT 0.000000")
+    var pointBalance: BigDecimal = BigDecimal.ZERO, // 포인트 잔액 (리워드 수령)
+
     @Column(name = "accuracy_score")
     var accuracyScore: Int = 0, // 정확도 점수 (누적)
 
@@ -48,8 +57,8 @@ data class Member(
     @Column(name = "correct_predictions")
     var correctPredictions: Int = 0, // 정확한 예측 횟수
 
-    @Column(name = "point_balance")
-    var pointBalance: Long = 0,
+    @Column(name = "usdc_balance", precision = 18, scale = 6)
+    var usdcBalance: BigDecimal = BigDecimal.ZERO,
 
     @Column(length = 20)
     var role: String = "USER",  // USER 또는 ADMIN
@@ -60,6 +69,10 @@ data class Member(
 
     @Column(name = "referred_by")
     var referredBy: Long? = null,
+
+    // === 투표 패스 ===
+    @Column(name = "has_voting_pass", nullable = false, columnDefinition = "BOOLEAN NOT NULL DEFAULT FALSE")
+    var hasVotingPass: Boolean = false,
 
     // === 어뷰징 방지 ===
     @Column(name = "is_banned")

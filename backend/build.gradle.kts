@@ -52,7 +52,11 @@ dependencies {
 
     // MariaDB
     runtimeOnly("org.mariadb.jdbc:mariadb-java-client")
-    
+
+    // Flyway (Database Migration)
+    implementation("org.flywaydb:flyway-core")
+    implementation("org.flywaydb:flyway-mysql")
+
     // Web3j (블록체인 통합)
     implementation("org.web3j:core:4.9.8")
     implementation("org.web3j:contracts:4.9.8")
@@ -61,6 +65,7 @@ dependencies {
     testImplementation("org.springframework.boot:spring-boot-starter-test")
     testImplementation("org.jetbrains.kotlin:kotlin-test-junit5")
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")
+    testRuntimeOnly("com.h2database:h2")
 }
 
 tasks.withType<KotlinCompile> {

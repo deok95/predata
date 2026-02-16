@@ -19,7 +19,7 @@ export function useVotedQuestions(memberId: number | undefined) {
     if (!memberId || memberId < 0) return;
     setLoading(true);
     try {
-      const res = await bettingApi.getActivitiesByMember(memberId, 'VOTE');
+      const res = await bettingApi.getActivitiesByMember('VOTE');
       if (res.success && res.data) {
         const map = new Map<number, 'YES' | 'NO'>();
         for (const activity of res.data) {

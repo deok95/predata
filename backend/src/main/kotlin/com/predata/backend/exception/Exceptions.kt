@@ -25,3 +25,8 @@ class ConflictException(
     message: String = "요청을 처리할 수 없는 상태입니다.",
     code: String = "CONFLICT"
 ) : BusinessException(code, message, 409)
+
+class ServiceUnavailableException(
+    message: String = "서비스를 일시적으로 사용할 수 없습니다.",
+    code: String = "SERVICE_UNAVAILABLE"
+) : BusinessException(code, message, 503)

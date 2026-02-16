@@ -35,9 +35,17 @@ export default function OrderBook({ questionId, yesPercent, totalPool }: OrderBo
 
   useEffect(() => {
     fetchOrderBook();
-    const interval = setInterval(fetchOrderBook, 3000); // 3초마다 갱신
+    if (!useApi) return;
+
+    const interval = setInterval(() => {
+      if (typeof document !== 'undefined' && document.visibilityState !== 'visible') {
+        return;
+      }
+      fetchOrderBook();
+    }, 5000); // 5초마다 갱신 (hidden 탭에서는 중지)
+
     return () => clearInterval(interval);
-  }, [fetchOrderBook]);
+  }, [fetchOrderBook, useApi]);
 
   // Fallback 데이터 (API 실패 시 또는 빈 오더북)
   const fallbackData = useMemo(() => {
@@ -184,7 +192,7 @@ export default function OrderBook({ questionId, yesPercent, totalPool }: OrderBo
       <div className={`flex justify-between mt-4 pt-4 border-t text-xs ${isDark ? 'border-slate-800' : 'border-slate-100'}`}>
         <span className="text-slate-400">Total Liquidity</span>
         <span className={`font-bold ${isDark ? 'text-white' : 'text-slate-900'}`}>
-          {(hasApiData ? totalLiquidity : totalPool).toLocaleString()} P
+          {'$'}{(hasApiData ? totalLiquidity : totalPool).toLocaleString()}
         </span>
       </div>
     </div>

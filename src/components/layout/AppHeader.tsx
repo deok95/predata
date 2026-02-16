@@ -68,7 +68,7 @@ export default function AppHeader() {
         setNotifications(prev => [{
           id: Date.now(),
           title: '일일 보상 수령',
-          message: `${result.amount}P 일일 보상을 받았습니다! 잔액: ${result.newBalance.toLocaleString()}P`,
+          message: `$${result.amount} 일일 보상을 받았습니다! 잔액: $${result.newBalance.toLocaleString()}`,
           time: '방금',
           read: false,
         }, ...prev]);
@@ -146,7 +146,7 @@ export default function AppHeader() {
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className={`text-sm font-bold truncate ${isDark ? 'text-white' : 'text-slate-900'}`}>{q.title}</p>
-                    <p className="text-[10px] text-slate-400">{q.category} &middot; {q.totalBetPool.toLocaleString()} P</p>
+                    <p className="text-[10px] text-slate-400">{q.category} &middot; ${q.totalBetPool.toLocaleString()}</p>
                   </div>
                   <span className="text-xs font-bold text-indigo-600">
                     {q.totalBetPool > 0 ? Math.round((q.yesBetPool / q.totalBetPool) * 100) : 50}%
@@ -174,7 +174,7 @@ export default function AppHeader() {
           <button
             onClick={handleFaucetClaim}
             disabled={faucetClaimed || faucetLoading}
-            title={faucetClaimed ? '내일 다시 수령 가능' : '일일 100P 보상 받기'}
+            title={faucetClaimed ? '내일 다시 수령 가능' : '일일 $100 보상 받기'}
             className={`p-3 rounded-xl transition-all relative ${
               faucetClaimed
                 ? isDark ? 'text-slate-600 bg-slate-800/50 cursor-not-allowed' : 'text-slate-300 bg-slate-50 cursor-not-allowed'
@@ -262,9 +262,9 @@ interface NotificationItem {
 
 function getDefaultNotifications(): NotificationItem[] {
   return [
-    { id: 1, title: '정산 완료', message: '"비트코인 $100K 돌파" 마켓이 정산되었습니다. +2,400P', time: '2분 전', read: false },
+    { id: 1, title: '정산 완료', message: '"비트코인 $100K 돌파" 마켓이 정산되었습니다. +$2,400', time: '2분 전', read: false },
     { id: 2, title: '새 마켓 오픈', message: '"2025 챔피언스리그 우승팀은?" 마켓이 열렸습니다.', time: '15분 전', read: false },
-    { id: 3, title: '투표 보상', message: '일일 투표를 완료했습니다. 정확도 보너스: +50P', time: '1시간 전', read: true },
+    { id: 3, title: '투표 보상', message: '일일 투표를 완료했습니다. 정확도 보너스: +$50', time: '1시간 전', read: true },
     { id: 4, title: '티어 승급', message: 'BRONZE에서 SILVER로 승급했습니다!', time: '3시간 전', read: true },
   ];
 }

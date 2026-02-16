@@ -17,7 +17,8 @@ export interface Member {
   tier: 'BRONZE' | 'SILVER' | 'GOLD' | 'PLATINUM';
   tierWeight: number;
   accuracyScore: number;
-  pointBalance: number;
+  usdcBalance: number;
+  hasVotingPass: boolean;
   totalPredictions: number;
   correctPredictions: number;
   role?: 'USER' | 'ADMIN';
@@ -181,14 +182,9 @@ export interface UserContext {
   email: string;
   walletAddress?: string;
   tier: string;
-  pointBalance: number;
+  usdcBalance: number;
 }
 
-// Ticket Types
-export interface TicketStatus {
-  remainingCount: number;
-  resetDate: string;
-}
 
 // Global Stats Types
 export interface GlobalStats {
@@ -297,6 +293,21 @@ export interface FilteringData {
   noPercentage: number;
 }
 
+// Data Center Time-Series Types
+export interface VoteTrendPoint {
+  timestamp: string;
+  cumulativeYes: number;
+  cumulativeNo: number;
+  yesPercentage: number;
+  hourlyVotes: number;
+  hourlyBetVolume: number;
+}
+
+export interface QualityScoreResult {
+  qualityScore: number;
+  grade: string;
+}
+
 // ===== Notification Types =====
 export interface Notification {
   id: number;
@@ -379,18 +390,60 @@ export interface ReferralResult {
   refereeReward?: number;          // Points given to referee (500)
 }
 
-// ===== Ticket Types =====
-export interface TicketPurchaseResponse {
+// ===== Voting Pass Types =====
+export interface VotingPassPurchaseResponse {
   success: boolean;
-  purchasedQuantity: number;
-  totalCost: number;
-  remainingTickets: number;
-  remainingPoints: number;
+  hasVotingPass: boolean;
+  remainingBalance: number;
   message: string;
 }
 
-export interface TicketPurchaseHistory {
-  date: string;
-  remainingCount: number;
-  used: number;
+// ===== Payment Types =====
+export interface PaymentVerifyDepositRequest {
+  txHash: string;
+  amount: number;
+}
+
+export interface PaymentVerifyResponse {
+  success: boolean;
+  txHash: string;
+  amount: number;
+  newBalance?: number;
+  message?: string;
+}
+
+export interface WithdrawRequest {
+  memberId: number;
+  amount: number;
+  walletAddress: string;
+}
+
+export interface WithdrawResponse {
+  success: boolean;
+  txHash?: string;
+  amount?: number;
+  newBalance?: number;
+  message: string;
+}
+
+// ===== Transaction History Types =====
+export type TransactionType = 'DEPOSIT' | 'WITHDRAW' | 'BET' | 'SETTLEMENT' | 'VOTING_PASS';
+
+export interface TransactionHistoryItem {
+  id: number;
+  type: TransactionType;
+  amount: number;
+  balanceAfter: number;
+  description: string;
+  questionId?: number | null;
+  txHash?: string | null;
+  createdAt: string;
+}
+
+export interface TransactionHistoryPage {
+  content: TransactionHistoryItem[];
+  totalElements: number;
+  totalPages: number;
+  page: number;
+  size: number;
 }

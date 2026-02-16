@@ -42,7 +42,16 @@ class JwtUtil(
         }
     }
 
-    fun getMemberId(claims: Claims): Long = claims.subject.toLong()
-    fun getEmail(claims: Claims): String = claims["email"] as String
-    fun getRole(claims: Claims): String = claims["role"] as String
+    fun getMemberId(claims: Claims): Long {
+        val subject = claims.subject ?: throw IllegalArgumentException("JWT subject (memberId) is missing")
+        return subject.toLong()
+    }
+
+    fun getEmail(claims: Claims): String {
+        return claims["email"] as? String ?: throw IllegalArgumentException("JWT email claim is missing")
+    }
+
+    fun getRole(claims: Claims): String {
+        return claims["role"] as? String ?: throw IllegalArgumentException("JWT role claim is missing")
+    }
 }

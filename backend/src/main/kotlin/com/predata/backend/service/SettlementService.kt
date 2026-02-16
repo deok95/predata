@@ -3,13 +3,14 @@ package com.predata.backend.service
 import com.predata.backend.domain.Choice
 import com.predata.backend.domain.QuestionStatus
 import com.predata.backend.domain.FinalResult
+import com.predata.backend.domain.OrderSide
 import com.predata.backend.repository.ActivityRepository
 import com.predata.backend.repository.QuestionRepository
 import com.predata.backend.repository.MemberRepository
+import com.predata.backend.service.settlement.SettlementPolicyFactory
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import java.math.BigDecimal
-import java.math.RoundingMode
 import java.time.LocalDateTime
 
 @Service
@@ -20,13 +21,124 @@ class SettlementService(
     private val tierService: TierService,
     private val rewardService: RewardService,
     private val blockchainService: BlockchainService,
-    private val badgeService: BadgeService
+    private val badgeService: BadgeService,
+    private val transactionHistoryService: TransactionHistoryService,
+    private val settlementPolicyFactory: SettlementPolicyFactory,
+    private val positionService: PositionService,
+    private val resolutionAdapterRegistry: com.predata.backend.service.settlement.adapters.ResolutionAdapterRegistry,
+    private val auditService: AuditService,
+    private val feePoolService: FeePoolService,
+    private val voteRewardDistributionService: VoteRewardDistributionService
 ) {
     private val logger = org.slf4j.LoggerFactory.getLogger(SettlementService::class.java)
 
     companion object {
         private const val DISPUTE_HOURS = 0L // 테스트용: 이의제기 기간 없음 (즉시 확정)
         // TODO: 실제 운영에서는 24L로 변경
+        private const val AUTO_SETTLE_MIN_CONFIDENCE = 0.99
+    }
+
+    /**
+     * 자동정산 Auto-first + Fail-safe 구현
+     * 7가지 조건 체크:
+     * 1. marketType == VERIFIABLE
+     * 2. result, sourcePayload, sourceUrl, confidence 모두 non-null
+     * 3. confidence >= 0.99
+     * 4. 소스가 최종 상태 확인 (경기 FINISHED / 종가 확정)
+     * 5. 30초 간격 2회 조회 일치 (TODO)
+     * 6. idempotency: questionId + result + sourcePayloadHash로 중복 정산 방지 (TODO)
+     * 7. AuditLog에 정산 이벤트 기록 후 finalize
+     */
+    @Transactional
+    fun autoSettleWithVerification(questionId: Long): SettlementResult? {
+        val question = questionRepository.findByIdWithLock(questionId)
+            ?: throw IllegalArgumentException("질문을 찾을 수 없습니다.")
+
+        // 1. marketType == VERIFIABLE 체크
+        if (question.marketType != com.predata.backend.domain.MarketType.VERIFIABLE) {
+            logger.info("[AutoSettle] 질문 #{} VERIFIABLE이 아님, 수동 정산 대기", questionId)
+            return null
+        }
+
+        // ResolutionAdapter를 통해 결과 조회
+        val resolutionResult = try {
+            resolutionAdapterRegistry.resolve(question)
+        } catch (e: Exception) {
+            logger.error("[AutoSettle] 질문 #{} 결과 조회 실패: {}", questionId, e.message)
+            return null
+        }
+
+        // 2. result, sourcePayload, sourceUrl, confidence 모두 non-null 체크
+        val result = resolutionResult.result
+        val sourcePayload = resolutionResult.sourcePayload
+        val sourceUrl = resolutionResult.sourceUrl
+        val confidence = resolutionResult.confidence
+
+        if (result == null || sourcePayload == null || sourceUrl == null || confidence == null) {
+            logger.info("[AutoSettle] 질문 #{} 결과 불완전 (result={}, confidence={}), 재시도 대기", questionId, result, confidence)
+            return null
+        }
+
+        // 3. confidence >= 0.99 체크
+        if (confidence < AUTO_SETTLE_MIN_CONFIDENCE) {
+            logger.info("[AutoSettle] 질문 #{} confidence 부족 ({}), 수동 정산 대기", questionId, confidence)
+            return null
+        }
+
+        // 4. 소스가 최종 상태 확인 (sourcePayload에서 status 체크)
+        if (!sourcePayload.contains("FINISHED")) {
+            logger.info("[AutoSettle] 질문 #{} 소스 미확정 상태, 재시도 대기", questionId)
+            return null
+        }
+
+        // TODO: 5. 30초 간격 2회 조회 일치 (캐시 구현 필요)
+        // TODO: 6. idempotency 체크 (중복 정산 방지)
+
+        // 7. AuditLog 기록 및 자동 정산 실행
+        logger.info("[AutoSettle] 질문 #{} 자동 정산 조건 충족, finalize 실행", questionId)
+        auditService.log(
+            memberId = null,
+            action = com.predata.backend.domain.AuditAction.SETTLE,
+            entityType = "QUESTION",
+            entityId = questionId,
+            detail = "Auto-settlement verified: ${result.name}, confidence=$confidence"
+        )
+
+        // 정산 시작
+        initiateSettlement(questionId, result, sourceUrl)
+
+        // 즉시 확정
+        return finalizeSettlement(questionId, skipDeadlineCheck = true)
+    }
+
+    /**
+     * 1단계: 정산 시작 (자동 정산 - 어댑터 사용)
+     * ResolutionAdapterRegistry를 통해 자동으로 결과를 결정한다.
+     */
+    @Transactional
+    fun initiateSettlementAuto(questionId: Long): SettlementResult {
+        val question = questionRepository.findByIdWithLock(questionId)
+            ?: throw IllegalArgumentException("질문을 찾을 수 없습니다.")
+
+        if (question.status == QuestionStatus.SETTLED) {
+            throw IllegalStateException("이미 정산된 질문입니다.")
+        }
+        if (question.status != QuestionStatus.VOTING && question.status != QuestionStatus.BETTING && question.status != QuestionStatus.BREAK) {
+            throw IllegalStateException("정산 가능한 상태가 아닙니다. (현재: ${question.status})")
+        }
+
+        // ResolutionAdapter를 통해 자동 정산
+        val resolutionResult = resolutionAdapterRegistry.resolve(question)
+
+        // 결과가 미확정이면 정산 시작 불가
+        val finalResult = resolutionResult.result
+            ?: throw IllegalStateException("정산 결과가 아직 확정되지 않았습니다.")
+        if (finalResult == FinalResult.PENDING) {
+            throw IllegalStateException("정산 결과가 아직 확정되지 않았습니다.")
+        }
+
+        // 기존 메서드 재사용
+        return initiateSettlement(questionId, finalResult, resolutionResult.sourceUrl)
     }
 
     /**
@@ -57,14 +169,26 @@ class SettlementService(
         }
         questionRepository.save(question)
 
-        val bets = activityRepository.findByQuestionIdAndActivityType(
-            questionId, com.predata.backend.domain.ActivityType.BET
+        // Audit log: 정산 시작
+        auditService.log(
+            memberId = null,
+            action = com.predata.backend.domain.AuditAction.SETTLE,
+            entityType = "QUESTION",
+            entityId = questionId,
+            detail = "Settlement initiated: ${finalResult.name}"
         )
+
+        // Position 기준으로 정산 대상 확인
+        val positions = positionService.getPositionsByQuestionId(questionId)
+
+        if (positions.isEmpty()) {
+            throw IllegalStateException("정산 대상 포지션이 없습니다.")
+        }
 
         return SettlementResult(
             questionId = questionId,
             finalResult = finalResult.name,
-            totalBets = bets.size,
+            totalBets = positions.size,
             totalWinners = 0,
             totalPayout = 0,
             voterRewards = 0,
@@ -99,20 +223,29 @@ class SettlementService(
         }
 
         val finalResult = question.finalResult
-        val winningChoice = if (finalResult == FinalResult.YES) Choice.YES else Choice.NO
+        if (finalResult == FinalResult.PENDING) {
+            throw IllegalStateException("최종 결과가 확정되지 않아 정산을 확정할 수 없습니다.")
+        }
+        val policy = settlementPolicyFactory.getPolicy(question.type)
+        val winningChoice = policy.determineWinningChoice(finalResult)
 
         // 상태 확정 + disputeDeadline null로 설정 (이중 정산 방지 마커)
         question.status = QuestionStatus.SETTLED
         question.disputeDeadline = null
         questionRepository.save(question)
 
-        // === 1회 조회: 모든 활동(투표+베팅) 조회 ===
+        // === 1회 조회: 투표 활동 조회 (티어/보상용) ===
         val allActivities = activityRepository.findByQuestionId(questionId)
         val votes = allActivities.filter { it.activityType == com.predata.backend.domain.ActivityType.VOTE }
-        val bets = allActivities.filter { it.activityType == com.predata.backend.domain.ActivityType.BET }
+
+        // === 포지션 기반 정산 (BET 대체) ===
+        val positions = positionService.getPositionsByQuestionId(questionId)
+
+        // winning side 결정
+        val winningSide = if (winningChoice == Choice.YES) OrderSide.YES else OrderSide.NO
 
         // === 1회 조회: 관련 멤버 전체 배치 조회 ===
-        val allMemberIds = (votes.map { it.memberId } + bets.map { it.memberId }).distinct()
+        val allMemberIds = (votes.map { it.memberId } + positions.map { it.memberId }).distinct()
         val membersMap = if (allMemberIds.isNotEmpty()) {
             memberRepository.findAllByIdIn(allMemberIds).associateBy { it.id!! }
         } else {
@@ -123,25 +256,29 @@ class SettlementService(
         var totalPayout = 0L
         var totalRewardPool = 0L
 
-        // === 메모리 처리 1: 베팅 승자 배당금 지급 ===
-        val isYesWinning = finalResult == FinalResult.YES
-        val winningBets = bets.filter { it.choice == winningChoice }
-        winningBets.forEach { bet ->
-            val member = membersMap[bet.memberId]
+        // === 메모리 처리 1: 포지션 기반 승자 배당금 지급 ===
+        val winningPositions = positions.filter { it.side == winningSide }
+        winningPositions.forEach { position ->
+            val member = membersMap[position.memberId]
             if (member != null) {
-                val payout = calculatePayout(
-                    betAmount = bet.amount,
-                    totalPool = question.totalBetPool,
-                    winningPool = if (isYesWinning) question.yesBetPool else question.noBetPool,
-                    initialYesPool = question.initialYesPool,
-                    initialNoPool = question.initialNoPool,
-                    isYesWinning = isYesWinning
+                // 폴리마켓 방식: winning side는 quantity * 1.0 포인트 지급
+                val payout = position.quantity.toLong()
+                member.usdcBalance = member.usdcBalance.add(BigDecimal(payout))
+                transactionHistoryService.record(
+                    memberId = position.memberId,
+                    type = "SETTLEMENT",
+                    amount = BigDecimal(payout),
+                    balanceAfter = member.usdcBalance,
+                    description = "포지션 정산 승리 - Question #$questionId",
+                    questionId = questionId
                 )
-                member.pointBalance += payout
                 totalWinners++
                 totalPayout += payout
             }
         }
+
+        // 정산 완료 시 모든 포지션에 settled=true 마킹
+        positionService.markAsSettled(questionId)
 
         // === 메모리 처리 2: 티어 업데이트 (TierService 로직 인라인) ===
         votes.forEach { vote ->
@@ -167,37 +304,37 @@ class SettlementService(
             }
         }
 
-        // === 메모리 처리 3: 보상 분배 (RewardService 로직 인라인) ===
+        // === 메모리 처리 3: 수수료 수집 및 보상 분배 (새 엔진 사용) ===
         if (votes.isNotEmpty()) {
             val totalBetAmount = question.totalBetPool
             val totalFee = (totalBetAmount * RewardService.FEE_PERCENTAGE).toLong()
             val rewardPool = (totalFee * RewardService.REWARD_POOL_PERCENTAGE).toLong()
             totalRewardPool = rewardPool
 
-            // 티어 가중치 합계 계산
-            var totalWeight = BigDecimal.ZERO
-            val voterWeights = mutableMapOf<Long, BigDecimal>()
-            votes.forEach { vote ->
-                val member = membersMap[vote.memberId]
-                if (member != null) {
-                    voterWeights[vote.memberId] = member.tierWeight
-                    totalWeight = totalWeight.add(member.tierWeight)
+            // 1. 수수료 풀에 수수료 기록 (투표 시스템 연동)
+            if (totalFee > 0) {
+                try {
+                    feePoolService.collectFee(questionId, BigDecimal(totalFee))
+                    logger.info("[Settlement] Fee collected: questionId={}, totalFee={}", questionId, totalFee)
+                } catch (e: Exception) {
+                    logger.warn("[Settlement] FeePool 수수료 기록 실패 questionId={}: {}", questionId, e.message)
                 }
             }
 
-            // 가중치에 따라 보상 분배
-            if (totalWeight > BigDecimal.ZERO) {
-                voterWeights.forEach { (memberId, weight) ->
-                    val member = membersMap[memberId]
-                    if (member != null) {
-                        val rewardAmount = BigDecimal(rewardPool)
-                            .multiply(weight)
-                            .divide(totalWeight, 0, java.math.RoundingMode.DOWN)
-                            .toLong()
-                        member.pointBalance += rewardAmount
-                    }
-                }
+            // 2. 새로운 보상 분배 엔진 사용 (VoteRewardDistributionService)
+            // - 레벨 기반 가중치, idempotency 보장, 재시도 메커니즘
+            // - 분배 실패해도 정산은 롤백하지 않음 (수동 재시도 가능)
+            try {
+                val distributionResult = voteRewardDistributionService.distributeRewards(questionId)
+                logger.info("[Settlement] Reward distribution completed: questionId={}, result={}", questionId, distributionResult)
+            } catch (e: Exception) {
+                logger.error("[Settlement] 보상 분배 실패 (수동 재시도 필요) questionId={}: {}", questionId, e.message, e)
+                // 분배 실패해도 정산 자체는 성공 처리 (관리자가 /api/admin/rewards/retry로 재시도 가능)
             }
+
+            // @Deprecated: 레거시 티어 가중치 기반 보상 분배 로직 제거됨
+            // - 새로운 VoteRewardDistributionService가 레벨 기반 가중치로 처리
+            // - 기존 로직은 usdcBalance에 직접 추가했지만, 새 엔진은 pointBalance에 적립
         }
 
         // managed 엔티티 → @Transactional 커밋 시 자동 dirty-check flush
@@ -206,22 +343,21 @@ class SettlementService(
         // 온체인 기록
         blockchainService.settleQuestionOnChain(questionId, finalResult)
 
-        // === Badge 업데이트: 정산 후 뱃지 체크 ===
-        bets.forEach { bet ->
+        // === Badge 업데이트: 정산 후 뱃지 체크 (포지션 기반) ===
+        positions.forEach { position ->
             try {
-                val member = membersMap[bet.memberId] ?: return@forEach
-                val isWinner = bet.choice == winningChoice
-                val payoutRatio = if (isWinner && bet.amount > 0) {
-                    calculatePayout(
-                        bet.amount, question.totalBetPool,
-                        if (isYesWinning) question.yesBetPool else question.noBetPool,
-                        question.initialYesPool, question.initialNoPool, isYesWinning
-                    ).toDouble() / bet.amount.toDouble()
-                } else 0.0
-                badgeService.onSettlement(bet.memberId, isWinner, payoutRatio)
-                badgeService.onPointsChange(bet.memberId, member.pointBalance)
+                val member = membersMap[position.memberId] ?: return@forEach
+                val isWinner = position.side == winningSide
+                val payoutRatio = if (isWinner) {
+                    // 폴리마켓 방식: 1.0 배율 (quantity * 1.0)
+                    1.0
+                } else {
+                    0.0
+                }
+                badgeService.onSettlement(position.memberId, isWinner, payoutRatio)
+                badgeService.onPointsChange(position.memberId, member.usdcBalance.toLong())
             } catch (e: Exception) {
-                logger.warn("[Settlement] Badge 업데이트 실패 member={}: {}", bet.memberId, e.message)
+                logger.warn("[Settlement] Badge 업데이트 실패 member={}: {}", position.memberId, e.message)
             }
         }
 
@@ -238,7 +374,7 @@ class SettlementService(
         return SettlementResult(
             questionId = questionId,
             finalResult = finalResult.name,
-            totalBets = bets.size,
+            totalBets = positions.size,
             totalWinners = totalWinners,
             totalPayout = totalPayout,
             voterRewards = totalRewardPool,
@@ -268,6 +404,15 @@ class SettlementService(
         question.disputeDeadline = null
         questionRepository.save(question)
 
+        // Audit log: 정산 취소
+        auditService.log(
+            memberId = null,
+            action = com.predata.backend.domain.AuditAction.CANCEL,
+            entityType = "QUESTION",
+            entityId = questionId,
+            detail = "Settlement cancelled, status restored to ${newStatus.name}"
+        )
+
         return SettlementResult(
             questionId = questionId,
             finalResult = "CANCELLED",
@@ -283,71 +428,34 @@ class SettlementService(
     }
 
     /**
-     * 배당금 계산
-     * AMM 방식: (베팅 금액 / 실질 승리풀) * 실질 전체풀 * 0.99 (수수료 1%)
-     * 질문별 초기 유동성(하우스 머니)을 제외한 실제 베팅 금액만으로 계산
-     * 비대칭 초기 풀 지원 (투표 기반 조건부 배당)
-     */
-    private fun calculatePayout(
-        betAmount: Long,
-        totalPool: Long,
-        winningPool: Long,
-        initialYesPool: Long = QuestionManagementService.INITIAL_LIQUIDITY,
-        initialNoPool: Long = QuestionManagementService.INITIAL_LIQUIDITY,
-        isYesWinning: Boolean = true
-    ): Long {
-        val effectiveTotalPool = maxOf(0L, totalPool - initialYesPool - initialNoPool)
-        val initialWinningPool = if (isYesWinning) initialYesPool else initialNoPool
-        val effectiveWinningPool = maxOf(0L, winningPool - initialWinningPool)
-
-        if (effectiveWinningPool == 0L) return betAmount // 실질 승리풀이 없으면 원금 반환
-
-        val payoutRatio = BigDecimal(effectiveTotalPool)
-            .divide(BigDecimal(effectiveWinningPool), 10, RoundingMode.HALF_UP)
-            .multiply(BigDecimal("0.99")) // 수수료 1%
-
-        return BigDecimal(betAmount)
-            .multiply(payoutRatio)
-            .setScale(0, RoundingMode.DOWN)
-            .toLong()
-    }
-
-    /**
-     * 사용자별 정산 내역 조회
+     * 사용자별 정산 내역 조회 (포지션 기반)
      */
     fun getSettlementHistory(memberId: Long): List<SettlementHistoryItem> {
-        val allBets = activityRepository.findByMemberIdAndActivityType(
-            memberId,
-            com.predata.backend.domain.ActivityType.BET
-        )
+        val positions = positionService.getPositions(memberId)
+            .filter { it.settled }
 
-        return allBets.mapNotNull { bet ->
-            val question = questionRepository.findById(bet.questionId).orElse(null)
+        return positions.mapNotNull { position ->
+            val question = questionRepository.findById(position.questionId).orElse(null)
             if (question != null && question.status == QuestionStatus.SETTLED) {
-                val finalResultChoice = if (question.finalResult == FinalResult.YES) Choice.YES else Choice.NO
-                val isWinner = bet.choice == finalResultChoice
-                val isYesWin = question.finalResult == FinalResult.YES
+                val policy = settlementPolicyFactory.getPolicy(question.type)
+                val finalResultChoice = policy.determineWinningChoice(question.finalResult)
+                val winningSide = if (finalResultChoice == Choice.YES) OrderSide.YES else OrderSide.NO
+                val isWinner = position.side == winningSide
                 val payout = if (isWinner) {
-                    calculatePayout(
-                        betAmount = bet.amount,
-                        totalPool = question.totalBetPool,
-                        winningPool = if (isYesWin) question.yesBetPool else question.noBetPool,
-                        initialYesPool = question.initialYesPool,
-                        initialNoPool = question.initialNoPool,
-                        isYesWinning = isYesWin
-                    )
+                    position.quantity.toLong()  // 폴리마켓: quantity * 1.0
                 } else {
                     0L
                 }
+                val betAmount = position.quantity.multiply(position.avgPrice).toLong()
 
                 SettlementHistoryItem(
                     questionId = question.id ?: 0,
                     questionTitle = question.title,
-                    myChoice = bet.choice.name,
+                    myChoice = if (position.side == OrderSide.YES) "YES" else "NO",
                     finalResult = question.finalResult.name,
-                    betAmount = bet.amount,
+                    betAmount = betAmount,
                     payout = payout,
-                    profit = payout - bet.amount,
+                    profit = payout - betAmount,
                     isWinner = isWinner
                 )
             } else {

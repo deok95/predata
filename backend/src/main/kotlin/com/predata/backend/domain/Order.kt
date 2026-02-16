@@ -47,7 +47,8 @@ data class Order(
 )
 
 enum class OrderType {
-    BUY, SELL
+    LIMIT,   // 지정가 주문 (오더북 적재)
+    MARKET   // 시장가 IOC 주문 (즉시 체결, 미체결분 취소)
 }
 
 enum class OrderSide {

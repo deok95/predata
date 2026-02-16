@@ -19,7 +19,7 @@ export default function DisputeHistory({ memberId }: DisputeHistoryProps) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    settlementApi.getHistory(memberId).then(res => {
+    settlementApi.getHistory().then(res => {
       if (res.success && res.data) setHistory(res.data);
     }).catch(() => {}).finally(() => setLoading(false));
   }, [memberId]);
@@ -85,11 +85,11 @@ export default function DisputeHistory({ memberId }: DisputeHistoryProps) {
                   </div>
                 </div>
                 <div className="flex items-center justify-between mt-2 pt-2 border-t border-dashed" style={{ borderColor: isDark ? '#1e293b' : '#e2e8f0' }}>
-                  <span className="text-xs text-slate-400">{t('dispute.betAmount')}: {item.betAmount.toLocaleString()} P</span>
+                  <span className="text-xs text-slate-400">{t('dispute.betAmount')}: {'$'}{item.betAmount.toLocaleString()}</span>
                   <span className={`text-sm font-black ${
                     item.profit > 0 ? 'text-emerald-500' : item.profit < 0 ? 'text-rose-500' : 'text-slate-400'
                   }`}>
-                    {item.profit > 0 ? '+' : ''}{item.profit.toLocaleString()} P
+                    {item.profit > 0 ? '+' : ''}{'$'}{item.profit.toLocaleString()}
                   </span>
                 </div>
               </div>
@@ -114,7 +114,7 @@ export default function DisputeHistory({ memberId }: DisputeHistoryProps) {
               history.reduce((sum, h) => sum + h.profit, 0) >= 0 ? 'text-emerald-500' : 'text-rose-500'
             }`}>
               {history.reduce((sum, h) => sum + h.profit, 0) >= 0 ? '+' : ''}
-              {history.reduce((sum, h) => sum + h.profit, 0).toLocaleString()} P
+              {'$'}{history.reduce((sum, h) => sum + h.profit, 0).toLocaleString()}
             </span>
           </div>
         </div>

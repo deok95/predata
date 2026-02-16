@@ -6,6 +6,7 @@ import org.slf4j.LoggerFactory
 import org.springframework.boot.CommandLineRunner
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder
 import org.springframework.stereotype.Component
+import java.math.BigDecimal
 
 @Component
 class DataInitializer(
@@ -36,7 +37,7 @@ class DataInitializer(
             countryCode = "KR",
             tier = "DIAMOND",
             role = "ADMIN",
-            pointBalance = 1000000
+            usdcBalance = BigDecimal.ZERO
         )
 
         memberRepository.save(admin)

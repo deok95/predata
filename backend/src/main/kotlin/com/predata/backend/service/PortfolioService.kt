@@ -88,7 +88,7 @@ class PortfolioService(
             totalReturns = totalReturns,
             netProfit = netProfit,
             unrealizedValue = unrealizedValue,
-            currentBalance = member.pointBalance,
+            currentBalance = member.usdcBalance.toLong(),
             winRate = BigDecimal(winRate).setScale(1, RoundingMode.HALF_UP).toDouble(),
             totalBets = totalBets,
             openBets = openBets,

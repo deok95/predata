@@ -6,12 +6,14 @@ import com.predata.backend.repository.MemberRepository
 import org.springframework.dao.DataIntegrityViolationException
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
+import java.math.BigDecimal
 import java.time.LocalDate
 
 @Service
 class FaucetService(
     private val dailyFaucetRepository: DailyFaucetRepository,
-    private val memberRepository: MemberRepository
+    private val memberRepository: MemberRepository,
+    private val transactionHistoryService: TransactionHistoryService
 ) {
 
     companion object {
@@ -49,7 +51,7 @@ class FaucetService(
             return FaucetClaimResponse(
                 success = false,
                 amount = 0,
-                newBalance = member.pointBalance,
+                newBalance = member.usdcBalance.toLong(),
                 message = "오늘의 포인트를 이미 수령하셨습니다."
             )
         }
@@ -57,13 +59,21 @@ class FaucetService(
         faucet.claimed = true
         dailyFaucetRepository.save(faucet)
 
-        member.pointBalance += DAILY_FAUCET_AMOUNT
+        member.usdcBalance = member.usdcBalance.add(BigDecimal(DAILY_FAUCET_AMOUNT))
         memberRepository.save(member)
+
+        transactionHistoryService.record(
+            memberId = memberId,
+            type = "DEPOSIT",
+            amount = BigDecimal(DAILY_FAUCET_AMOUNT),
+            balanceAfter = member.usdcBalance,
+            description = "일일 보상 수령"
+        )
 
         return FaucetClaimResponse(
             success = true,
             amount = DAILY_FAUCET_AMOUNT,
-            newBalance = member.pointBalance,
+            newBalance = member.usdcBalance.toLong(),
             message = "${DAILY_FAUCET_AMOUNT}P 일일 보상을 받았습니다!"
         )
     }

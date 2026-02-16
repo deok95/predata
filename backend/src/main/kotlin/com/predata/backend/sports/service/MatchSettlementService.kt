@@ -15,6 +15,7 @@ import org.springframework.retry.annotation.Retryable
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Propagation
 import org.springframework.transaction.annotation.Transactional
+import java.math.BigDecimal
 
 @Service
 class MatchSettlementService(
@@ -102,7 +103,7 @@ class MatchSettlementService(
             if (sold == null) {
                 val member = membersMap[bet.memberId]
                 if (member != null) {
-                    member.pointBalance += bet.amount
+                    member.pointBalance = member.pointBalance.add(BigDecimal.valueOf(bet.amount))
                     refundCount++
                     totalRefunded += bet.amount
                 }

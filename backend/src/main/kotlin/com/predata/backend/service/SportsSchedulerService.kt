@@ -1,9 +1,16 @@
 package com.predata.backend.service
 
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
 import org.springframework.scheduling.annotation.Scheduled
 import org.springframework.stereotype.Service
 
 @Service
+@ConditionalOnProperty(
+    prefix = "sports.legacy-scheduler",
+    name = ["enabled"],
+    havingValue = "true",
+    matchIfMissing = false
+)
 class SportsSchedulerService(
     private val questionAutoGenerationService: QuestionAutoGenerationService
 ) {

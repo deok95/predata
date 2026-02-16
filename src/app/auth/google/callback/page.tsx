@@ -17,20 +17,48 @@ function GoogleCallbackContent() {
     if (isProcessed.current) return;
     isProcessed.current = true;
 
-    // 이미 로그인된 상태면 콜백 재처리 방지
-    if (localStorage.getItem('token')) {
+    const tokenParam = searchParams.get('token');
+    const memberIdParam = searchParams.get('memberId');
+    const errorParam = searchParams.get('error');
+    const messageParam = searchParams.get('message');
+    const hasCallbackParams = Boolean(tokenParam || memberIdParam || errorParam || messageParam);
+
+    // 콜백 파라미터 없는 일반 진입일 때만 홈으로
+    if (localStorage.getItem('token') && !hasCallbackParams) {
       router.replace('/');
       return;
     }
 
     const handleCallback = async () => {
-      // URL에서 파라미터 추출
-      const token = searchParams.get('token');
-      const memberId = searchParams.get('memberId');
-      const errorParam = searchParams.get('error');
+      // URL fragment (#token=xxx)에서 토큰 읽기 (보안 강화)
+      let token = tokenParam;
+      let memberId = memberIdParam;
+
+      // Fragment에서 토큰 파싱 시도 (우선순위)
+      if (typeof window !== 'undefined' && window.location.hash) {
+        const hash = window.location.hash.substring(1); // # 제거
+        const hashParams = new URLSearchParams(hash);
+        const hashToken = hashParams.get('token');
+        const hashMemberId = hashParams.get('memberId');
+
+        if (hashToken && hashMemberId) {
+          token = hashToken;
+          memberId = hashMemberId;
+          // fragment 파라미터 제거 (보안)
+          window.history.replaceState(null, '', window.location.pathname + window.location.search);
+        }
+      }
 
       if (errorParam) {
-        setError(decodeURIComponent(errorParam));
+        // 에러 코드별 사용자 친화적 메시지 매핑
+        if (errorParam === 'session_expired' || errorParam.includes('authorization_request_not_found')) {
+          setError('세션이 만료되었습니다. 다시 로그인해주세요.');
+        } else if (errorParam === 'login_failed') {
+          setError('로그인에 실패했습니다. 다시 시도해주세요.');
+        } else {
+          // 기타 에러 (내부 메시지 노출 방지)
+          setError(messageParam ? decodeURIComponent(messageParam) : '로그인 중 오류가 발생했습니다.');
+        }
         return;
       }
 
@@ -40,16 +68,32 @@ function GoogleCallbackContent() {
           localStorage.setItem('token', token);
           localStorage.setItem('memberId', memberId);
 
-          // AuthProvider를 통해 로그인 처리
-          await loginById(parseInt(memberId));
+          const parsedMemberId = Number(memberId);
+          if (!Number.isInteger(parsedMemberId) || parsedMemberId <= 0) {
+            localStorage.removeItem('token');
+            localStorage.removeItem('memberId');
+            setError('잘못된 사용자 정보입니다. 다시 로그인해주세요.');
+            return;
+          }
+
+          // AuthProvider를 통해 로그인 처리 + 결과 검증
+          const member = await loginById(parsedMemberId);
+          if (!member) {
+            localStorage.removeItem('token');
+            localStorage.removeItem('memberId');
+            setError('로그인 세션 확인에 실패했습니다. 다시 로그인해주세요.');
+            return;
+          }
 
           // 홈으로 redirect — replace로 콜백 URL을 히스토리에서 제거
           router.replace('/');
         } catch (err) {
           setError('로그인 처리 중 오류가 발생했습니다.');
         }
+      } else if (!hasCallbackParams) {
+        router.replace('/');
       } else {
-        setError('잘못된 접근입니다.');
+        setError('잘못된 접근입니다. 다시 로그인해주세요.');
       }
     };
 

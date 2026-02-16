@@ -9,10 +9,6 @@ import jakarta.validation.constraints.NotBlank
 
 // 투표 요청
 data class VoteRequest(
-    @field:NotNull(message = "회원 ID는 필수입니다.")
-    @field:Min(value = 1, message = "유효하지 않은 회원 ID입니다.")
-    val memberId: Long,
-
     @field:NotNull(message = "질문 ID는 필수입니다.")
     @field:Min(value = 1, message = "유효하지 않은 질문 ID입니다.")
     val questionId: Long,
@@ -25,10 +21,6 @@ data class VoteRequest(
 
 // 베팅 요청
 data class BetRequest(
-    @field:NotNull(message = "회원 ID는 필수입니다.")
-    @field:Min(value = 1, message = "유효하지 않은 회원 ID입니다.")
-    val memberId: Long,
-
     @field:NotNull(message = "질문 ID는 필수입니다.")
     @field:Min(value = 1, message = "유효하지 않은 질문 ID입니다.")
     val questionId: Long,
@@ -46,10 +38,6 @@ data class BetRequest(
 
 // 베팅 판매 요청
 data class SellBetRequest(
-    @field:NotNull(message = "회원 ID는 필수입니다.")
-    @field:Min(value = 1, message = "유효하지 않은 회원 ID입니다.")
-    val memberId: Long,
-
     @field:NotNull(message = "베팅 ID는 필수입니다.")
     @field:Min(value = 1, message = "유효하지 않은 베팅 ID입니다.")
     val betId: Long
@@ -139,6 +127,18 @@ data class AdminCreateQuestionRequest(
 
     @field:NotNull(message = "질문 타입은 필수입니다.")
     val type: com.predata.backend.domain.QuestionType,
+
+    @field:NotNull(message = "시장 타입은 필수입니다.")
+    val marketType: com.predata.backend.domain.MarketType = com.predata.backend.domain.MarketType.VERIFIABLE,
+
+    @field:NotBlank(message = "정산 규칙은 필수입니다.")
+    val resolutionRule: String,
+
+    val resolutionSource: String? = null,
+
+    val resolveAt: String? = null, // ISO 8601 형식
+
+    val disputeUntil: String? = null, // ISO 8601 형식
 
     val category: String? = null,
 

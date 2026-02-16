@@ -32,7 +32,7 @@ class MatchSyncScheduler(
      */
     @Scheduled(cron = "\${sports.scheduler.sync-cron}")
     @Transactional
-    fun syncUpcomingMatches() {
+    fun syncUpcomingMatches(): MatchSyncResult {
         logger.info("[MatchSync] 매일 동기화 시작")
 
         val league = leagueRepository.findByExternalLeagueIdAndProvider(
@@ -40,7 +40,13 @@ class MatchSyncScheduler(
         )
         if (league == null) {
             logger.warn("[MatchSync] PL 리그를 찾을 수 없습니다. (provider=${FootballDataProvider.PROVIDER_NAME})")
-            return
+            return MatchSyncResult(
+                fetched = 0,
+                inserted = 0,
+                updated = 0,
+                questionCreated = 0,
+                questionSkipped = 0
+            )
         }
 
         val fetched = footballDataProvider.fetchUpcomingMatches(league)
@@ -72,6 +78,14 @@ class MatchSyncScheduler(
         // 동기화 후 Question 자동 생성
         val genResult = matchQuestionGeneratorService.generateQuestions()
         logger.info("[MatchSync] Question 자동 생성 - 신규: ${genResult.created}건, 스킵: ${genResult.skipped}건")
+
+        return MatchSyncResult(
+            fetched = fetched.size,
+            inserted = inserted,
+            updated = updated,
+            questionCreated = genResult.created,
+            questionSkipped = genResult.skipped
+        )
     }
 
     /**
@@ -80,16 +94,20 @@ class MatchSyncScheduler(
      */
     @Scheduled(fixedDelayString = "\${sports.scheduler.live-poll-interval-ms}")
     @Transactional
-    fun pollLiveMatches() {
+    fun pollLiveMatches(): LivePollResult {
         val now = LocalDateTime.now()
         val candidates = matchRepository.findPollCandidates(now)
 
         if (candidates.isEmpty()) {
             logger.debug("[MatchSync] LIVE 폴링 - 대상 경기 없음, skip")
-            return
+            return LivePollResult(polled = 0, updated = 0, goalEvents = 0, finishedEvents = 0, cancelledEvents = 0)
         }
 
         logger.info("[MatchSync] LIVE 폴링 시작 - 대상 경기: ${candidates.size}건")
+        var updated = 0
+        var goalEvents = 0
+        var finishedEvents = 0
+        var cancelledEvents = 0
 
         for (match in candidates) {
             try {
@@ -109,6 +127,7 @@ class MatchSyncScheduler(
                 match.awayScore = apiMatch.awayScore
                 match.matchStatus = newStatus
                 matchRepository.save(match)
+                updated++
 
                 // 골 감지 → MatchGoalEvent 발행
                 if (newHomeScore != oldHomeScore || newAwayScore != oldAwayScore) {
@@ -126,6 +145,7 @@ class MatchSyncScheduler(
                             minute = null
                         )
                     )
+                    goalEvents++
                 }
 
                 // LIVE → FINISHED 전환 감지 → MatchFinishedEvent 발행
@@ -142,6 +162,7 @@ class MatchSyncScheduler(
                             awayScore = newAwayScore
                         )
                     )
+                    finishedEvents++
                 }
 
                 // POSTPONED/CANCELLED 전환 감지 → MatchCancelledEvent 발행
@@ -159,6 +180,7 @@ class MatchSyncScheduler(
                             matchStatus = newStatus
                         )
                     )
+                    cancelledEvents++
                 }
 
                 // API rate limit 방지
@@ -168,5 +190,29 @@ class MatchSyncScheduler(
                 logger.error("[MatchSync] 폴링 실패: {} vs {} - {}", match.homeTeam, match.awayTeam, e.message)
             }
         }
+
+        return LivePollResult(
+            polled = candidates.size,
+            updated = updated,
+            goalEvents = goalEvents,
+            finishedEvents = finishedEvents,
+            cancelledEvents = cancelledEvents
+        )
     }
 }
+
+data class MatchSyncResult(
+    val fetched: Int,
+    val inserted: Int,
+    val updated: Int,
+    val questionCreated: Int,
+    val questionSkipped: Int
+)
+
+data class LivePollResult(
+    val polled: Int,
+    val updated: Int,
+    val goalEvents: Int,
+    val finishedEvents: Int,
+    val cancelledEvents: Int
+)

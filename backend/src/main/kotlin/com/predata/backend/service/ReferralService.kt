@@ -8,12 +8,14 @@ import com.predata.backend.repository.ReferralRepository
 import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
+import java.math.BigDecimal
 
 @Service
 class ReferralService(
     private val referralRepository: ReferralRepository,
     private val memberRepository: MemberRepository,
-    private val notificationService: NotificationService
+    private val notificationService: NotificationService,
+    private val transactionHistoryService: TransactionHistoryService
 ) {
     @org.springframework.context.annotation.Lazy
     @org.springframework.beans.factory.annotation.Autowired
@@ -104,13 +106,29 @@ class ReferralService(
         )
         referralRepository.save(referral)
 
-        // 8. 포인트 지급
-        referrer.pointBalance += REFERRER_REWARD
+        // 8. USDC 보상 지급
+        referrer.usdcBalance = referrer.usdcBalance.add(BigDecimal(REFERRER_REWARD))
         memberRepository.save(referrer)
 
+        transactionHistoryService.record(
+            memberId = referrer.id!!,
+            type = "DEPOSIT",
+            amount = BigDecimal(REFERRER_REWARD),
+            balanceAfter = referrer.usdcBalance,
+            description = "추천 보상 (추천인)"
+        )
+
         referee.referredBy = referrer.id
-        referee.pointBalance += REFEREE_REWARD
+        referee.usdcBalance = referee.usdcBalance.add(BigDecimal(REFEREE_REWARD))
         memberRepository.save(referee)
+
+        transactionHistoryService.record(
+            memberId = refereeId,
+            type = "DEPOSIT",
+            amount = BigDecimal(REFEREE_REWARD),
+            balanceAfter = referee.usdcBalance,
+            description = "추천 보상 (피추천인)"
+        )
 
         // 9. 알림 발송
         notificationService.createNotification(

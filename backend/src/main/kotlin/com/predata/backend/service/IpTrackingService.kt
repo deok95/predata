@@ -46,7 +46,7 @@ class IpTrackingService(
                             email = m.email,
                             createdAt = m.createdAt.toString(),
                             isBanned = m.isBanned,
-                            pointBalance = m.pointBalance
+                            usdcBalance = m.usdcBalance.toLong()
                         )
                     },
                     riskLevel = when {
@@ -73,7 +73,7 @@ class IpTrackingService(
                             email = m.email,
                             createdAt = m.createdAt.toString(),
                             isBanned = m.isBanned,
-                            pointBalance = m.pointBalance
+                            usdcBalance = m.usdcBalance.toLong()
                         )
                     },
                     riskLevel = when {
@@ -102,7 +102,7 @@ class IpTrackingService(
                             email = m.email,
                             createdAt = m.createdAt.toString(),
                             isBanned = m.isBanned,
-                            pointBalance = m.pointBalance
+                            usdcBalance = m.usdcBalance.toLong()
                         )
                     },
                     riskLevel = when {
@@ -220,7 +220,7 @@ data class SuspiciousAccount(
     val email: String,
     val createdAt: String,
     val isBanned: Boolean,
-    val pointBalance: Long
+    val usdcBalance: Long
 )
 
 data class IpLookupResult(

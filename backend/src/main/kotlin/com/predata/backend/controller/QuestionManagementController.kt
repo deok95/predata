@@ -1,8 +1,7 @@
 package com.predata.backend.controller
 
-import com.predata.backend.domain.FinalResult
 import com.predata.backend.service.*
-import com.predata.backend.sports.service.MatchSettlementService
+import jakarta.validation.Valid
 import org.springframework.data.domain.Page
 import org.springframework.data.domain.PageRequest
 import org.springframework.data.domain.Sort
@@ -14,9 +13,7 @@ import org.springframework.web.bind.annotation.*
 @RequestMapping("/api/admin/questions")
 @CrossOrigin(origins = ["http://localhost:3000"])
 class QuestionManagementController(
-    private val questionManagementService: QuestionManagementService,
-    private val settlementService: SettlementService,
-    private val matchSettlementService: MatchSettlementService
+    private val questionManagementService: QuestionManagementService
 ) {
 
     /**
@@ -25,7 +22,7 @@ class QuestionManagementController(
      * Request: { title, type, category, votingDuration, bettingDuration }
      */
     @PostMapping
-    fun createQuestion(@RequestBody request: com.predata.backend.dto.AdminCreateQuestionRequest): ResponseEntity<QuestionCreationResponse> {
+    fun createQuestion(@Valid @RequestBody request: com.predata.backend.dto.AdminCreateQuestionRequest): ResponseEntity<QuestionCreationResponse> {
         return try {
             val response = questionManagementService.createQuestionWithDuration(request)
             ResponseEntity.status(HttpStatus.CREATED).body(response)
@@ -48,7 +45,7 @@ class QuestionManagementController(
      * POST /api/admin/questions/legacy
      */
     @PostMapping("/legacy")
-    fun createQuestionLegacy(@RequestBody request: CreateQuestionRequest): ResponseEntity<QuestionCreationResponse> {
+    fun createQuestionLegacy(@Valid @RequestBody request: CreateQuestionRequest): ResponseEntity<QuestionCreationResponse> {
         return try {
             val response = questionManagementService.createQuestion(request)
             ResponseEntity.status(HttpStatus.CREATED).body(response)
@@ -151,78 +148,4 @@ class QuestionManagementController(
         return ResponseEntity.ok(questions)
     }
 
-    /**
-     * 관리자 결과 입력 및 정산 시작 (VERIFIABLE 타입 질문용)
-     * POST /api/admin/questions/{id}/result
-     * Request: { result: "YES" or "NO" }
-     */
-    @PostMapping("/{id}/result")
-    fun setQuestionResult(
-        @PathVariable id: Long,
-        @RequestBody request: com.predata.backend.dto.SetQuestionResultRequest
-    ): ResponseEntity<SettlementResult> {
-        return try {
-            val finalResult = when (request.result.uppercase()) {
-                "YES" -> FinalResult.YES
-                "NO" -> FinalResult.NO
-                else -> throw IllegalArgumentException("결과는 YES 또는 NO만 가능합니다.")
-            }
-
-            val settlementResult = settlementService.initiateSettlement(
-                questionId = id,
-                finalResult = finalResult,
-                sourceUrl = "ADMIN_INPUT"
-            )
-
-            ResponseEntity.ok(settlementResult)
-        } catch (e: IllegalArgumentException) {
-            ResponseEntity.badRequest().body(
-                SettlementResult(
-                    questionId = id,
-                    finalResult = "ERROR",
-                    totalBets = 0,
-                    totalWinners = 0,
-                    totalPayout = 0,
-                    voterRewards = 0,
-                    message = e.message ?: "결과 입력에 실패했습니다."
-                )
-            )
-        } catch (e: IllegalStateException) {
-            ResponseEntity.status(HttpStatus.CONFLICT).body(
-                SettlementResult(
-                    questionId = id,
-                    finalResult = "ERROR",
-                    totalBets = 0,
-                    totalWinners = 0,
-                    totalPayout = 0,
-                    voterRewards = 0,
-                    message = e.message ?: "결과 입력에 실패했습니다."
-                )
-            )
-        }
-    }
-
-    /**
-     * 어드민 수동 정산 (자동 정산 실패 시)
-     * PUT /api/admin/questions/{id}/settle-manual
-     * Request: { result: "YES" | "NO" | "DRAW" }
-     */
-    @PutMapping("/{id}/settle-manual")
-    fun settleManual(
-        @PathVariable id: Long,
-        @RequestBody request: com.predata.backend.dto.ManualSettleRequest
-    ): ResponseEntity<Map<String, Any>> {
-        return try {
-            val message = matchSettlementService.manualSettle(id, request.result)
-            ResponseEntity.ok(mapOf("success" to true, "questionId" to id, "message" to message))
-        } catch (e: IllegalArgumentException) {
-            ResponseEntity.badRequest().body(
-                mapOf("success" to false, "questionId" to id, "message" to (e.message ?: "수동 정산에 실패했습니다."))
-            )
-        } catch (e: IllegalStateException) {
-            ResponseEntity.status(HttpStatus.CONFLICT).body(
-                mapOf("success" to false, "questionId" to id, "message" to (e.message ?: "수동 정산에 실패했습니다."))
-            )
-        }
-    }
 }

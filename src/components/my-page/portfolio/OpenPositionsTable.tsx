@@ -108,14 +108,14 @@ export default function OpenPositionsTable({
                       </span>
                     </td>
                     <td className={`text-right py-4 font-bold text-sm ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>
-                      {pos.betAmount.toLocaleString()}P
+                      {'$'}{pos.betAmount.toLocaleString()}
                     </td>
                     <td className={`text-right py-4 font-bold text-sm ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>
-                      {pos.estimatedPayout.toLocaleString()}P
+                      {'$'}{pos.estimatedPayout.toLocaleString()}
                     </td>
                     <td className={`text-right py-4 pr-6 font-black text-sm ${pnlColor}`}>
                       {pos.estimatedProfitLoss >= 0 ? '+' : ''}
-                      {pos.estimatedProfitLoss.toLocaleString()}P
+                      {'$'}{pos.estimatedProfitLoss.toLocaleString()}
                     </td>
                   </tr>
                 );

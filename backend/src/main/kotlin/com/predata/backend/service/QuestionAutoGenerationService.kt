@@ -16,7 +16,8 @@ class QuestionAutoGenerationService(
     private val sportsApiService: SportsApiService,
     private val sportsMatchRepository: SportsMatchRepository,
     private val questionRepository: QuestionRepository,
-    private val bettingSuspensionService: BettingSuspensionService
+    private val bettingSuspensionService: BettingSuspensionService,
+    private val settlementService: SettlementService
 ) {
 
     /**
@@ -158,7 +159,6 @@ class QuestionAutoGenerationService(
     /**
      * 완료된 경기의 질문 자동 정산
      */
-    @Transactional
     fun autoSettleSportsQuestions(): SportsSettlementResult {
         println("[AutoGen] 스포츠 질문 자동 정산 시작")
         
@@ -184,9 +184,18 @@ class QuestionAutoGenerationService(
                     else -> continue
                 }
 
-                question.finalResult = finalResult
-                question.status = QuestionStatus.SETTLED
-                questionRepository.save(question)
+                val sourceUrl = "https://api.football-data.org/v4/matches/${match.externalApiId}"
+
+                // 정산 단일 경로 사용: 지급/원장 settled 마킹/감사 로그/온체인 호출을 모두 보장
+                settlementService.initiateSettlement(
+                    questionId = question.id!!,
+                    finalResult = finalResult,
+                    sourceUrl = sourceUrl
+                )
+                settlementService.finalizeSettlement(
+                    questionId = question.id!!,
+                    skipDeadlineCheck = true
+                )
                 
                 println("[AutoGen] ✅ 정산 완료: ${question.title} -> $finalResult")
                 settledCount++

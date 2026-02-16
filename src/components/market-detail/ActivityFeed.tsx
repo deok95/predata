@@ -42,7 +42,7 @@ export default function ActivityFeed({ questionId, refreshKey }: ActivityFeedPro
                 <span className="text-slate-400 text-xs">Member #{act.memberId}</span>
               </div>
               <div className="text-right">
-                <span className="font-bold text-xs">{act.amount > 0 ? `${act.amount} P` : '투표'}</span>
+                <span className="font-bold text-xs">{act.amount > 0 ? `$${act.amount}` : '투표'}</span>
                 <p className="text-[10px] text-slate-500">{new Date(act.createdAt).toLocaleTimeString('ko-KR')}</p>
               </div>
             </div>

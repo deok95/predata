@@ -1,12 +1,12 @@
 package com.predata.backend.controller
 
-import com.predata.backend.domain.SportsMatch
 import com.predata.backend.repository.QuestionRepository
-import com.predata.backend.repository.SportsMatchRepository
-import com.predata.backend.service.GenerationResult
-import com.predata.backend.service.QuestionAutoGenerationService
-import com.predata.backend.service.SportsSettlementResult
-import com.predata.backend.service.UpdateResult
+import com.predata.backend.sports.domain.Match
+import com.predata.backend.sports.domain.MatchStatus
+import com.predata.backend.sports.repository.MatchRepository
+import com.predata.backend.sports.scheduler.LivePollResult
+import com.predata.backend.sports.scheduler.MatchSyncResult
+import com.predata.backend.sports.scheduler.MatchSyncScheduler
 import com.predata.backend.sports.service.MatchQuestionGenerateResult
 import com.predata.backend.sports.service.MatchQuestionGeneratorService
 import org.springframework.http.ResponseEntity
@@ -16,39 +16,29 @@ import org.springframework.web.bind.annotation.*
 @RequestMapping("/api/admin/sports")
 @CrossOrigin(origins = ["http://localhost:3000"])
 class SportsManagementController(
-    private val questionAutoGenerationService: QuestionAutoGenerationService,
-    private val sportsMatchRepository: SportsMatchRepository,
+    private val matchSyncScheduler: MatchSyncScheduler,
+    private val matchRepository: MatchRepository,
     private val matchQuestionGeneratorService: MatchQuestionGeneratorService,
     private val questionRepository: QuestionRepository
 ) {
 
     /**
-     * 수동으로 스포츠 질문 생성 트리거
+     * 수동으로 경기 동기화 + 질문 자동 생성 트리거
      * POST /api/admin/sports/generate
      */
     @PostMapping("/generate")
-    fun manualGenerate(): ResponseEntity<GenerationResult> {
-        val result = questionAutoGenerationService.generateSportsQuestions()
+    fun manualGenerate(): ResponseEntity<MatchSyncResult> {
+        val result = matchSyncScheduler.syncUpcomingMatches()
         return ResponseEntity.ok(result)
     }
 
     /**
-     * 수동으로 경기 결과 업데이트
+     * 수동으로 LIVE 경기 폴링 실행
      * POST /api/admin/sports/update-results
      */
     @PostMapping("/update-results")
-    fun manualUpdateResults(): ResponseEntity<UpdateResult> {
-        val result = questionAutoGenerationService.updateFinishedMatches()
-        return ResponseEntity.ok(result)
-    }
-
-    /**
-     * 수동으로 자동 정산 실행
-     * POST /api/admin/sports/settle
-     */
-    @PostMapping("/settle")
-    fun manualSettle(): ResponseEntity<SportsSettlementResult> {
-        val result = questionAutoGenerationService.autoSettleSportsQuestions()
+    fun manualUpdateResults(): ResponseEntity<LivePollResult> {
+        val result = matchSyncScheduler.pollLiveMatches()
         return ResponseEntity.ok(result)
     }
 
@@ -58,20 +48,12 @@ class SportsManagementController(
      */
     @GetMapping("/live")
     fun getLiveMatches(): ResponseEntity<List<LiveMatchInfo>> {
-        val liveMatches = sportsMatchRepository.findByStatus("LIVE")
-        val liveMatchInfos = liveMatches.map { match ->
-            LiveMatchInfo(
-                matchId = match.id ?: 0,
-                questionId = match.questionId,
-                leagueName = match.leagueName,
-                homeTeam = match.homeTeam,
-                awayTeam = match.awayTeam,
-                homeScore = match.homeScore ?: 0,
-                awayScore = match.awayScore ?: 0,
-                matchDate = match.matchDate.toString(),
-                status = match.status
-            )
-        }
+        val liveMatches = matchRepository.findByMatchStatus(MatchStatus.LIVE) +
+            matchRepository.findByMatchStatus(MatchStatus.HALFTIME)
+        val questionIdByMatch = buildQuestionIdByMatch()
+        val liveMatchInfos = liveMatches
+            .distinctBy { it.id }
+            .map { match -> toLiveMatchInfo(match, questionIdByMatch[match.id]) }
         return ResponseEntity.ok(liveMatchInfos)
     }
 
@@ -80,8 +62,20 @@ class SportsManagementController(
      * GET /api/admin/sports/upcoming
      */
     @GetMapping("/upcoming")
-    fun getUpcomingMatches(): ResponseEntity<List<SportsMatch>> {
-        val upcomingMatches = sportsMatchRepository.findByStatus("SCHEDULED")
+    fun getUpcomingMatches(): ResponseEntity<List<UpcomingMatchInfo>> {
+        val questionIdByMatch = buildQuestionIdByMatch()
+        val upcomingMatches = matchRepository.findByMatchStatus(MatchStatus.SCHEDULED)
+            .map { match ->
+                UpcomingMatchInfo(
+                    matchId = match.id ?: 0,
+                    questionId = questionIdByMatch[match.id],
+                    leagueName = match.league.name,
+                    homeTeam = match.homeTeam,
+                    awayTeam = match.awayTeam,
+                    matchTime = match.matchTime.toString(),
+                    status = match.matchStatus.name
+                )
+            }
         return ResponseEntity.ok(upcomingMatches)
     }
 
@@ -116,6 +110,32 @@ class SportsManagementController(
         val result = matchQuestionGeneratorService.generateQuestions()
         return ResponseEntity.ok(result)
     }
+
+    private fun buildQuestionIdByMatch(): Map<Long, Long> {
+        return questionRepository.findAllMatchQuestions().mapNotNull { question ->
+            val matchId = question.match?.id
+            val questionId = question.id
+            if (matchId != null && questionId != null) {
+                matchId to questionId
+            } else {
+                null
+            }
+        }.toMap()
+    }
+
+    private fun toLiveMatchInfo(match: Match, questionId: Long?): LiveMatchInfo {
+        return LiveMatchInfo(
+            matchId = match.id ?: 0,
+            questionId = questionId,
+            leagueName = match.league.name,
+            homeTeam = match.homeTeam,
+            awayTeam = match.awayTeam,
+            homeScore = match.homeScore ?: 0,
+            awayScore = match.awayScore ?: 0,
+            matchDate = match.matchTime.toString(),
+            status = match.matchStatus.name
+        )
+    }
 }
 
 data class LiveMatchInfo(
@@ -139,4 +159,14 @@ data class MatchQuestionView(
     val matchId: Long?,
     val matchTime: String?,
     val createdAt: String
+)
+
+data class UpcomingMatchInfo(
+    val matchId: Long,
+    val questionId: Long?,
+    val leagueName: String,
+    val homeTeam: String,
+    val awayTeam: String,
+    val matchTime: String,
+    val status: String
 )

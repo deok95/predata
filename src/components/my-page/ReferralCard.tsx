@@ -150,7 +150,7 @@ export default function ReferralCard({ memberId }: ReferralCardProps) {
         <div className={`p-4 rounded-xl text-center ${isDark ? 'bg-slate-800' : 'bg-slate-50'}`}>
           <Gift size={18} className="text-amber-500 mx-auto mb-1.5" />
           <p className={`font-black text-xl ${isDark ? 'text-white' : 'text-slate-900'}`}>
-            {(stats?.totalPointsEarned ?? 0).toLocaleString()}P
+            {'$'}{(stats?.totalPointsEarned ?? 0).toLocaleString()}
           </p>
           <p className="text-[11px] text-slate-400 font-medium">{t('referral.totalRewards')}</p>
         </div>

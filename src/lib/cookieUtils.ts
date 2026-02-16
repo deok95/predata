@@ -1,3 +1,17 @@
+const COOKIE_MAX_AGE = 7 * 24 * 60 * 60; // 7 days
+
+export function setAuthCookies(isAdmin: boolean): void {
+  if (typeof document === 'undefined') return;
+
+  document.cookie = `predata-auth=true; path=/; max-age=${COOKIE_MAX_AGE}; SameSite=Lax`;
+
+  if (isAdmin) {
+    document.cookie = `predata-admin=true; path=/; max-age=${COOKIE_MAX_AGE}; SameSite=Lax`;
+  } else {
+    document.cookie = `predata-admin=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/`;
+  }
+}
+
 export function clearAllAuthCookies(): void {
   if (typeof document === 'undefined') return;
 

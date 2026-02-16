@@ -4,10 +4,12 @@ import { useState, useEffect, useCallback, useMemo, createContext, useContext } 
 import type { ReactNode } from 'react';
 import { memberApi, authApi, ApiError } from '@/lib/api';
 import { safeLocalStorage } from '@/lib/safeLocalStorage';
-import { clearAllAuthCookies } from '@/lib/cookieUtils';
+import { clearAllAuthCookies, setAuthCookies } from '@/lib/cookieUtils';
 import type { Member } from '@/types/api';
+import { useDisconnect } from 'wagmi';
 
 const STORAGE_KEY = 'predataUser';
+const USER_REFRESH_INTERVAL_MS = 30000;
 
 export interface AuthState {
   user: Member | null;
@@ -22,8 +24,7 @@ export interface AuthState {
       jobCategory?: string;
       ageGroup?: number;
     }
-  ) => Promise<{ success: boolean; needsAdditionalInfo?: boolean }>;
-  loginWithEmail: (email: string) => Promise<{ member: Member | null; isNew: boolean }>;
+  ) => Promise<{ success: boolean; needsAdditionalInfo?: boolean; error?: string }>;
   loginById: (memberId: number) => Promise<Member | null>;
   register: (data: {
     email: string;
@@ -47,6 +48,7 @@ function checkIsGuest(user: Member | null): boolean {
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<Member | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const { disconnect } = useDisconnect();
 
   const isGuest = useMemo(() => checkIsGuest(user), [user]);
 
@@ -61,6 +63,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
         if (isGuestUser || token) {
           setUser(parsed);
+          if (!isGuestUser && token) {
+            setAuthCookies(parsed.role === 'ADMIN');
+          }
         } else {
           // 토큰 없는 실유저 = stale 데이터 → 삭제
           safeLocalStorage.removeItem(STORAGE_KEY);
@@ -78,6 +83,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     safeLocalStorage.setItem(STORAGE_KEY, JSON.stringify(member));
   }, []);
 
+  // logout을 먼저 선언하여 TDZ 방지 (loginById, refreshUser에서 참조)
+  const logout = useCallback(() => {
+    setUser(null);
+    safeLocalStorage.removeItem(STORAGE_KEY);
+    safeLocalStorage.removeItem('token');
+    safeLocalStorage.removeItem('memberId');
+    clearAllAuthCookies();
+
+    // 지갑 연결 해제
+    if (disconnect) {
+      disconnect();
+    }
+
+    window.location.href = '/';
+  }, [disconnect]);
+
   // 게스트: 로컬 전용 (백엔드 등록 없음, 조회만 가능)
   const loginAsGuest = useCallback(() => {
     const guestMember: Member = {
@@ -87,7 +108,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       tier: 'BRONZE',
       tierWeight: 1.0,
       accuracyScore: 0,
-      pointBalance: 0,
+      usdcBalance: 0,
+      hasVotingPass: false,
       totalPredictions: 0,
       correctPredictions: 0,
       createdAt: new Date().toISOString(),
@@ -95,21 +117,28 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     persistUser(guestMember);
   }, [persistUser]);
 
-  const loginById = useCallback(async (memberId: number) => {
+  const loginById = useCallback(async (_memberId: number) => {
+    void _memberId;
     setIsLoading(true);
     try {
-      const response = await memberApi.getById(memberId);
+      const response = await memberApi.getMe();
       if (response.success && response.data) {
         persistUser(response.data);
+        setAuthCookies(response.data.role === 'ADMIN');
         return response.data;
       }
-    } catch {
-      // Backend unavailable
+    } catch (error: unknown) {
+      const status = error instanceof ApiError ? error.status : undefined;
+      // 401/404: 토큰 만료 또는 사용자 삭제됨 → 로그아웃
+      if (status === 404 || status === 401) {
+        logout();
+      }
+      // Backend unavailable or other errors
     } finally {
       setIsLoading(false);
     }
     return null;
-  }, [persistUser]);
+  }, [persistUser, logout]);
 
   const loginWithGoogle = useCallback(async (
     googleToken: string,
@@ -131,7 +160,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
         if (response.token && response.memberId) {
           // JWT 토큰 저장 및 사용자 정보 조회
-          await loginById(response.memberId);
+          const member = await loginById(response.memberId);
+          if (!member) {
+            // getMe() 실패 → 로그아웃 및 에러 반환
+            logout();
+            return { success: false, error: "사용자 정보를 불러올 수 없습니다" };
+          }
           return { success: true };
         }
       }
@@ -145,25 +179,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     } finally {
       setIsLoading(false);
     }
-  }, [loginById]);
-
-  const loginWithEmail = useCallback(async (email: string) => {
-    setIsLoading(true);
-    try {
-      const response = await memberApi.getByEmail(email);
-      if (response.success && response.data) {
-        persistUser(response.data);
-        return { member: response.data, isNew: false };
-      }
-    } catch (error) {
-      if (error instanceof ApiError && error.status === 404) {
-        return { member: null, isNew: true };
-      }
-    } finally {
-      setIsLoading(false);
-    }
-    return { member: null, isNew: false };
-  }, [persistUser]);
+  }, [loginById, logout]);
 
   const register = useCallback(async (data: {
     email: string;
@@ -187,34 +203,33 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return null;
   }, [persistUser]);
 
-  const logout = useCallback(() => {
-    setUser(null);
-    safeLocalStorage.removeItem(STORAGE_KEY);
-    safeLocalStorage.removeItem('token');
-    safeLocalStorage.removeItem('memberId');
-    clearAllAuthCookies();
-    window.location.href = '/';
-  }, []);
-
   const refreshUser = useCallback(async () => {
     if (!user || checkIsGuest(user)) return;
     try {
-      const response = await memberApi.getById(user.id);
+      const response = await memberApi.getMe();
       if (response.success && response.data) {
         persistUser(response.data);
       }
-    } catch {
-      // Backend unavailable
+    } catch (error: unknown) {
+      const status = error instanceof ApiError ? error.status : undefined;
+      // 401/404: 토큰 만료 또는 사용자 삭제됨 → 로그아웃
+      if (status === 404 || status === 401) {
+        logout();
+      }
+      // Backend unavailable or other errors
     }
-  }, [user, persistUser]);
+  }, [user, persistUser, logout]);
 
   // 자동 잔액 갱신: 10초마다 백엔드에서 최신 사용자 데이터 가져오기
   useEffect(() => {
     if (!user || checkIsGuest(user)) return;
 
     const interval = setInterval(() => {
+      if (typeof document !== 'undefined' && document.visibilityState !== 'visible') {
+        return;
+      }
       refreshUser();
-    }, 10000); // 10초마다 갱신
+    }, USER_REFRESH_INTERVAL_MS); // 30초마다 갱신
 
     return () => clearInterval(interval);
   }, [user, refreshUser]);
@@ -227,7 +242,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       isGuest,
       loginAsGuest,
       loginWithGoogle,
-      loginWithEmail,
       loginById,
       register,
       logout,

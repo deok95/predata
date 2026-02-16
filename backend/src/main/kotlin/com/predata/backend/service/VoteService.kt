@@ -17,21 +17,20 @@ class VoteService(
     private val activityRepository: ActivityRepository,
     private val questionRepository: QuestionRepository,
     private val memberRepository: com.predata.backend.repository.MemberRepository,
-    private val ticketService: TicketService,
     private val voteRecordService: VoteRecordService
 ) {
 
     /**
      * 투표 실행
      * - 밴 유저 차단
-     * - 5-Lock 티켓 차감
+     * - 투표 패스 확인
      * - 중복 투표 방지
-     * - 무지성 투표 방지 (latency 체크)
      */
     @Transactional
-    fun vote(request: VoteRequest, clientIp: String? = null): ActivityResponse {
-        // 0. 밴 체크
-        val member = memberRepository.findById(request.memberId).orElse(null)
+    fun vote(memberId: Long, request: VoteRequest, clientIp: String? = null): ActivityResponse {
+
+        // 1. 밴 체크
+        val member = memberRepository.findById(memberId).orElse(null)
         if (member != null && member.isBanned) {
             return ActivityResponse(
                 success = false,
@@ -39,7 +38,15 @@ class VoteService(
             )
         }
 
-        // 1. 질문 존재 여부 확인
+        // 1. 투표 패스 확인
+        if (member == null || !member.hasVotingPass) {
+            return ActivityResponse(
+                success = false,
+                message = "투표 패스가 필요합니다. 마이페이지에서 구매해주세요."
+            )
+        }
+
+        // 2. 질문 존재 여부 확인
         val question = questionRepository.findById(request.questionId)
             .orElse(null) ?: return ActivityResponse(
                 success = false,
@@ -61,9 +68,9 @@ class VoteService(
             )
         }
 
-        // 2. 중복 투표 방지
+        // 3. 중복 투표 방지
         val alreadyVoted = activityRepository.existsByMemberIdAndQuestionIdAndActivityType(
-            request.memberId,
+            memberId,
             request.questionId,
             ActivityType.VOTE
         )
@@ -75,18 +82,9 @@ class VoteService(
             )
         }
 
-        // 3. 티켓 차감 (5-Lock)
-        val ticketConsumed = ticketService.consumeTicket(request.memberId)
-        if (!ticketConsumed) {
-            return ActivityResponse(
-                success = false,
-                message = "오늘의 투표 티켓을 모두 사용하셨습니다."
-            )
-        }
-
         // 4. 투표 기록 저장 (IP 포함)
         val activity = Activity(
-            memberId = request.memberId,
+            memberId = memberId,
             questionId = request.questionId,
             activityType = ActivityType.VOTE,
             choice = request.choice,
@@ -100,13 +98,10 @@ class VoteService(
         // 5. 온체인(Mock) 기록
         voteRecordService.recordVote(savedActivity)
 
-        val remainingTickets = ticketService.getRemainingTickets(request.memberId)
-
         return ActivityResponse(
             success = true,
             message = "투표가 완료되었습니다.",
-            activityId = savedActivity.id,
-            remainingTickets = remainingTickets
+            activityId = savedActivity.id
         )
     }
 }

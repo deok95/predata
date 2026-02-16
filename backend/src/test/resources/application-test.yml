@@ -1,0 +1,77 @@
+spring:
+  application:
+    name: predata-backend-test
+
+  datasource:
+    url: jdbc:h2:mem:testdb;MODE=MySQL;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE
+    username: sa
+    password:
+    driver-class-name: org.h2.Driver
+
+  flyway:
+    enabled: false  # H2에서 MariaDB 전용 Flyway migration 비활성화
+
+  jpa:
+    hibernate:
+      ddl-auto: create-drop  # 테스트용: 자동 스키마 생성 및 삭제
+    show-sql: false
+    properties:
+      hibernate:
+        format_sql: false
+        dialect: org.hibernate.dialect.H2Dialect
+        jdbc:
+          batch_size: 50
+        order_inserts: true
+        order_updates: true
+
+  mail:
+    host: localhost
+    port: 25
+    username: test
+    password: test
+
+  security:
+    oauth2:
+      client:
+        registration:
+          google:
+            client-id: test-client-id
+            client-secret: test-client-secret
+            scope:
+              - email
+              - profile
+
+server:
+  port: 0  # 랜덤 포트 (테스트 격리)
+
+jwt:
+  secret: test-secret-key-must-be-at-least-256-bits-long-for-HS256-algorithm-to-work-properly
+  expiration-ms: 86400000
+
+auth:
+  demo-mode: true
+
+anthropic:
+  api:
+    key: test-api-key
+
+polygon:
+  rpc-url: http://localhost:8545
+  receiver-wallet: 0x0000000000000000000000000000000000000000
+  usdc-contract: 0x0000000000000000000000000000000000000000
+  chain-id: 1
+  sender-private-key: 0000000000000000000000000000000000000000000000000000000000000000
+
+logging:
+  level:
+    com.predata.backend: INFO
+    org.hibernate.SQL: WARN
+
+app:
+  risk:
+    max-position-per-market: 1000
+    max-order-value: 500
+    circuit-breaker:
+      trade-count-threshold: 100
+      time-window-seconds: 60
+      cooldown-seconds: 30

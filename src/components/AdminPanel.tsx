@@ -33,16 +33,17 @@ export default function AdminPanel({ questionId, questionTitle, onClose, onSettl
 
       if (response.success && response.data) {
         setSuccess(true);
+        const data = response.data as { totalBets: number; totalWinners: number; totalPayout: number };
         alert(
           `✅ 정산 완료!\n\n` +
-          `총 베팅: ${response.data.totalBets}건\n` +
-          `승자: ${response.data.totalWinners}명\n` +
-          `총 배당금: ${response.data.totalPayout.toLocaleString()}P`
+          `총 베팅: ${data.totalBets}건\n` +
+          `승자: ${data.totalWinners}명\n` +
+          `총 배당금: $${data.totalPayout.toLocaleString()}`
         );
         onSettled();
         setTimeout(() => onClose(), 2000);
       } else {
-        setError(response.message || '정산에 실패했습니다.');
+        setError((response.message as string) || '정산에 실패했습니다.');
       }
     } catch (err) {
       if (process.env.NODE_ENV === 'development') {

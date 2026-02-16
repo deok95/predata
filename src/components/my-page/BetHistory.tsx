@@ -18,14 +18,14 @@ export default function BetHistory({ memberId }: BetHistoryProps) {
   const [filter, setFilter] = useState<'all' | 'active' | 'settled'>('all');
 
   useEffect(() => {
-    settlementApi.getHistory(memberId).then(res => {
+    settlementApi.getHistory().then(res => {
       if (res.success && res.data && res.data.length > 0) setHistory(res.data);
       else setHistory(mockSettlementHistory);
     }).catch(() => {
       setHistory(mockSettlementHistory);
     });
 
-    bettingApi.getActivitiesByMember(memberId).then(res => {
+    bettingApi.getActivitiesByMember('BET').then(res => {
       if (res.success && res.data && res.data.length > 0) setActivities(res.data);
       else setActivities(mockGuestActivities);
     }).catch(() => {
@@ -45,7 +45,7 @@ export default function BetHistory({ memberId }: BetHistoryProps) {
       <div className="grid grid-cols-3 gap-3 mb-6">
         <div className={`p-3 rounded-2xl text-center ${isDark ? 'bg-slate-800' : 'bg-slate-50'}`}>
           <p className="text-xs text-slate-400 mb-1">총 수익</p>
-          <p className={`font-black ${totalProfit >= 0 ? 'text-emerald-500' : 'text-rose-500'}`}>{totalProfit >= 0 ? '+' : ''}{totalProfit.toLocaleString()} P</p>
+          <p className={`font-black ${totalProfit >= 0 ? 'text-emerald-500' : 'text-rose-500'}`}>{totalProfit >= 0 ? '+' : ''}{'$'}{totalProfit.toLocaleString()}</p>
         </div>
         <div className={`p-3 rounded-2xl text-center ${isDark ? 'bg-slate-800' : 'bg-slate-50'}`}>
           <p className="text-xs text-slate-400 mb-1">승리</p>
@@ -90,9 +90,9 @@ export default function BetHistory({ memberId }: BetHistoryProps) {
             </div>
             <div className="text-right">
               <p className={`text-sm font-black ${h.profit >= 0 ? 'text-emerald-500' : 'text-rose-500'}`}>
-                {h.profit >= 0 ? '+' : ''}{h.profit} P
+                {h.profit >= 0 ? '+' : ''}{'$'}{h.profit}
               </p>
-              <p className="text-xs text-slate-400">{h.betAmount} P 베팅</p>
+              <p className="text-xs text-slate-400">{'$'}{h.betAmount} 베팅</p>
             </div>
           </div>
         ))}
@@ -109,7 +109,7 @@ export default function BetHistory({ memberId }: BetHistoryProps) {
               </div>
             </div>
             <div className="text-right">
-              <p className="text-sm font-bold">{a.amount} P</p>
+              <p className="text-sm font-bold">{'$'}{a.amount}</p>
               <p className="text-xs text-slate-400">{new Date(a.createdAt).toLocaleDateString('ko-KR')}</p>
             </div>
           </div>

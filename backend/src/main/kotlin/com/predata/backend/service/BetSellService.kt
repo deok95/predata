@@ -18,7 +18,8 @@ import java.time.LocalDateTime
 class BetSellService(
     private val activityRepository: ActivityRepository,
     private val questionRepository: QuestionRepository,
-    private val memberRepository: MemberRepository
+    private val memberRepository: MemberRepository,
+    private val transactionHistoryService: TransactionHistoryService
 ) {
 
     companion object {
@@ -33,16 +34,16 @@ class BetSellService(
      * - BET_SELL 활동 기록 생성
      */
     @Transactional
-    fun sellBet(request: SellBetRequest, clientIp: String? = null): SellBetResponse {
-        // 1. 베팅 조회 및 검증
-        val originalBet = activityRepository.findById(request.betId)
+    fun sellBet(memberId: Long, request: SellBetRequest, clientIp: String? = null): SellBetResponse {
+        // 1. 베팅 조회 및 검증 (비관적 락으로 중복 판매 방지)
+        val originalBet = activityRepository.findByIdWithLock(request.betId)
             .orElse(null) ?: return SellBetResponse(
                 success = false,
                 message = "베팅을 찾을 수 없습니다."
             )
 
         // 소유권 확인
-        if (originalBet.memberId != request.memberId) {
+        if (originalBet.memberId != memberId) {
             return SellBetResponse(
                 success = false,
                 message = "본인의 베팅만 판매할 수 있습니다."
@@ -57,7 +58,7 @@ class BetSellService(
             )
         }
 
-        // 중복 판매 확인
+        // 중복 판매 확인 (비관적 락 이후 체크)
         val alreadySold = activityRepository.findByParentBetIdAndActivityType(
             request.betId,
             ActivityType.BET_SELL
@@ -93,7 +94,7 @@ class BetSellService(
         }
 
         // 3. 회원 조회 및 밴 확인
-        val member = memberRepository.findById(request.memberId)
+        val member = memberRepository.findById(memberId)
             .orElse(null) ?: return SellBetResponse(
                 success = false,
                 message = "회원을 찾을 수 없습니다."
@@ -148,13 +149,22 @@ class BetSellService(
 
         questionRepository.save(question)
 
-        // 6. 포인트 환불
-        member.pointBalance += refundAmount
+        // 6. USDC 환불
+        member.usdcBalance = member.usdcBalance.add(BigDecimal(refundAmount))
         memberRepository.save(member)
+
+        transactionHistoryService.record(
+            memberId = memberId,
+            type = "SETTLEMENT",
+            amount = BigDecimal(refundAmount),
+            balanceAfter = member.usdcBalance,
+            description = "베팅 판매 환불 - Question #${originalBet.questionId}",
+            questionId = originalBet.questionId
+        )
 
         // 7. BET_SELL 활동 기록 생성
         val sellActivity = Activity(
-            memberId = request.memberId,
+            memberId = memberId,
             questionId = originalBet.questionId,
             activityType = ActivityType.BET_SELL,
             choice = originalBet.choice,

@@ -1,9 +1,12 @@
 'use client';
 
+import { useState } from 'react';
 import MainLayout from '@/components/layout/MainLayout';
 import UserProfile from '@/components/my-page/UserProfile';
 import TierProgress from '@/components/my-page/TierProgress';
 import BetHistory from '@/components/my-page/BetHistory';
+import TransactionHistory from '@/components/my-page/TransactionHistory';
+import TicketShop from '@/components/my-page/TicketShop';
 import { useTheme } from '@/hooks/useTheme';
 import { useAuth } from '@/hooks/useAuth';
 import { useRegisterModal } from '@/components/RegisterModal';
@@ -55,6 +58,7 @@ function GuestMyPage() {
 function MyPageContent() {
   const { isDark } = useTheme();
   const { user, isGuest } = useAuth();
+  const [rightTab, setRightTab] = useState<'bets' | 'transactions'>('bets');
 
   if (!user) {
     return (
@@ -78,10 +82,38 @@ function MyPageContent() {
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
         <div className="lg:col-span-5 space-y-6">
           <UserProfile user={user} />
+          <TicketShop user={user} />
           <TierProgress user={user} />
         </div>
-        <div className="lg:col-span-7">
-          <BetHistory memberId={user.id} />
+        <div className="lg:col-span-7 space-y-4">
+          <div className="flex space-x-2">
+            <button
+              onClick={() => setRightTab('bets')}
+              className={`px-4 py-2 rounded-xl text-xs font-bold transition-all ${
+                rightTab === 'bets'
+                  ? 'bg-indigo-600 text-white'
+                  : isDark ? 'bg-slate-800 text-slate-400' : 'bg-slate-100 text-slate-500'
+              }`}
+            >
+              베팅 내역
+            </button>
+            <button
+              onClick={() => setRightTab('transactions')}
+              className={`px-4 py-2 rounded-xl text-xs font-bold transition-all ${
+                rightTab === 'transactions'
+                  ? 'bg-indigo-600 text-white'
+                  : isDark ? 'bg-slate-800 text-slate-400' : 'bg-slate-100 text-slate-500'
+              }`}
+            >
+              거래 내역
+            </button>
+          </div>
+
+          {rightTab === 'bets' ? (
+            <BetHistory memberId={user.id} />
+          ) : (
+            <TransactionHistory memberId={user.id} />
+          )}
         </div>
       </div>
     </div>
