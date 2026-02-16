@@ -26,6 +26,7 @@ import java.time.LocalDate
 import java.time.LocalDateTime
 import java.time.ZoneOffset
 import java.util.UUID
+import java.util.concurrent.TimeUnit
 
 @Service
 class AutoQuestionGenerationService(
@@ -58,8 +59,16 @@ class AutoQuestionGenerationService(
         val subcategory = normalizeSubcategory(request.subcategory, settings)
 
         val existing = batchRepository.findBySubcategoryAndTargetDate(subcategory, targetDate)
-        if (existing != null && !request.dryRun && existing.status == STATUS_PUBLISHED) {
-            return toResponse(existing, itemRepository.findByBatchId(existing.batchId), "이미 생성/게시된 배치입니다.")
+        if (existing != null && !request.dryRun) {
+            // 이미 게시된 배치
+            if (existing.status == STATUS_PUBLISHED) {
+                return toResponse(existing, itemRepository.findByBatchId(existing.batchId), "이미 생성/게시된 배치입니다.")
+            }
+            // 기존 배치에 아이템이 이미 있으면 재생성 거부 (멱등성 보장)
+            val existingItems = itemRepository.findByBatchId(existing.batchId)
+            if (existingItems.isNotEmpty()) {
+                throw IllegalStateException("이미 생성된 배치입니다. retry를 사용하세요 (batchId: ${existing.batchId})")
+            }
         }
 
         val batch = if (request.dryRun) {
@@ -153,6 +162,30 @@ class AutoQuestionGenerationService(
 
     @Transactional
     fun publishBatch(batchId: String, request: PublishGeneratedBatchRequest): PublishResultResponse {
+        val batch = batchRepository.findByBatchId(batchId)
+            ?: throw IllegalArgumentException("배치를 찾을 수 없습니다: $batchId")
+
+        // 수동 publish API 부분 게시 차단: VERIFIABLE 2개 + OPINION 1개 = 3개 필수
+        val settings = settingsService.get()
+        val requiredTotal = settings.dailyCount
+        val requiredOpinion = settings.opinionCount
+        val requiredVerifiable = requiredTotal - requiredOpinion
+
+        val draftsToPublish = itemRepository.findByBatchIdAndDraftIdIn(batchId, request.publishDraftIds)
+            .filter { it.status == STATUS_DRAFT }
+
+        val opinionCount = draftsToPublish.count { it.marketType == "OPINION" }
+        val verifiableCount = draftsToPublish.count { it.marketType == "VERIFIABLE" }
+        val totalCount = draftsToPublish.size
+
+        // 검증 실패: 개수 미충족
+        if (totalCount != requiredTotal || opinionCount != requiredOpinion || verifiableCount != requiredVerifiable) {
+            batch.status = "VALIDATION_FAILED"
+            batch.message = "게시 조건 미충족: VERIFIABLE ${requiredVerifiable}개 + OPINION ${requiredOpinion}개 필요, 실제 VERIFIABLE ${verifiableCount}개 + OPINION ${opinionCount}개"
+            batchRepository.save(batch)
+            throw IllegalArgumentException("게시 조건 미충족: VERIFIABLE ${requiredVerifiable}개 + OPINION ${requiredOpinion}개 필요")
+        }
+
         return publishBatchInternal(batchId, request.publishDraftIds)
     }
 
@@ -358,8 +391,14 @@ class AutoQuestionGenerationService(
                     buildQuestionFromDraft(draft)
                 }
 
-                // 블록체인 먼저 시도 (실패하면 exception)
-                blockchainService.createQuestionOnChain(savedQuestion)
+                // 블록체인 먼저 시도 (실패하면 exception) - 30초 타임아웃으로 동기화
+                try {
+                    val txHash = blockchainService.createQuestionOnChain(savedQuestion)
+                        .get(30, TimeUnit.SECONDS)  // CompletableFuture 동기화 + 타임아웃
+                    logger.debug("[AutoQuestionGeneration] 블록체인 게시 성공 - draftId: ${draft.draftId}, txHash: $txHash")
+                } catch (e: Exception) {
+                    throw RuntimeException("블록체인 게시 실패: ${e.message}", e)
+                }
 
                 // 블록체인 성공 후에만 DB 저장
                 val finalQuestion = if (draft.publishedQuestionId == null) {
