@@ -206,7 +206,7 @@ class VoteCommitService(
             voteCommit.status = VoteCommitStatus.REVEALED
 
             voteCommitRepository.save(voteCommit)
-            logger.info("Vote reveal successful: memberId=$memberId, questionId=${request.questionId}, choice=${request.choice}")
+            logger.info("Vote reveal successful: memberId=$memberId, questionId=${request.questionId}, status=${voteCommit.status}")
 
             // 감사 로그 기록
             auditService.log(
@@ -214,7 +214,7 @@ class VoteCommitService(
                 action = com.predata.backend.domain.AuditAction.VOTE_REVEAL,
                 entityType = "VoteCommit",
                 entityId = voteCommit.id,
-                detail = "투표 공개: questionId=${request.questionId}, choice=${request.choice}"
+                detail = "투표 공개: questionId=${request.questionId}"
             )
 
             // 서킷브레이커 성공 기록
