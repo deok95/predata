@@ -128,7 +128,9 @@ function QuestionDetailContent() {
         </div>
         <h1 className={`text-2xl font-black mb-3 ${isDark ? 'text-white' : 'text-slate-900'}`}>{question.title}</h1>
         <div className="flex items-center gap-4 text-sm text-slate-400">
-          <span className="font-bold">Vol. {question.totalBetPool.toLocaleString()} USDC</span>
+          {question.status !== 'VOTING' && (
+            <span className="font-bold">Vol. {question.totalBetPool.toLocaleString()} USDC</span>
+          )}
           {question.expiredAt && (
             <span className="flex items-center gap-1">
               <Clock size={14} />
@@ -205,21 +207,23 @@ function QuestionDetailContent() {
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
         <div className="lg:col-span-8 space-y-6">
-          <ProbabilityChart
-            yesPercent={yesPercent}
-            totalPool={question.totalBetPool}
-            yesPool={question.yesBetPool}
-            noPool={question.noBetPool}
-            questionId={question.id}
-            disableApi={isReadOnlyFallback}
-          />
-          {!isReadOnlyFallback && (
+          {question.status !== 'VOTING' && (
+            <ProbabilityChart
+              yesPercent={yesPercent}
+              totalPool={question.totalBetPool}
+              yesPool={question.yesBetPool}
+              noPool={question.noBetPool}
+              questionId={question.id}
+              disableApi={isReadOnlyFallback}
+            />
+          )}
+          {question.status !== 'VOTING' && !isReadOnlyFallback && (
             <OrderBook questionId={question.id} yesPercent={yesPercent} totalPool={question.totalBetPool} />
           )}
-          {!isReadOnlyFallback && (
+          {question.status !== 'VOTING' && !isReadOnlyFallback && (
             <ActivityFeed questionId={question.id} refreshKey={refreshKey} />
           )}
-          {!isReadOnlyFallback && user && <MyBetsPanel questionId={question.id} />}
+          {question.status !== 'VOTING' && !isReadOnlyFallback && user && <MyBetsPanel questionId={question.id} />}
         </div>
         <div className="lg:col-span-4">
           {user && !isReadOnlyFallback && (

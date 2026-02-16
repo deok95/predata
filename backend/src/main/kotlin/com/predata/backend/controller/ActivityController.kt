@@ -272,32 +272,43 @@ class ActivityController(
     @GetMapping("/questions/{id}/odds")
     fun getOdds(@PathVariable id: Long): ResponseEntity<ApiEnvelope<OddsResponse>> {
         val question = questionService.getQuestion(id)
-        
-        return if (question != null) {
-            val odds = oddsService.calculateOdds(
-                poolYes = question.yesBetPool.toDouble(),
-                poolNo = question.noBetPool.toDouble(),
-                subsidy = 0.0 // 브랜드 지원금은 Question 엔티티에 추가 필요
-            )
-            
-            ResponseEntity.ok(
+
+        if (question == null) {
+            return ResponseEntity.notFound().build()
+        }
+
+        // VOTING 상태에서는 배당률 조회 차단
+        if (question.status == "VOTING") {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(
                 ApiEnvelope(
-                    success = true,
-                    data = OddsResponse(
-                        questionId = id,
-                        yesOdds = odds.yesOdds,
-                        noOdds = odds.noOdds,
-                        yesPrice = odds.yesPrice,
-                        noPrice = odds.noPrice,
-                        poolYes = question.yesBetPool,
-                        poolNo = question.noBetPool,
-                        totalPool = question.totalBetPool
-                    )
+                    success = false,
+                    data = null,
+                    message = "투표 진행 중에는 배당률을 조회할 수 없습니다."
                 )
             )
-        } else {
-            ResponseEntity.notFound().build()
         }
+
+        val odds = oddsService.calculateOdds(
+            poolYes = question.yesBetPool.toDouble(),
+            poolNo = question.noBetPool.toDouble(),
+            subsidy = 0.0 // 브랜드 지원금은 Question 엔티티에 추가 필요
+        )
+
+        return ResponseEntity.ok(
+            ApiEnvelope(
+                success = true,
+                data = OddsResponse(
+                    questionId = id,
+                    yesOdds = odds.yesOdds,
+                    noOdds = odds.noOdds,
+                    yesPrice = odds.yesPrice,
+                    noPrice = odds.noPrice,
+                    poolYes = question.yesBetPool,
+                    poolNo = question.noBetPool,
+                    totalPool = question.totalBetPool
+                )
+            )
+        )
     }
 
     /**

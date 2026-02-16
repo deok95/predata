@@ -11,7 +11,8 @@ import java.math.BigDecimal
 class OrderBookService(
     private val orderRepository: OrderRepository,
     private val tradeRepository: TradeRepository,
-    private val priceHistoryRepository: com.predata.backend.repository.PriceHistoryRepository
+    private val priceHistoryRepository: com.predata.backend.repository.PriceHistoryRepository,
+    private val questionRepository: com.predata.backend.repository.QuestionRepository
 ) {
 
     /**
@@ -20,6 +21,18 @@ class OrderBookService(
      * - asks: NO 매수 주문 = YES 매도 (낮은 가격순, 역가격 표시)
      */
     fun getOrderBook(questionId: Long): OrderBookResponse {
+        // VOTING 상태에서는 빈 오더북 반환
+        val question = questionRepository.findById(questionId).orElse(null)
+        if (question != null && question.status == com.predata.backend.domain.QuestionStatus.VOTING) {
+            return OrderBookResponse(
+                questionId = questionId,
+                bids = emptyList(),
+                asks = emptyList(),
+                lastPrice = null,
+                spread = null
+            )
+        }
+
         val yesBids = orderRepository.findYesBids(questionId)
         val noAsks = orderRepository.findNoAsks(questionId)
 

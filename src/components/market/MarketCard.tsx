@@ -134,19 +134,28 @@ export default function MarketCard({ question, votedChoice }: MarketCardProps) {
           {question.title}
         </h3>
 
-        <div className="space-y-2 mb-4">
-          <div className="flex justify-between text-xs">
-            <span className="text-slate-400">확률</span>
-            <span className="font-bold text-indigo-600">{yesOdds}% Yes</span>
+        {question.status !== 'VOTING' && (
+          <div className="space-y-2 mb-4">
+            <div className="flex justify-between text-xs">
+              <span className="text-slate-400">확률</span>
+              <span className="font-bold text-indigo-600">{yesOdds}% Yes</span>
+            </div>
+            <div className="w-full bg-slate-200 dark:bg-slate-800 rounded-full h-2">
+              <div className="bg-indigo-600 h-2 rounded-full transition-all" style={{ width: `${yesOdds}%` }} />
+            </div>
+            <div className="flex justify-between text-xs">
+              <span className="text-slate-400">거래량</span>
+              <span className="font-bold">{'$'}{question.totalBetPool.toLocaleString()}</span>
+            </div>
           </div>
-          <div className="w-full bg-slate-200 dark:bg-slate-800 rounded-full h-2">
-            <div className="bg-indigo-600 h-2 rounded-full transition-all" style={{ width: `${yesOdds}%` }} />
+        )}
+        {question.status === 'VOTING' && (
+          <div className="mb-4">
+            <div className={`text-center py-4 rounded-xl ${isDark ? 'bg-blue-500/10 border border-blue-500/30' : 'bg-blue-50 border border-blue-200'}`}>
+              <span className="text-blue-500 font-bold text-sm">투표 진행 중</span>
+            </div>
           </div>
-          <div className="flex justify-between text-xs">
-            <span className="text-slate-400">거래량</span>
-            <span className="font-bold">{'$'}{question.totalBetPool.toLocaleString()}</span>
-          </div>
-        </div>
+        )}
 
         {question.status !== 'SETTLED' && (
           <div className={`pt-4 border-t flex items-center justify-between text-xs ${isDark ? 'border-slate-800' : 'border-slate-100'}`}>

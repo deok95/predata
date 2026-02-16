@@ -242,15 +242,24 @@ export default function TradingPanel({ question, user, onTradeComplete, votedCho
             </button>
           </div>
         )}
-        <div className={`mt-6 pt-6 border-t ${isDark ? 'border-slate-800' : 'border-slate-100'}`}>
-          <div className="flex justify-between items-center text-sm">
-            <span className="text-slate-400">현재 풀 비율</span>
-            <div className="flex gap-3">
-              <span className="text-emerald-500 font-bold">{yesOdds}% YES</span>
-              <span className="text-rose-500 font-bold">{100 - yesOdds}% NO</span>
+        {question.votingEndAt && (
+          <div className={`mt-6 pt-6 border-t ${isDark ? 'border-slate-800' : 'border-slate-100'}`}>
+            <div className="flex justify-between items-center text-sm">
+              <span className="text-slate-400">투표 종료까지</span>
+              <span className="text-indigo-500 font-bold">
+                {(() => {
+                  const now = new Date().getTime();
+                  const end = new Date(question.votingEndAt).getTime();
+                  const diff = end - now;
+                  if (diff <= 0) return '종료됨';
+                  const hours = Math.floor(diff / (1000 * 60 * 60));
+                  const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+                  return hours > 0 ? `${hours}시간 ${minutes}분` : `${minutes}분`;
+                })()}
+              </span>
             </div>
           </div>
-        </div>
+        )}
       </div>
     );
   }
