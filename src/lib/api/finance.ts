@@ -1,23 +1,11 @@
 import type {
   ApiResponse,
-  FaucetClaimResponse,
-  FaucetStatus,
   PaymentVerifyResponse,
   TransactionHistoryPage,
   VotingPassPurchaseResponse,
   WithdrawResponse,
 } from '@/types/api';
 import { apiRequest } from './core';
-
-export const faucetApi = {
-  claim: (memberId: number) =>
-    apiRequest<FaucetClaimResponse>(`/api/faucet/claim/${memberId}`, {
-      method: 'POST',
-    }),
-
-  getStatus: (memberId: number) =>
-    apiRequest<FaucetStatus>(`/api/faucet/status/${memberId}`),
-};
 
 export const votingPassApi = {
   purchase: async (memberId: number): Promise<ApiResponse<VotingPassPurchaseResponse>> => {

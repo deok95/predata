@@ -1,18 +1,18 @@
 'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
-import { Search, Sun, Moon, Bell, X, UserPlus, Gift } from 'lucide-react';
+import { Search, Sun, Moon, Bell, X, UserPlus } from 'lucide-react';
 import { useTheme } from '@/hooks/useTheme';
 import { useAuth } from '@/hooks/useAuth';
 import { useRegisterModal } from '@/components/RegisterModal';
 import { useRouter } from 'next/navigation';
 import { mockQuestions } from '@/lib/mockData';
-import { questionApi, faucetApi } from '@/lib/api';
+import { questionApi } from '@/lib/api';
 import type { Question } from '@/types/api';
 
 export default function AppHeader() {
   const { isDark, toggleTheme } = useTheme();
-  const { user, isGuest, refreshUser } = useAuth();
+  const { user, isGuest } = useAuth();
   const { open: openRegister } = useRegisterModal();
   const router = useRouter();
   const [searchQuery, setSearchQuery] = useState('');
@@ -21,11 +21,8 @@ export default function AppHeader() {
   const [allQuestions, setAllQuestions] = useState<Question[]>([]);
   const [notifications, setNotifications] = useState<NotificationItem[]>(getDefaultNotifications());
   const [showNotifications, setShowNotifications] = useState(false);
-  const [faucetClaimed, setFaucetClaimed] = useState(false);
-  const [faucetLoading, setFaucetLoading] = useState(false);
   const searchRef = useRef<HTMLDivElement>(null);
   const notiRef = useRef<HTMLDivElement>(null);
-  const lastFaucetFetchRef = useRef(0);
 
   // 질문 목록 로드
   useEffect(() => {
@@ -48,44 +45,6 @@ export default function AppHeader() {
     );
     setSearchResults(results.slice(0, 5));
   }, [searchQuery, allQuestions]);
-
-  // Faucet 상태 조회 (1분 이내 재호출 방지)
-  useEffect(() => {
-    if (!user || isGuest || !user.id) return;
-
-    // 1분 이내 재호출 skip
-    if (Date.now() - lastFaucetFetchRef.current < 60000) return;
-
-    lastFaucetFetchRef.current = Date.now();
-    faucetApi.getStatus(user.id).then(status => {
-      setFaucetClaimed(status.claimed);
-    }).catch(() => {});
-  }, [user?.id, isGuest]); // user 전체가 아닌 user.id만 의존
-
-  const handleFaucetClaim = async () => {
-    if (!user || !user.id || faucetClaimed || faucetLoading) return;
-    setFaucetLoading(true);
-    try {
-      const result = await faucetApi.claim(user.id);
-      if (result.success) {
-        setFaucetClaimed(true);
-        refreshUser();
-        // 간단한 알림 추가
-        setNotifications(prev => [{
-          id: Date.now(),
-          title: '일일 보상 수령',
-          message: `$${result.amount} 일일 보상을 받았습니다! 잔액: $${result.newBalance.toLocaleString()}`,
-          time: '방금',
-          read: false,
-        }, ...prev]);
-      }
-    } catch {
-      // 이미 수령 등
-      setFaucetClaimed(true);
-    } finally {
-      setFaucetLoading(false);
-    }
-  };
 
   // 바깥 클릭 시 닫기
   useEffect(() => {
@@ -175,24 +134,6 @@ export default function AppHeader() {
         >
           {isDark ? <Sun size={20} /> : <Moon size={20} />}
         </button>
-
-        {!isGuest && user && (
-          <button
-            onClick={handleFaucetClaim}
-            disabled={faucetClaimed || faucetLoading}
-            title={faucetClaimed ? '내일 다시 수령 가능' : '일일 $100 보상 받기'}
-            className={`p-3 rounded-xl transition-all relative ${
-              faucetClaimed
-                ? isDark ? 'text-slate-600 bg-slate-800/50 cursor-not-allowed' : 'text-slate-300 bg-slate-50 cursor-not-allowed'
-                : isDark ? 'text-emerald-400 bg-emerald-500/10 hover:bg-emerald-500/20' : 'text-emerald-600 bg-emerald-50 hover:bg-emerald-100'
-            }`}
-          >
-            <Gift size={20} />
-            {!faucetClaimed && (
-              <span className="absolute top-1.5 right-1.5 w-2.5 h-2.5 bg-emerald-500 rounded-full animate-pulse" />
-            )}
-          </button>
-        )}
 
         <div ref={notiRef} className="relative">
           <button

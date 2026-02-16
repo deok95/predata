@@ -9,7 +9,7 @@ export type {
   OrderBookLevel,
   OrderData,
 } from './api/order';
-export { faucetApi, paymentApi, transactionApi, votingPassApi } from './api/finance';
+export { paymentApi, transactionApi, votingPassApi } from './api/finance';
 export { notificationApi } from './api/notification';
 export { getPriceHistory } from './api/price';
 export type { PriceHistoryData } from './api/price';
@@ -31,7 +31,7 @@ export {
 import { authApi, memberApi } from './api/account';
 import { bettingApi, questionApi, settlementApi } from './api/market';
 import { orderApi } from './api/order';
-import { faucetApi, paymentApi, transactionApi, votingPassApi } from './api/finance';
+import { paymentApi, transactionApi, votingPassApi } from './api/finance';
 import { notificationApi } from './api/notification';
 import { getPriceHistory } from './api/price';
 import { getMyPositions, getMyPositionsByQuestion } from './api/position';
@@ -54,7 +54,6 @@ export const api = {
   question: questionApi,
   betting: bettingApi,
   settlement: settlementApi,
-  faucet: faucetApi,
   blockchain: blockchainApi,
   analytics: analyticsApi,
   analysis: analysisApi,
