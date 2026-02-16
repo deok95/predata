@@ -68,7 +68,7 @@ class MockBlockchainService {
                 txHash
             } catch (e: Exception) {
                 logger.error("❌ Mock 체인 기록 실패: ${e.message}", e)
-                null
+                throw e  // 예외를 삼키지 않고 재throw하여 CompletableFuture.failedFuture로 전파
             }
         }
     }
@@ -119,7 +119,7 @@ class MockBlockchainService {
                 txHash
             } catch (e: Exception) {
                 logger.error("❌ Mock 체인 배치 기록 실패: ${e.message}", e)
-                null
+                throw e  // 예외를 삼키지 않고 재throw하여 CompletableFuture.failedFuture로 전파
             }
         }
     }
@@ -160,7 +160,7 @@ class MockBlockchainService {
                 txHash
             } catch (e: Exception) {
                 logger.error("❌ Mock 체인 정산 실패: ${e.message}", e)
-                null
+                throw e  // 예외를 삼키지 않고 재throw하여 CompletableFuture.failedFuture로 전파
             }
         }
     }

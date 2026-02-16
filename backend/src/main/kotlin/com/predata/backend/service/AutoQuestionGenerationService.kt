@@ -392,13 +392,19 @@ class AutoQuestionGenerationService(
                 }
 
                 // 블록체인 먼저 시도 (실패하면 exception) - 30초 타임아웃으로 동기화
-                try {
-                    val txHash = blockchainService.createQuestionOnChain(savedQuestion)
+                val txHash = try {
+                    blockchainService.createQuestionOnChain(savedQuestion)
                         .get(30, TimeUnit.SECONDS)  // CompletableFuture 동기화 + 타임아웃
-                    logger.debug("[AutoQuestionGeneration] 블록체인 게시 성공 - draftId: ${draft.draftId}, txHash: $txHash")
                 } catch (e: Exception) {
                     throw RuntimeException("블록체인 게시 실패: ${e.message}", e)
                 }
+
+                // txHash가 null이면 블록체인 트랜잭션 실패로 처리
+                if (txHash == null) {
+                    throw RuntimeException("블록체인 트랜잭션 실패: txHash가 null입니다")
+                }
+
+                logger.debug("[AutoQuestionGeneration] 블록체인 게시 성공 - draftId: ${draft.draftId}, txHash: $txHash")
 
                 // 블록체인 성공 후에만 DB 저장
                 val finalQuestion = if (draft.publishedQuestionId == null) {
