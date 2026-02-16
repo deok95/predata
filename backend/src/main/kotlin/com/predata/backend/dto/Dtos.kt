@@ -140,6 +140,9 @@ data class AdminCreateQuestionRequest(
 
     val disputeUntil: String? = null, // ISO 8601 형식
 
+    // OPINION 시장은 true 권장 (투표 결과로 베팅 승패 정산)
+    val voteResultSettlement: Boolean? = null,
+
     val category: String? = null,
 
     @field:Min(value = 60, message = "투표 기간은 최소 60초입니다.")

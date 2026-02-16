@@ -1,7 +1,10 @@
 package com.predata.backend.controller
 
+import com.predata.backend.config.JwtAuthInterceptor
 import com.predata.backend.service.VotingPassPurchaseResponse
 import com.predata.backend.service.VotingPassService
+import jakarta.servlet.http.HttpServletRequest
+import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.*
 
@@ -17,9 +20,23 @@ class VotingPassController(
      * POST /api/voting-pass/purchase
      */
     @PostMapping("/purchase")
-    fun purchaseVotingPass(@RequestBody request: VotingPassPurchaseRequest): ResponseEntity<VotingPassPurchaseResponse> {
+    fun purchaseVotingPass(
+        httpRequest: HttpServletRequest,
+        @RequestBody(required = false) request: VotingPassPurchaseRequest? = null // backward compatible; ignored
+    ): ResponseEntity<VotingPassPurchaseResponse> {
+        val authenticatedMemberId = httpRequest.getAttribute(JwtAuthInterceptor.ATTR_MEMBER_ID) as? Long
+            ?: return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(
+                VotingPassPurchaseResponse(
+                    success = false,
+                    hasVotingPass = false,
+                    remainingBalance = 0.0,
+                    message = "인증이 필요합니다."
+                )
+            )
+
         return try {
-            val response = votingPassService.purchaseVotingPass(request.memberId)
+            // Never trust memberId in body; enforce JWT subject.
+            val response = votingPassService.purchaseVotingPass(authenticatedMemberId)
             ResponseEntity.ok(response)
         } catch (e: IllegalArgumentException) {
             ResponseEntity.badRequest().body(

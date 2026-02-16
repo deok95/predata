@@ -203,35 +203,18 @@ class QuestionLifecycleScheduler(
     }
 
     /**
-     * 조건부 초기 풀 설정
-     * - 투표 수가 충분하면 (>= MIN_VOTES_FOR_SIGNAL): 투표 YES/NO 비율로 초기 풀 설정
-     * - 투표 수가 부족하면: 균등 배분 (50:50 = 500:500)
-     * - 비율은 10%~90% 범위로 클램핑하여 극단적인 배당 방지
+     * 초기 풀 설정
+     * - 정책 변경: 투표 결과로 시딩하지 않고 중립(50:50)에서 시작
+     * - 이유: 서버도 베팅 종료 전까지 투표 결과를 알 수 없어야 함
      */
     private fun seedInitialPools(question: Question) {
-        val votes = activityRepository.findByQuestionIdAndActivityType(question.id!!, ActivityType.VOTE)
-        val totalVotes = votes.size
-        val yesVotes = votes.count { it.choice == Choice.YES }
-        val noVotes = totalVotes - yesVotes
-
-        if (totalVotes >= MIN_VOTES_FOR_SIGNAL && yesVotes > 0 && noVotes > 0) {
-            // 투표 비율 기반 초기 풀 (클램핑 적용)
-            val yesRatio = (yesVotes.toDouble() / totalVotes).coerceIn(MIN_ODDS_RATIO, MAX_ODDS_RATIO)
-            question.initialYesPool = (TOTAL_INITIAL_LIQUIDITY * yesRatio).toLong()
-            question.initialNoPool = TOTAL_INITIAL_LIQUIDITY - question.initialYesPool
-            logger.info(
-                "[Lifecycle] 질문 #{}: 투표 기반 초기 배당 (투표 {}/{}, 비율 YES={:.1f}%)",
-                question.id, yesVotes, totalVotes, yesRatio * 100
-            )
-        } else {
-            // 투표 부족 → 균등 배분 (50.5 vs 50.5)
-            question.initialYesPool = TOTAL_INITIAL_LIQUIDITY / 2
-            question.initialNoPool = TOTAL_INITIAL_LIQUIDITY / 2
-            logger.info(
-                "[Lifecycle] 질문 #{}: 균등 초기 배당 (투표 {}건 < 최소 {}건)",
-                question.id, totalVotes, MIN_VOTES_FOR_SIGNAL
-            )
-        }
+        // 균등 배분 (50:50 = 500:500)
+        question.initialYesPool = TOTAL_INITIAL_LIQUIDITY / 2
+        question.initialNoPool = TOTAL_INITIAL_LIQUIDITY / 2
+        logger.info(
+            "[Lifecycle] 질문 #{}: 중립 초기 배당 (50:50)",
+            question.id
+        )
 
         question.yesBetPool = question.initialYesPool
         question.noBetPool = question.initialNoPool

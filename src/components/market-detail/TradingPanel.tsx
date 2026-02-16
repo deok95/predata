@@ -1,7 +1,7 @@
 'use client';
 
-import { useState } from 'react';
-import { CheckCircle, UserPlus, Clock } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { CheckCircle, UserPlus, Clock, Shield, AlertTriangle } from 'lucide-react';
 import { useTheme } from '@/hooks/useTheme';
 import { useToast } from '@/components/ui/Toast';
 import { useAuth } from '@/hooks/useAuth';
@@ -9,6 +9,14 @@ import { useRegisterModal } from '@/components/RegisterModal';
 import { bettingApi, orderApi, ApiError } from '@/lib/api';
 import { BET_MIN_USDC, BET_MAX_USDC } from '@/lib/contracts';
 import DepositModal from '@/components/payment/DepositModal';
+import {
+  generateSalt,
+  generateCommitHash,
+  saveSaltToStorage,
+  getSaltFromStorage,
+  removeSaltFromStorage,
+  hasSaltInStorage,
+} from '@/lib/voteCommit';
 import type { Question, Member } from '@/types/api';
 
 interface TradingPanelProps {
@@ -31,6 +39,21 @@ export default function TradingPanel({ question, user, onTradeComplete, votedCho
   const [limitPrice, setLimitPrice] = useState('');
   const [loading, setLoading] = useState(false);
   const [showDepositModal, setShowDepositModal] = useState(false);
+  const [hasCommitted, setHasCommitted] = useState(false);
+  const [committedChoice, setCommittedChoice] = useState<'YES' | 'NO' | null>(null);
+
+  // Check if user has already committed (salt exists in localStorage)
+  useEffect(() => {
+    if (question.id && user?.id) {
+      const hasSalt = hasSaltInStorage(question.id);
+      setHasCommitted(hasSalt);
+      // Try to retrieve committed choice from localStorage (if stored)
+      const storedChoice = localStorage.getItem(`vote_choice_${question.id}`);
+      if (storedChoice === 'YES' || storedChoice === 'NO') {
+        setCommittedChoice(storedChoice);
+      }
+    }
+  }, [question.id, user?.id]);
 
   const yesOdds = question.totalBetPool > 0
     ? Math.round((question.yesBetPool / question.totalBetPool) * 100)
@@ -146,7 +169,93 @@ export default function TradingPanel({ question, user, onTradeComplete, votedCho
     }
   };
 
-  const handleVote = async (choice: 'YES' | 'NO') => {
+  /**
+   * 1단계: Commit (투표 내용 암호화하여 제출)
+   */
+  const handleVoteCommit = async (choice: 'YES' | 'NO') => {
+    setLoading(true);
+    try {
+      // 1. salt 생성
+      const salt = generateSalt();
+
+      // 2. commitHash 생성: SHA-256(questionId:memberId:choice:salt)
+      const commitHash = await generateCommitHash(question.id, user.id, choice, salt);
+
+      // 3. salt를 localStorage에 저장 (reveal 시 사용)
+      saveSaltToStorage(question.id, salt);
+      localStorage.setItem(`vote_choice_${question.id}`, choice);
+
+      // 4. 서버에 commitHash만 전송 (choice, salt 미전송)
+      const result = await bettingApi.voteCommit({
+        questionId: question.id,
+        commitHash,
+      });
+
+      if (result.success) {
+        showToast(`${choice} 투표 커밋 완료! 공개 시간에 다시 방문하세요.`, 'vote');
+        setHasCommitted(true);
+        setCommittedChoice(choice);
+        onVoted?.(choice);
+        await refreshUser();
+        onTradeComplete();
+      }
+    } catch (error) {
+      if (error instanceof ApiError) {
+        showToast(error.message, 'error');
+      } else {
+        showToast('투표 커밋 중 오류가 발생했습니다.', 'error');
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  /**
+   * 2단계: Reveal (투표 내용 공개)
+   */
+  const handleVoteReveal = async () => {
+    if (!committedChoice) {
+      showToast('커밋된 투표를 찾을 수 없습니다.', 'error');
+      return;
+    }
+
+    // localStorage에서 salt 조회
+    const salt = getSaltFromStorage(question.id);
+    if (!salt) {
+      showToast('투표 데이터가 유실되었습니다. 이 브라우저에서 투표한 경우에만 공개할 수 있습니다.', 'error');
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const result = await bettingApi.voteReveal({
+        questionId: question.id,
+        choice: committedChoice,
+        salt,
+      });
+
+      if (result.success) {
+        showToast(`${committedChoice} 투표 공개 완료!`, 'vote');
+        // localStorage에서 salt와 choice 삭제
+        removeSaltFromStorage(question.id);
+        localStorage.removeItem(`vote_choice_${question.id}`);
+        onVoted?.(committedChoice);
+        await refreshUser();
+        onTradeComplete();
+      }
+    } catch (error) {
+      if (error instanceof ApiError) {
+        showToast(error.message, 'error');
+      } else {
+        showToast('투표 공개 중 오류가 발생했습니다.', 'error');
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Legacy: 기존 Activity 기반 투표 (fallback)
+  const handleVoteLegacy = async (choice: 'YES' | 'NO') => {
     setLoading(true);
     try {
       const result = await bettingApi.vote({
@@ -196,12 +305,30 @@ export default function TradingPanel({ question, user, onTradeComplete, votedCho
   // Check if voting period has expired
   const isVotingExpired = question.votingEndAt && new Date(question.votingEndAt) < new Date();
 
-  // Render different UI based on question status
+  // Render different UI based on question status and voting phase
   if (question.status === 'VOTING' && !isVotingExpired) {
-    // VOTING status: Show only voting buttons
+    const votingPhase = question.votingPhase || 'VOTING_COMMIT_OPEN';
+    const isCommitPhase = votingPhase === 'VOTING_COMMIT_OPEN';
+    const isRevealPhase = votingPhase === 'VOTING_REVEAL_OPEN';
+
     return (
       <div className={`p-6 rounded-[2.5rem] border sticky top-24 ${isDark ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-100 shadow-xl'}`}>
-        <p className="text-xs font-bold text-slate-400 uppercase mb-4">무료 투표</p>
+        <div className="flex items-center justify-between mb-4">
+          <p className="text-xs font-bold text-slate-400 uppercase">무료 투표</p>
+          {isCommitPhase && (
+            <div className="flex items-center gap-1 text-xs text-emerald-500">
+              <Shield size={12} />
+              <span className="font-bold">Commit</span>
+            </div>
+          )}
+          {isRevealPhase && (
+            <div className="flex items-center gap-1 text-xs text-amber-500">
+              <Shield size={12} />
+              <span className="font-bold">Reveal</span>
+            </div>
+          )}
+        </div>
+
         {isGuest ? (
           <div className={`text-center py-8 rounded-xl ${isDark ? 'bg-slate-800/50' : 'bg-slate-50'}`}>
             <p className={`text-sm ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>회원가입 후 투표에 참여할 수 있습니다</p>
@@ -213,7 +340,73 @@ export default function TradingPanel({ question, user, onTradeComplete, votedCho
               회원가입
             </button>
           </div>
+        ) : isCommitPhase ? (
+          // Commit Phase: Show vote buttons
+          hasCommitted && committedChoice ? (
+            <div>
+              <div className={`flex items-center justify-center gap-2 py-8 rounded-xl ${
+                committedChoice === 'YES'
+                  ? isDark ? 'bg-emerald-500/10 border border-emerald-500/30' : 'bg-emerald-50 border border-emerald-200'
+                  : isDark ? 'bg-rose-500/10 border border-rose-500/30' : 'bg-rose-50 border border-rose-200'
+              }`}>
+                <CheckCircle size={20} className={committedChoice === 'YES' ? 'text-emerald-500' : 'text-rose-500'} />
+                <span className={`font-bold ${committedChoice === 'YES' ? 'text-emerald-500' : 'text-rose-500'}`}>
+                  {committedChoice} 투표 커밋 완료
+                </span>
+              </div>
+              <div className={`mt-4 p-3 rounded-xl text-xs ${isDark ? 'bg-slate-800 text-slate-400' : 'bg-slate-50 text-slate-500'}`}>
+                <Shield className="inline mr-1" size={12} />
+                투표가 암호화되어 제출되었습니다. Reveal 단계에서 공개됩니다.
+              </div>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              <button
+                onClick={() => handleVoteCommit('YES')}
+                disabled={loading}
+                className={`w-full py-5 rounded-2xl font-black text-lg transition-all shadow-lg ${isDark ? 'bg-emerald-500/20 text-emerald-400 hover:bg-emerald-500/30 border-2 border-emerald-500/50' : 'bg-emerald-50 text-emerald-600 hover:bg-emerald-100 border-2 border-emerald-200'}`}
+              >
+                {loading ? '처리 중...' : 'Commit Yes'}
+              </button>
+              <button
+                onClick={() => handleVoteCommit('NO')}
+                disabled={loading}
+                className={`w-full py-5 rounded-2xl font-black text-lg transition-all shadow-lg ${isDark ? 'bg-rose-500/20 text-rose-400 hover:bg-rose-500/30 border-2 border-rose-500/50' : 'bg-rose-50 text-rose-600 hover:bg-rose-100 border-2 border-rose-200'}`}
+              >
+                {loading ? '처리 중...' : 'Commit No'}
+              </button>
+              <div className={`mt-2 p-3 rounded-xl text-xs ${isDark ? 'bg-slate-800 text-slate-400' : 'bg-slate-50 text-slate-500'}`}>
+                <Shield className="inline mr-1" size={12} />
+                투표가 암호화되어 제출됩니다. 서버도 결과를 알 수 없습니다.
+              </div>
+            </div>
+          )
+        ) : isRevealPhase ? (
+          // Reveal Phase: Show reveal button
+          hasCommitted && committedChoice ? (
+            <div className="space-y-3">
+              <button
+                onClick={handleVoteReveal}
+                disabled={loading}
+                className="w-full py-5 rounded-2xl font-black text-lg transition-all shadow-lg bg-amber-500 text-white hover:bg-amber-600 border-2 border-amber-600"
+              >
+                {loading ? '처리 중...' : `Reveal ${committedChoice} Vote`}
+              </button>
+              <div className={`p-3 rounded-xl text-xs ${isDark ? 'bg-amber-950/20 border border-amber-900/30 text-amber-400' : 'bg-amber-50 border border-amber-200 text-amber-700'}`}>
+                투표 공개 시간입니다. 커밋한 투표를 공개하세요.
+              </div>
+            </div>
+          ) : (
+            <div className={`text-center py-8 rounded-xl ${isDark ? 'bg-slate-800/50 border border-slate-700' : 'bg-slate-50 border border-slate-200'}`}>
+              <AlertTriangle size={32} className="mx-auto mb-2 text-amber-500" />
+              <p className={`text-sm font-bold ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>투표 데이터 없음</p>
+              <p className={`text-xs mt-2 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                이 브라우저에서 투표하지 않았거나 데이터가 유실되었습니다.
+              </p>
+            </div>
+          )
         ) : votedChoice ? (
+          // Already revealed
           <div className={`flex items-center justify-center gap-2 py-8 rounded-xl ${
             votedChoice === 'YES'
               ? isDark ? 'bg-emerald-500/10 border border-emerald-500/30' : 'bg-emerald-50 border border-emerald-200'
@@ -225,16 +418,17 @@ export default function TradingPanel({ question, user, onTradeComplete, votedCho
             </span>
           </div>
         ) : (
+          // Fallback: Legacy voting (if votingPhase not supported)
           <div className="space-y-3">
             <button
-              onClick={() => handleVote('YES')}
+              onClick={() => handleVoteLegacy('YES')}
               disabled={loading}
               className={`w-full py-5 rounded-2xl font-black text-lg transition-all shadow-lg ${isDark ? 'bg-emerald-500/20 text-emerald-400 hover:bg-emerald-500/30 border-2 border-emerald-500/50' : 'bg-emerald-50 text-emerald-600 hover:bg-emerald-100 border-2 border-emerald-200'}`}
             >
               {loading ? '처리 중...' : 'Vote Yes'}
             </button>
             <button
-              onClick={() => handleVote('NO')}
+              onClick={() => handleVoteLegacy('NO')}
               disabled={loading}
               className={`w-full py-5 rounded-2xl font-black text-lg transition-all shadow-lg ${isDark ? 'bg-rose-500/20 text-rose-400 hover:bg-rose-500/30 border-2 border-rose-500/50' : 'bg-rose-50 text-rose-600 hover:bg-rose-100 border-2 border-rose-200'}`}
             >
@@ -242,10 +436,11 @@ export default function TradingPanel({ question, user, onTradeComplete, votedCho
             </button>
           </div>
         )}
+
         {question.votingEndAt && (
           <div className={`mt-6 pt-6 border-t ${isDark ? 'border-slate-800' : 'border-slate-100'}`}>
             <div className="flex justify-between items-center text-sm">
-              <span className="text-slate-400">투표 종료까지</span>
+              <span className="text-slate-400">{isRevealPhase ? 'Reveal 종료까지' : '투표 종료까지'}</span>
               <span className="text-indigo-500 font-bold">
                 {(() => {
                   const now = new Date().getTime();

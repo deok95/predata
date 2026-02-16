@@ -123,6 +123,7 @@ class GoogleTrendSignalService(
             "SPORTS" -> listOf("축구", "야구", "농구", "월드컵", "올림픽", "premier", "nba", "mlb", "epl", "경기")
             "POLITICS" -> listOf("선거", "대통령", "의회", "정책", "관세", "외교", "election", "policy", "tariff")
             "CULTURE" -> listOf("영화", "드라마", "음악", "넷플릭스", "k-pop", "bts", "공연", "festival")
+            "CRYPTO" -> listOf("비트코인", "이더리움", "리플", "솔라나", "알트코인", "코인", "bitcoin", "ethereum", "crypto", "defi")
             else -> emptyList()
         }
 
@@ -137,6 +138,7 @@ class GoogleTrendSignalService(
             "SPORTS" -> listOf("프리미어리그", "챔피언스리그", "MLB", "NBA", "월드컵 예선")
             "POLITICS" -> listOf("미국 대선", "대중 관세", "금리 정책", "국회 표결", "외교 회담")
             "CULTURE" -> listOf("넷플릭스 신작", "K-POP 컴백", "박스오피스", "음원 차트", "시상식")
+            "CRYPTO" -> listOf("비트코인", "이더리움", "솔라나", "SEC 규제", "암호화폐 ETF")
             else -> listOf("시장 심리", "경제 이슈", "정책 발표", "주요 뉴스", "글로벌 이벤트")
         }
 

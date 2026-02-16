@@ -38,9 +38,6 @@ data class VoteCommit(
     @Column(name = "commit_hash", nullable = false, length = 64)
     val commitHash: String,  // SHA-256 해시 (64자 hex)
 
-    @Column(nullable = false, length = 64)
-    var salt: String,  // 클라이언트 생성 salt (검증용)
-
     @Enumerated(EnumType.STRING)
     @Column(name = "revealed_choice", length = 3)
     var revealedChoice: Choice? = null,  // Reveal 후 저장 (YES or NO)

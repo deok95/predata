@@ -105,16 +105,12 @@ class VoteCommitService(
             )
         }
 
-        // 7. 서버 salt 생성
-        val serverSalt = generateSalt()
-
-        // 8. VoteCommit 저장
+        // 7. VoteCommit 저장 (salt는 클라이언트가 보관)
         return try {
             val voteCommit = VoteCommit(
                 memberId = memberId,
                 questionId = request.questionId,
                 commitHash = request.commitHash,
-                salt = serverSalt,
                 status = VoteCommitStatus.COMMITTED
             )
 
@@ -136,8 +132,7 @@ class VoteCommitService(
             VoteCommitResponse(
                 success = true,
                 message = "투표 커밋이 완료되었습니다.",
-                voteCommitId = saved.id,
-                salt = serverSalt  // 클라이언트가 reveal 시 사용
+                voteCommitId = saved.id
             )
         } catch (e: DataIntegrityViolationException) {
             logger.warn("Duplicate vote commit attempt: memberId=$memberId, questionId=${request.questionId}")
@@ -194,8 +189,8 @@ class VoteCommitService(
             throw IllegalStateException("현재 투표 공개 기간이 아닙니다.")
         }
 
-        // 5. commitHash 검증: SHA-256(choice + salt) == commitHash
-        val computedHash = hashChoiceWithSalt(request.choice.name, request.salt)
+        // 5. commitHash 검증: SHA-256(questionId:memberId:choice:salt) == commitHash
+        val computedHash = hashChoiceWithSalt(request.questionId, memberId, request.choice.name, request.salt)
         if (computedHash != voteCommit.commitHash) {
             logger.warn("Vote reveal hash mismatch: memberId=$memberId, questionId=${request.questionId}")
             return VoteRevealResponse(
@@ -207,7 +202,6 @@ class VoteCommitService(
         return try {
             // 6. Reveal 성공: 선택 공개 (UTC 시각)
             voteCommit.revealedChoice = request.choice
-            voteCommit.salt = request.salt
             voteCommit.revealedAt = LocalDateTime.now(ZoneOffset.UTC)
             voteCommit.status = VoteCommitStatus.REVEALED
 
@@ -281,22 +275,14 @@ class VoteCommitService(
     }
 
     /**
-     * SHA-256 해싱 (VoteRecordService 패턴 참고)
+     * SHA-256 해싱
+     * 형식: SHA-256(questionId:memberId:choice:salt)
+     * 클라이언트와 동일한 형식 사용
      */
-    private fun hashChoiceWithSalt(choice: String, salt: String): String {
-        val data = choice + salt
+    private fun hashChoiceWithSalt(questionId: Long, memberId: Long, choice: String, salt: String): String {
+        val data = "$questionId:$memberId:$choice:$salt"
         return MessageDigest.getInstance("SHA-256")
             .digest(data.toByteArray())
             .joinToString("") { "%02x".format(it) }
-    }
-
-    /**
-     * 서버 salt 생성 (SecureRandom 사용)
-     */
-    private fun generateSalt(): String {
-        val random = java.security.SecureRandom()
-        val bytes = ByteArray(16)
-        random.nextBytes(bytes)
-        return bytes.joinToString("") { "%02x".format(it) }
     }
 }

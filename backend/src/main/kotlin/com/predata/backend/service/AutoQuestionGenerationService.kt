@@ -377,49 +377,46 @@ class AutoQuestionGenerationService(
 
         val drafts = itemRepository.findByBatchIdAndDraftIdIn(batchId, draftIds)
             .filter { it.status == STATUS_DRAFT }
+        val blockchainEnabled = blockchainService.getBlockchainStatus().enabled
 
         var published = 0
         var failed = 0
         drafts.forEach { draft ->
             try {
                 // 재시도 시 중복 질문 생성 방지: draft에 questionId가 있으면 기존 질문 재사용
-                val savedQuestion = if (draft.publishedQuestionId != null) {
+                // 신규 draft는 먼저 DB 저장해서 questionId 확보 후 온체인 게시
+                val targetQuestion = if (draft.publishedQuestionId != null) {
                     questionRepository.findById(draft.publishedQuestionId!!).orElse(null)
                         ?: throw IllegalStateException("기존 질문을 찾을 수 없습니다: ${draft.publishedQuestionId}")
                 } else {
-                    // 새 질문 생성 (블록체인 성공 전까지 DB 저장 안함)
-                    buildQuestionFromDraft(draft)
+                    questionRepository.save(buildQuestionFromDraft(draft))
                 }
 
-                // 블록체인 먼저 시도 (실패하면 exception) - 30초 타임아웃으로 동기화
-                val txHash = try {
-                    blockchainService.createQuestionOnChain(savedQuestion)
-                        .get(30, TimeUnit.SECONDS)  // CompletableFuture 동기화 + 타임아웃
-                } catch (e: Exception) {
-                    throw RuntimeException("블록체인 게시 실패: ${e.message}", e)
-                }
-
-                // txHash가 null이면 블록체인 트랜잭션 실패로 처리
-                if (txHash == null) {
-                    // 이미 DB에 저장된 질문이 있으면 CANCELLED로 마킹
-                    if (draft.publishedQuestionId != null) {
-                        savedQuestion.status = QuestionStatus.CANCELLED
-                        questionRepository.save(savedQuestion)
+                if (blockchainEnabled) {
+                    // 블록체인 시도 (실패하면 exception) - 30초 타임아웃으로 동기화
+                    val txHash = try {
+                        blockchainService.createQuestionOnChain(targetQuestion)
+                            .get(30, TimeUnit.SECONDS)
+                    } catch (e: Exception) {
+                        throw RuntimeException("블록체인 게시 실패: ${e.message}", e)
                     }
-                    throw RuntimeException("블록체인 트랜잭션 실패: txHash가 null입니다")
-                }
 
-                logger.debug("[AutoQuestionGeneration] 블록체인 게시 성공 - draftId: ${draft.draftId}, txHash: $txHash")
-
-                // 블록체인 성공 후에만 DB 저장
-                val finalQuestion = if (draft.publishedQuestionId == null) {
-                    questionRepository.save(savedQuestion)
+                    // txHash가 null이면 블록체인 트랜잭션 실패로 처리
+                    if (txHash == null) {
+                        targetQuestion.status = QuestionStatus.CANCELLED
+                        questionRepository.save(targetQuestion)
+                        throw RuntimeException("블록체인 트랜잭션 실패: txHash가 null입니다")
+                    }
+                    logger.debug("[AutoQuestionGeneration] 블록체인 게시 성공 - draftId: ${draft.draftId}, txHash: $txHash")
                 } else {
-                    savedQuestion
+                    logger.info(
+                        "[AutoQuestionGeneration] 블록체인 비활성화 모드 - 오프체인 게시 처리 (draftId={})",
+                        draft.draftId
+                    )
                 }
 
                 draft.status = STATUS_PUBLISHED
-                draft.publishedQuestionId = finalQuestion.id
+                draft.publishedQuestionId = targetQuestion.id
                 draft.updatedAt = LocalDateTime.now(ZoneOffset.UTC)
                 itemRepository.save(draft)
                 published++

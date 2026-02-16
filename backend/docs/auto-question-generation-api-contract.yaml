@@ -1,0 +1,364 @@
+openapi: 3.0.3
+info:
+  title: Predata Auto Question Generation API
+  version: 1.0.0
+  description: |
+    Google Trends + OpenAI 기반 자동 질문 생성 계약서.
+    정책: 세부항목별 하루 3문제(VERIFIABLE 2 + OPINION 1).
+servers:
+  - url: http://localhost:8080
+paths:
+  /api/admin/settings/question-generator:
+    get:
+      summary: 생성기 설정 조회
+      tags: [QuestionGenerator]
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/QuestionGeneratorSettingsResponse'
+    put:
+      summary: 생성기 설정 변경
+      tags: [QuestionGenerator]
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateQuestionGeneratorSettingsRequest'
+      responses:
+        '200':
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/QuestionGeneratorSettingsResponse'
+
+  /api/admin/questions/generate-batch:
+    post:
+      summary: 자동 질문 배치 생성 실행
+      tags: [QuestionGenerator]
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BatchGenerateQuestionsRequest'
+      responses:
+        '200':
+          description: 배치 생성 성공
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BatchGenerateQuestionsResponse'
+        '400':
+          description: 검증 실패
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/admin/questions/generation-batches/{batchId}:
+    get:
+      summary: 배치 상세 조회
+      tags: [QuestionGenerator]
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: batchId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BatchGenerateQuestionsResponse'
+        '404':
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/admin/questions/generation-batches/{batchId}/publish:
+    post:
+      summary: 배치 초안 게시(질문 생성 반영)
+      tags: [QuestionGenerator]
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: batchId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PublishGeneratedBatchRequest'
+      responses:
+        '200':
+          description: 게시 성공
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PublishResultResponse'
+
+  /api/admin/questions/generation-batches/{batchId}/retry:
+    post:
+      summary: 배치 실패 항목 재시도
+      tags: [QuestionGenerator]
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: batchId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RetryFailedGenerationRequest'
+      responses:
+        '200':
+          description: 재시도 완료
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BatchGenerateQuestionsResponse'
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  schemas:
+    QuestionGeneratorSettingsResponse:
+      type: object
+      required: [enabled, intervalSeconds, categories, isDemoMode]
+      properties:
+        enabled:
+          type: boolean
+        intervalSeconds:
+          type: integer
+          format: int64
+        categories:
+          type: array
+          items:
+            type: string
+        lastGeneratedAt:
+          type: string
+          nullable: true
+        isDemoMode:
+          type: boolean
+
+    UpdateQuestionGeneratorSettingsRequest:
+      type: object
+      properties:
+        enabled:
+          type: boolean
+        intervalSeconds:
+          type: integer
+          format: int64
+          minimum: 60
+        categories:
+          type: array
+          items:
+            type: string
+
+    BatchGenerateQuestionsRequest:
+      type: object
+      properties:
+        subcategory:
+          type: string
+          nullable: true
+        targetDate:
+          type: string
+          format: date
+          nullable: true
+        dryRun:
+          type: boolean
+          default: false
+        timezone:
+          type: string
+          default: UTC
+
+    GeneratedQuestionDraftDto:
+      type: object
+      required:
+        - draftId
+        - title
+        - category
+        - subcategory
+        - marketType
+        - questionType
+        - voteResultSettlement
+        - resolutionRule
+        - resolveAt
+        - votingEndAt
+        - breakMinutes
+        - bettingStartAt
+        - bettingEndAt
+        - revealStartAt
+        - revealEndAt
+        - duplicateScore
+        - status
+      properties:
+        draftId:
+          type: string
+        title:
+          type: string
+        category:
+          type: string
+        subcategory:
+          type: string
+        marketType:
+          type: string
+          enum: [VERIFIABLE, OPINION]
+        questionType:
+          type: string
+          enum: [VERIFIABLE, OPINION]
+        voteResultSettlement:
+          type: boolean
+        resolutionRule:
+          type: string
+        resolutionSource:
+          type: string
+          nullable: true
+        resolveAt:
+          type: string
+          format: date-time
+        votingEndAt:
+          type: string
+          format: date-time
+        breakMinutes:
+          type: integer
+        bettingStartAt:
+          type: string
+          format: date-time
+        bettingEndAt:
+          type: string
+          format: date-time
+        revealStartAt:
+          type: string
+          format: date-time
+        revealEndAt:
+          type: string
+          format: date-time
+        duplicateScore:
+          type: number
+          format: double
+        riskFlags:
+          type: array
+          items:
+            type: string
+        status:
+          type: string
+          enum: [DRAFT, VALIDATED, REJECTED, PUBLISHED]
+
+    BatchGenerateQuestionsResponse:
+      type: object
+      required:
+        - success
+        - batchId
+        - generatedAt
+        - subcategory
+        - requestedCount
+        - acceptedCount
+        - rejectedCount
+        - opinionCount
+        - verifiableCount
+        - drafts
+      properties:
+        success:
+          type: boolean
+        batchId:
+          type: string
+        generatedAt:
+          type: string
+          format: date-time
+        subcategory:
+          type: string
+        requestedCount:
+          type: integer
+        acceptedCount:
+          type: integer
+        rejectedCount:
+          type: integer
+        opinionCount:
+          type: integer
+        verifiableCount:
+          type: integer
+        drafts:
+          type: array
+          items:
+            $ref: '#/components/schemas/GeneratedQuestionDraftDto'
+        message:
+          type: string
+          nullable: true
+
+    PublishGeneratedBatchRequest:
+      type: object
+      required: [publishDraftIds]
+      properties:
+        publishDraftIds:
+          type: array
+          minItems: 1
+          items:
+            type: string
+
+    RetryFailedGenerationRequest:
+      type: object
+      properties:
+        subcategory:
+          type: string
+          nullable: true
+        maxRetryCount:
+          type: integer
+          default: 3
+        force:
+          type: boolean
+          default: false
+
+    PublishResultResponse:
+      type: object
+      required: [success, batchId, publishedCount]
+      properties:
+        success:
+          type: boolean
+        batchId:
+          type: string
+        publishedCount:
+          type: integer
+        failedCount:
+          type: integer
+        message:
+          type: string
+
+    ErrorResponse:
+      type: object
+      required: [code, message]
+      properties:
+        code:
+          type: string
+        message:
+          type: string

@@ -13,7 +13,7 @@ data class Member(
     val id: Long? = null,
 
     @Version
-    var version: Long? = null,
+    var version: Long = 0L,
 
     @Column(nullable = false, unique = true)
     val email: String,

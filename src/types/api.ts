@@ -39,6 +39,7 @@ export interface Question {
   title: string;
   category?: string;
   status: 'VOTING' | 'BREAK' | 'BETTING' | 'SETTLED';
+  votingPhase?: 'VOTING_COMMIT_OPEN' | 'VOTING_REVEAL_OPEN' | 'BETTING_OPEN' | 'SETTLED';
   type: 'VERIFIABLE' | 'OPINION';
   totalBetPool: number;
   yesBetPool: number;
@@ -446,4 +447,27 @@ export interface TransactionHistoryPage {
   totalPages: number;
   page: number;
   size: number;
+}
+
+// ===== Commit-Reveal Vote Types =====
+export interface VoteCommitRequest {
+  questionId: number;
+  commitHash: string;
+}
+
+export interface VoteCommitResponse {
+  success: boolean;
+  message: string;
+  voteCommitId?: number;
+}
+
+export interface VoteRevealRequest {
+  questionId: number;
+  choice: 'YES' | 'NO';
+  salt: string;
+}
+
+export interface VoteRevealResponse {
+  success: boolean;
+  message: string;
 }

@@ -12,6 +12,11 @@ import java.time.LocalDateTime
 interface MatchRepository : JpaRepository<Match, Long> {
 
     fun findByMatchStatus(matchStatus: MatchStatus): List<Match>
+    fun findByMatchStatusAndMatchTimeBetween(
+        matchStatus: MatchStatus,
+        start: LocalDateTime,
+        end: LocalDateTime
+    ): List<Match>
 
     fun findByLeagueIdAndMatchTimeBetween(
         leagueId: Long,
@@ -20,6 +25,8 @@ interface MatchRepository : JpaRepository<Match, Long> {
     ): List<Match>
 
     fun findByExternalMatchIdAndProvider(externalMatchId: String, provider: String): Match?
+
+    fun existsByMatchTimeBetween(start: LocalDateTime, end: LocalDateTime): Boolean
 
     @Query(
         "SELECT m FROM Match m WHERE m.matchStatus = 'LIVE' OR m.matchStatus = 'HALFTIME' " +

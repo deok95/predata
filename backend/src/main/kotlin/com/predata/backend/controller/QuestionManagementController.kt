@@ -148,4 +148,24 @@ class QuestionManagementController(
         return ResponseEntity.ok(questions)
     }
 
+    /**
+     * 질문 전체 하드 삭제 (연관 question_id 데이터 포함)
+     * DELETE /api/admin/questions/purge-all
+     */
+    @DeleteMapping("/purge-all")
+    fun purgeAllQuestions(): ResponseEntity<PurgeQuestionsResponse> {
+        return try {
+            ResponseEntity.ok(questionManagementService.purgeAllQuestions())
+        } catch (e: Exception) {
+            ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(
+                PurgeQuestionsResponse(
+                    success = false,
+                    deletedQuestions = 0,
+                    cleanedTables = emptyMap(),
+                    message = e.message ?: "질문 전체 삭제에 실패했습니다."
+                )
+            )
+        }
+    }
+
 }

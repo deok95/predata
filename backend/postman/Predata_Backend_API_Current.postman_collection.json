@@ -1,0 +1,3235 @@
+{
+  "info": {
+    "_postman_id": "predata-backend-api-current",
+    "name": "Predata Backend API (Current Controllers)",
+    "description": "Auto-generated from Kotlin controllers. Includes current endpoints for smoke/functional testing.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:8080",
+      "type": "string"
+    },
+    {
+      "key": "token",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "memberId",
+      "value": "1",
+      "type": "string"
+    },
+    {
+      "key": "questionId",
+      "value": "1",
+      "type": "string"
+    },
+    {
+      "key": "betId",
+      "value": "1",
+      "type": "string"
+    },
+    {
+      "key": "orderId",
+      "value": "1",
+      "type": "string"
+    },
+    {
+      "key": "batchId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "draftId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "txHash",
+      "value": "0xYOUR_TX_HASH",
+      "type": "string"
+    }
+  ],
+  "auth": {
+    "type": "bearer",
+    "bearer": [
+      {
+        "key": "token",
+        "value": "{{token}}",
+        "type": "string"
+      }
+    ]
+  },
+  "item": [
+    {
+      "name": "activities",
+      "item": [
+        {
+          "name": "GET /api/activities/me",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/activities/me",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "activities",
+                "me"
+              ]
+            },
+            "description": "ActivityController.getMyActivities"
+          },
+          "response": []
+        },
+        {
+          "name": "GET /api/activities/me/question/{questionId}",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/activities/me/question/{{questionId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "activities",
+                "me",
+                "question",
+                "{{questionId}}"
+              ]
+            },
+            "description": "ActivityController.getMyActivitiesByQuestion"
+          },
+          "response": []
+        },
+        {
+          "name": "GET /api/activities/question/{questionId}",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/activities/question/{{questionId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "activities",
+                "question",
+                "{{questionId}}"
+              ]
+            },
+            "description": "ActivityController.getActivitiesByQuestion"
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "admin/abuse",
+      "item": [
+        {
+          "name": "POST /api/admin/abuse/ban",
+          "request": {
+            "method": "POST",
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/abuse/ban",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "admin",
+                "abuse",
+                "ban"
+              ]
+            },
+            "description": "BanController.banMember",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"memberId\": \"{{memberId}}\",\n  \"reason\": \"manual test\"\n}"
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "GET /api/admin/abuse/banned",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/abuse/banned",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "admin",
+                "abuse",
+                "banned"
+              ]
+            },
+            "description": "BanController.getBannedMembers"
+          },
+          "response": []
+        },
+        {
+          "name": "GET /api/admin/abuse/ip-lookup",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/abuse/ip-lookup",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "admin",
+                "abuse",
+                "ip-lookup"
+              ]
+            },
+            "description": "BanController.lookupIp"
+          },
+          "response": []
+        },
+        {
+          "name": "GET /api/admin/abuse/member-ips/{memberId}",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/abuse/member-ips/{{memberId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "admin",
+                "abuse",
+                "member-ips",
+                "{{memberId}}"
+              ]
+            },
+            "description": "BanController.getMemberIps"
+          },
+          "response": []
+        },
+        {
+          "name": "GET /api/admin/abuse/multi-account-report",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/abuse/multi-account-report",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "admin",
+                "abuse",
+                "multi-account-report"
+              ]
+            },
+            "description": "BanController.getMultiAccountReport"
+          },
+          "response": []
+        },
+        {
+          "name": "POST /api/admin/abuse/unban",
+          "request": {
+            "method": "POST",
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/abuse/unban",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "admin",
+                "abuse",
+                "unban"
+              ]
+            },
+            "description": "BanController.unbanMember",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"memberId\": \"{{memberId}}\"\n}"
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "admin/audit-logs",
+      "item": [
+        {
+          "name": "GET /api/admin/audit-logs",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/audit-logs",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "admin",
+                "audit-logs"
+              ]
+            },
+            "description": "AuditController.getAuditLogs"
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "admin/dashboard",
+      "item": [
+        {
+          "name": "GET /api/admin/dashboard/voting",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/dashboard/voting",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "admin",
+                "dashboard",
+                "voting"
+              ]
+            },
+            "description": "DashboardController.getVotingDashboard"
+          },
+          "response": []
+        },
+        {
+          "name": "GET /api/admin/dashboard/voting/{questionId}",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/dashboard/voting/{{questionId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "admin",
+                "dashboard",
+                "voting",
+                "{{questionId}}"
+              ]
+            },
+            "description": "DashboardController.getQuestionHealth"
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "admin/questions",
+      "item": [
+        {
+          "name": "GET /api/admin/questions",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/questions",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "admin",
+                "questions"
+              ]
+            },
+            "description": "QuestionManagementController.getAllQuestions"
+          },
+          "response": []
+        },
+        {
+          "name": "POST /api/admin/questions",
+          "request": {
+            "method": "POST",
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/questions",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "admin",
+                "questions"
+              ]
+            },
+            "description": "QuestionManagementController.createQuestion",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"시장은 테스트 이벤트가 발생할 거라고 생각할까요?\",\n  \"category\": \"ECONOMY\",\n  \"marketType\": \"OPINION\",\n  \"type\": \"OPINION\",\n  \"votingDuration\": 86400,\n  \"bettingDuration\": 86400\n}"
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "POST /api/admin/questions/generate",
+          "request": {
+            "method": "POST",
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/questions/generate",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "admin",
+                "questions",
+                "generate"
+              ]
+            },
+            "description": "QuestionGeneratorController.generateQuestion",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"category\": \"ECONOMY\"\n}"
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "POST /api/admin/questions/generate-batch",
+          "request": {
+            "method": "POST",
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/questions/generate-batch",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "admin",
+                "questions",
+                "generate-batch"
+              ]
+            },
+            "description": "QuestionGeneratorController.generateBatch",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"subcategory\": \"ECONOMY\",\n  \"dryRun\": true\n}"
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "GET /api/admin/questions/generation-batches/{batchId}",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/questions/generation-batches/{{batchId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "admin",
+                "questions",
+                "generation-batches",
+                "{{batchId}}"
+              ]
+            },
+            "description": "QuestionGeneratorController.getBatch"
+          },
+          "response": []
+        },
+        {
+          "name": "POST /api/admin/questions/generation-batches/{batchId}/publish",
+          "request": {
+            "method": "POST",
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/questions/generation-batches/{{batchId}}/publish",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "admin",
+                "questions",
+                "generation-batches",
+                "{{batchId}}",
+                "publish"
+              ]
+            },
+            "description": "QuestionGeneratorController.publishBatch",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"publishDraftIds\": [\n    \"{{draftId}}\"\n  ]\n}"
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "POST /api/admin/questions/generation-batches/{batchId}/retry",
+          "request": {
+            "method": "POST",
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/questions/generation-batches/{{batchId}}/retry",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "admin",
+                "questions",
+                "generation-batches",
+                "{{batchId}}",
+                "retry"
+              ]
+            },
+            "description": "QuestionGeneratorController.retryBatch",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"force\": true\n}"
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "POST /api/admin/questions/legacy",
+          "request": {
+            "method": "POST",
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/questions/legacy",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "admin",
+                "questions",
+                "legacy"
+              ]
+            },
+            "description": "QuestionManagementController.createQuestionLegacy",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"시장은 테스트 이벤트가 발생할 거라고 생각할까요?\",\n  \"category\": \"ECONOMY\",\n  \"marketType\": \"OPINION\",\n  \"type\": \"OPINION\",\n  \"votingDuration\": 86400,\n  \"bettingDuration\": 86400\n}"
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "DELETE /api/admin/questions/{id}",
+          "request": {
+            "method": "DELETE",
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/questions/{{id}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "admin",
+                "questions",
+                "{{id}}"
+              ]
+            },
+            "description": "QuestionManagementController.deleteQuestion"
+          },
+          "response": []
+        },
+        {
+          "name": "PUT /api/admin/questions/{id}",
+          "request": {
+            "method": "PUT",
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/questions/{{id}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "admin",
+                "questions",
+                "{{id}}"
+              ]
+            },
+            "description": "QuestionManagementController.updateQuestion",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{}"
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "admin/rewards",
+      "item": [
+        {
+          "name": "POST /api/admin/rewards/distribute/{questionId}",
+          "request": {
+            "method": "POST",
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/rewards/distribute/{{questionId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "admin",
+                "rewards",
+                "distribute",
+                "{{questionId}}"
+              ]
+            },
+            "description": "RewardAdminController.distributeRewards",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{}"
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "POST /api/admin/rewards/retry/{questionId}",
+          "request": {
+            "method": "POST",
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/rewards/retry/{{questionId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "admin",
+                "rewards",
+                "retry",
+                "{{questionId}}"
+              ]
+            },
+            "description": "RewardAdminController.retryFailedDistributions",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{}"
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "admin/settings",
+      "item": [
+        {
+          "name": "GET /api/admin/settings/question-generator",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/settings/question-generator",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "admin",
+                "settings",
+                "question-generator"
+              ]
+            },
+            "description": "QuestionGeneratorController.getSettings"
+          },
+          "response": []
+        },
+        {
+          "name": "PUT /api/admin/settings/question-generator",
+          "request": {
+            "method": "PUT",
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/settings/question-generator",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "admin",
+                "settings",
+                "question-generator"
+              ]
+            },
+            "description": "QuestionGeneratorController.updateSettings",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"enabled\": true,\n  \"dailyCount\": 3,\n  \"opinionCount\": 1\n}"
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "admin/settlements",
+      "item": [
+        {
+          "name": "POST /api/admin/settlements/questions/{id}/cancel",
+          "request": {
+            "method": "POST",
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/settlements/questions/{{id}}/cancel",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "admin",
+                "settlements",
+                "questions",
+                "{{id}}",
+                "cancel"
+              ]
+            },
+            "description": "SettlementController.cancelSettlement",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{}"
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "POST /api/admin/settlements/questions/{id}/finalize",
+          "request": {
+            "method": "POST",
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/settlements/questions/{{id}}/finalize",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "admin",
+                "settlements",
+                "questions",
+                "{{id}}",
+                "finalize"
+              ]
+            },
+            "description": "SettlementController.finalizeSettlement",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{}"
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "POST /api/admin/settlements/questions/{id}/settle",
+          "request": {
+            "method": "POST",
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/settlements/questions/{{id}}/settle",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "admin",
+                "settlements",
+                "questions",
+                "{{id}}",
+                "settle"
+              ]
+            },
+            "description": "SettlementController.settleQuestion",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"finalResult\": \"YES\",\n  \"sourceUrl\": \"https://example.com/source\"\n}"
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "POST /api/admin/settlements/questions/{id}/settle-auto",
+          "request": {
+            "method": "POST",
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/settlements/questions/{{id}}/settle-auto",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "admin",
+                "settlements",
+                "questions",
+                "{{id}}",
+                "settle-auto"
+              ]
+            },
+            "description": "SettlementController.settleQuestionAuto",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{}"
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "admin/sports",
+      "item": [
+        {
+          "name": "POST /api/admin/sports/generate",
+          "request": {
+            "method": "POST",
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/sports/generate",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "admin",
+                "sports",
+                "generate"
+              ]
+            },
+            "description": "SportsManagementController.manualGenerate",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{}"
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "POST /api/admin/sports/generate-match-questions",
+          "request": {
+            "method": "POST",
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/sports/generate-match-questions",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "admin",
+                "sports",
+                "generate-match-questions"
+              ]
+            },
+            "description": "SportsManagementController.generateMatchQuestions",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{}"
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "GET /api/admin/sports/live",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/sports/live",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "admin",
+                "sports",
+                "live"
+              ]
+            },
+            "description": "SportsManagementController.getLiveMatches"
+          },
+          "response": []
+        },
+        {
+          "name": "GET /api/admin/sports/questions",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/sports/questions",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "admin",
+                "sports",
+                "questions"
+              ]
+            },
+            "description": "SportsManagementController.getMatchQuestions"
+          },
+          "response": []
+        },
+        {
+          "name": "GET /api/admin/sports/upcoming",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/sports/upcoming",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "admin",
+                "sports",
+                "upcoming"
+              ]
+            },
+            "description": "SportsManagementController.getUpcomingMatches"
+          },
+          "response": []
+        },
+        {
+          "name": "POST /api/admin/sports/update-results",
+          "request": {
+            "method": "POST",
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/sports/update-results",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "admin",
+                "sports",
+                "update-results"
+              ]
+            },
+            "description": "SportsManagementController.manualUpdateResults",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{}"
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "admin/sybil",
+      "item": [
+        {
+          "name": "GET /api/admin/sybil/report/{questionId}",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/sybil/report/{{questionId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "admin",
+                "sybil",
+                "report",
+                "{{questionId}}"
+              ]
+            },
+            "description": "SybilAdminController.getSybilReport"
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "admin/voting",
+      "item": [
+        {
+          "name": "POST /api/admin/voting/circuit-breaker/reset",
+          "request": {
+            "method": "POST",
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/voting/circuit-breaker/reset",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "admin",
+                "voting",
+                "circuit-breaker",
+                "reset"
+              ]
+            },
+            "description": "VotingAdminController.resetCircuitBreaker",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{}"
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "POST /api/admin/voting/pause-all",
+          "request": {
+            "method": "POST",
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/voting/pause-all",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "admin",
+                "voting",
+                "pause-all"
+              ]
+            },
+            "description": "VotingAdminController.pauseAll",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{}"
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "POST /api/admin/voting/pause/{questionId}",
+          "request": {
+            "method": "POST",
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/voting/pause/{{questionId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "admin",
+                "voting",
+                "pause",
+                "{{questionId}}"
+              ]
+            },
+            "description": "VotingAdminController.pauseVoting",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{}"
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "POST /api/admin/voting/resume-all",
+          "request": {
+            "method": "POST",
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/voting/resume-all",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "admin",
+                "voting",
+                "resume-all"
+              ]
+            },
+            "description": "VotingAdminController.resumeAll",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{}"
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "POST /api/admin/voting/resume/{questionId}",
+          "request": {
+            "method": "POST",
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/voting/resume/{{questionId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "admin",
+                "voting",
+                "resume",
+                "{{questionId}}"
+              ]
+            },
+            "description": "VotingAdminController.resumeVoting",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{}"
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "GET /api/admin/voting/status",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/voting/status",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "admin",
+                "voting",
+                "status"
+              ]
+            },
+            "description": "VotingAdminController.getStatus"
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "analysis",
+      "item": [
+        {
+          "name": "GET /api/analysis/questions/{id}/abusing-report",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/analysis/questions/{{id}}/abusing-report",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "analysis",
+                "questions",
+                "{{id}}",
+                "abusing-report"
+              ]
+            },
+            "description": "DataAnalysisController.getAbusingReport"
+          },
+          "response": []
+        },
+        {
+          "name": "GET /api/analysis/questions/{id}/by-country",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/analysis/questions/{{id}}/by-country",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "analysis",
+                "questions",
+                "{{id}}",
+                "by-country"
+              ]
+            },
+            "description": "DataAnalysisController.getVotesByCountry"
+          },
+          "response": []
+        },
+        {
+          "name": "GET /api/analysis/questions/{id}/fast-clickers",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/analysis/questions/{{id}}/fast-clickers",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "analysis",
+                "questions",
+                "{{id}}",
+                "fast-clickers"
+              ]
+            },
+            "description": "DataAnalysisController.getFastClickers"
+          },
+          "response": []
+        },
+        {
+          "name": "GET /api/analysis/questions/{id}/premium-data",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/analysis/questions/{{id}}/premium-data",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "analysis",
+                "questions",
+                "{{id}}",
+                "premium-data"
+              ]
+            },
+            "description": "DataAnalysisController.getPremiumData"
+          },
+          "response": []
+        },
+        {
+          "name": "GET /api/analysis/questions/{id}/quality-score",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/analysis/questions/{{id}}/quality-score",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "analysis",
+                "questions",
+                "{{id}}",
+                "quality-score"
+              ]
+            },
+            "description": "DataAnalysisController.getQualityScore"
+          },
+          "response": []
+        },
+        {
+          "name": "POST /api/analysis/questions/{id}/simulate-filter",
+          "request": {
+            "method": "POST",
+            "url": {
+              "raw": "{{baseUrl}}/api/analysis/questions/{{id}}/simulate-filter",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "analysis",
+                "questions",
+                "{{id}}",
+                "simulate-filter"
+              ]
+            },
+            "description": "DataAnalysisController.simulateFilter",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"minLatencyMs\": 2000,\n  \"onlyBettors\": false\n}"
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "GET /api/analysis/questions/{id}/weighted-votes",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/analysis/questions/{{id}}/weighted-votes",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "analysis",
+                "questions",
+                "{{id}}",
+                "weighted-votes"
+              ]
+            },
+            "description": "DataAnalysisController.getWeightedVotes"
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "analytics",
+      "item": [
+        {
+          "name": "GET /api/analytics/dashboard/{questionId}",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/analytics/dashboard/{{questionId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "analytics",
+                "dashboard",
+                "{{questionId}}"
+              ]
+            },
+            "description": "AnalyticsController.getQualityDashboard",
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "GET /api/analytics/demographics/{questionId}",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/analytics/demographics/{{questionId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "analytics",
+                "demographics",
+                "{{questionId}}"
+              ]
+            },
+            "description": "AnalyticsController.getVoteDemographics",
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "GET /api/analytics/filtering-effect/{questionId}",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/analytics/filtering-effect/{{questionId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "analytics",
+                "filtering-effect",
+                "{{questionId}}"
+              ]
+            },
+            "description": "AnalyticsController.getFilteringEffect",
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "GET /api/analytics/gap-analysis/{questionId}",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/analytics/gap-analysis/{{questionId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "analytics",
+                "gap-analysis",
+                "{{questionId}}"
+              ]
+            },
+            "description": "AnalyticsController.getVoteBetGapAnalysis",
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "GET /api/analytics/global/stats",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/analytics/global/stats",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "analytics",
+                "global",
+                "stats"
+              ]
+            },
+            "description": "AnalyticsController.getGlobalStats",
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "auth",
+      "item": [
+        {
+          "name": "POST /api/auth/complete-signup",
+          "request": {
+            "method": "POST",
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/complete-signup",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "complete-signup"
+              ]
+            },
+            "description": "AuthController.completeSignup",
+            "auth": {
+              "type": "noauth"
+            },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"newuser@example.com\",\n  \"code\": \"123456\",\n  \"password\": \"Test1234!\"\n}"
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "POST /api/auth/google",
+          "request": {
+            "method": "POST",
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/google",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "google"
+              ]
+            },
+            "description": "AuthController.googleLogin",
+            "auth": {
+              "type": "noauth"
+            },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"googleToken\": \"YOUR_GOOGLE_ID_TOKEN\"\n}"
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "POST /api/auth/google/complete-registration",
+          "request": {
+            "method": "POST",
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/google/complete-registration",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "google",
+                "complete-registration"
+              ]
+            },
+            "description": "AuthController.completeGoogleRegistration",
+            "auth": {
+              "type": "noauth"
+            },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"googleId\": \"google-sub-id\",\n  \"email\": \"user@gmail.com\",\n  \"countryCode\": \"KR\"\n}"
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "POST /api/auth/login",
+          "request": {
+            "method": "POST",
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "login"
+              ]
+            },
+            "description": "AuthController.login",
+            "auth": {
+              "type": "noauth"
+            },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"admin@predata.io\",\n  \"password\": \"123400\"\n}"
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "POST /api/auth/send-code",
+          "request": {
+            "method": "POST",
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/send-code",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "send-code"
+              ]
+            },
+            "description": "AuthController.sendCode",
+            "auth": {
+              "type": "noauth"
+            },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"admin@predata.io\"\n}"
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "POST /api/auth/verify-code",
+          "request": {
+            "method": "POST",
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/verify-code",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "verify-code"
+              ]
+            },
+            "description": "AuthController.verifyCode",
+            "auth": {
+              "type": "noauth"
+            },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"admin@predata.io\",\n  \"code\": \"123456\"\n}"
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "badges",
+      "item": [
+        {
+          "name": "GET /api/badges/definitions",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/badges/definitions",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "badges",
+                "definitions"
+              ]
+            },
+            "description": "BadgeController.getAllDefinitions",
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "GET /api/badges/member/{memberId}",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/badges/member/{{memberId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "badges",
+                "member",
+                "{{memberId}}"
+              ]
+            },
+            "description": "BadgeController.getMemberBadges",
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "GET /api/badges/member/{memberId}/earned",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/badges/member/{{memberId}}/earned",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "badges",
+                "member",
+                "{{memberId}}",
+                "earned"
+              ]
+            },
+            "description": "BadgeController.getEarnedBadges",
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "bet",
+      "item": [
+        {
+          "name": "POST /api/bet",
+          "request": {
+            "method": "POST",
+            "url": {
+              "raw": "{{baseUrl}}/api/bet",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "bet"
+              ]
+            },
+            "description": "ActivityController.bet",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"questionId\": \"{{questionId}}\",\n  \"choice\": \"YES\",\n  \"amount\": 10\n}"
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "bets",
+      "item": [
+        {
+          "name": "POST /api/bets/{betId}/sell",
+          "request": {
+            "method": "POST",
+            "url": {
+              "raw": "{{baseUrl}}/api/bets/{{betId}}/sell",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "bets",
+                "{{betId}}",
+                "sell"
+              ]
+            },
+            "description": "ActivityController.sellBet",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"amount\": 1\n}"
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "betting",
+      "item": [
+        {
+          "name": "GET /api/betting/suspension/match/{matchId}",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/betting/suspension/match/{{matchId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "betting",
+                "suspension",
+                "match",
+                "{{matchId}}"
+              ]
+            },
+            "description": "BettingSuspensionController.checkSuspensionByMatch"
+          },
+          "response": []
+        },
+        {
+          "name": "GET /api/betting/suspension/question/{questionId}",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/betting/suspension/question/{{questionId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "betting",
+                "suspension",
+                "question",
+                "{{questionId}}"
+              ]
+            },
+            "description": "BettingSuspensionController.checkSuspensionByQuestion"
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "blockchain",
+      "item": [
+        {
+          "name": "GET /api/blockchain/question/{questionId}",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/blockchain/question/{{questionId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "blockchain",
+                "question",
+                "{{questionId}}"
+              ]
+            },
+            "description": "BlockchainController.getQuestionFromChain",
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "GET /api/blockchain/status",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/blockchain/status",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "blockchain",
+                "status"
+              ]
+            },
+            "description": "BlockchainController.getBlockchainStatus",
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "faucet",
+      "item": [
+        {
+          "name": "POST /api/faucet/claim/{memberId}",
+          "request": {
+            "method": "POST",
+            "url": {
+              "raw": "{{baseUrl}}/api/faucet/claim/{{memberId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "faucet",
+                "claim",
+                "{{memberId}}"
+              ]
+            },
+            "description": "FaucetController.claimDailyPoints",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{}"
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "GET /api/faucet/status/{memberId}",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/faucet/status/{{memberId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "faucet",
+                "status",
+                "{{memberId}}"
+              ]
+            },
+            "description": "FaucetController.getFaucetStatus"
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "health",
+      "item": [
+        {
+          "name": "GET /api/health",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/health",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "health"
+              ]
+            },
+            "description": "ActivityController.health",
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "leaderboard",
+      "item": [
+        {
+          "name": "GET /api/leaderboard/member/{memberId}",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/leaderboard/member/{{memberId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "leaderboard",
+                "member",
+                "{{memberId}}"
+              ]
+            },
+            "description": "LeaderboardController.getMemberRank",
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "GET /api/leaderboard/top",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/leaderboard/top",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "leaderboard",
+                "top"
+              ]
+            },
+            "description": "LeaderboardController.getTopLeaderboard",
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "members",
+      "item": [
+        {
+          "name": "POST /api/members",
+          "request": {
+            "method": "POST",
+            "url": {
+              "raw": "{{baseUrl}}/api/members",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "members"
+              ]
+            },
+            "description": "MemberController.createMember",
+            "auth": {
+              "type": "noauth"
+            },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"newuser@example.com\",\n  \"countryCode\": \"KR\",\n  \"password\": \"Test1234!\"\n}"
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "GET /api/members/by-wallet",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/members/by-wallet",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "members",
+                "by-wallet"
+              ]
+            },
+            "description": "MemberController.getMemberByWallet",
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "GET /api/members/me",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/members/me",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "members",
+                "me"
+              ]
+            },
+            "description": "MemberController.getMyInfo"
+          },
+          "response": []
+        },
+        {
+          "name": "PUT /api/members/wallet",
+          "request": {
+            "method": "PUT",
+            "url": {
+              "raw": "{{baseUrl}}/api/members/wallet",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "members",
+                "wallet"
+              ]
+            },
+            "description": "MemberController.updateWalletAddress",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"walletAddress\": \"0x0000000000000000000000000000000000000000\"\n}"
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "GET /api/members/{id}",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/members/{{id}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "members",
+                "{{id}}"
+              ]
+            },
+            "description": "MemberController.getMember"
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "notifications",
+      "item": [
+        {
+          "name": "GET /api/notifications",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/notifications",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "notifications"
+              ]
+            },
+            "description": "NotificationController.getNotifications"
+          },
+          "response": []
+        },
+        {
+          "name": "POST /api/notifications/read-all",
+          "request": {
+            "method": "POST",
+            "url": {
+              "raw": "{{baseUrl}}/api/notifications/read-all",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "notifications",
+                "read-all"
+              ]
+            },
+            "description": "NotificationController.markAllAsRead",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{}"
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "GET /api/notifications/unread-count",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/notifications/unread-count",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "notifications",
+                "unread-count"
+              ]
+            },
+            "description": "NotificationController.getUnreadCount"
+          },
+          "response": []
+        },
+        {
+          "name": "POST /api/notifications/{id}/read",
+          "request": {
+            "method": "POST",
+            "url": {
+              "raw": "{{baseUrl}}/api/notifications/{{id}}/read",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "notifications",
+                "{{id}}",
+                "read"
+              ]
+            },
+            "description": "NotificationController.markAsRead",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{}"
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "orders",
+      "item": [
+        {
+          "name": "POST /api/orders",
+          "request": {
+            "method": "POST",
+            "url": {
+              "raw": "{{baseUrl}}/api/orders",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "orders"
+              ]
+            },
+            "description": "OrderController.createOrder",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"questionId\": \"{{questionId}}\",\n  \"orderType\": \"LIMIT\",\n  \"side\": \"YES\",\n  \"price\": 0.5,\n  \"amount\": 10\n}"
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "GET /api/orders/me",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/orders/me",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "orders",
+                "me"
+              ]
+            },
+            "description": "OrderController.getMyActiveOrders"
+          },
+          "response": []
+        },
+        {
+          "name": "GET /api/orders/me/question/{questionId}",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/orders/me/question/{{questionId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "orders",
+                "me",
+                "question",
+                "{{questionId}}"
+              ]
+            },
+            "description": "OrderController.getMyOrdersByQuestion"
+          },
+          "response": []
+        },
+        {
+          "name": "DELETE /api/orders/{id}",
+          "request": {
+            "method": "DELETE",
+            "url": {
+              "raw": "{{baseUrl}}/api/orders/{{id}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "orders",
+                "{{id}}"
+              ]
+            },
+            "description": "OrderController.cancelOrder"
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "payments",
+      "item": [
+        {
+          "name": "POST /api/payments/verify-deposit",
+          "request": {
+            "method": "POST",
+            "url": {
+              "raw": "{{baseUrl}}/api/payments/verify-deposit",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "payments",
+                "verify-deposit"
+              ]
+            },
+            "description": "PaymentController.verifyDeposit",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"txHash\": \"{{txHash}}\",\n  \"amount\": 10,\n  \"fromAddress\": \"0x0000000000000000000000000000000000000000\"\n}"
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "POST /api/payments/withdraw",
+          "request": {
+            "method": "POST",
+            "url": {
+              "raw": "{{baseUrl}}/api/payments/withdraw",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "payments",
+                "withdraw"
+              ]
+            },
+            "description": "PaymentController.withdraw",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"amount\": 10,\n  \"walletAddress\": \"0x0000000000000000000000000000000000000000\"\n}"
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "portfolio",
+      "item": [
+        {
+          "name": "GET /api/portfolio/accuracy-trend",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/portfolio/accuracy-trend",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "portfolio",
+                "accuracy-trend"
+              ]
+            },
+            "description": "PortfolioController.getAccuracyTrend"
+          },
+          "response": []
+        },
+        {
+          "name": "GET /api/portfolio/category-breakdown",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/portfolio/category-breakdown",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "portfolio",
+                "category-breakdown"
+              ]
+            },
+            "description": "PortfolioController.getCategoryBreakdown"
+          },
+          "response": []
+        },
+        {
+          "name": "GET /api/portfolio/positions",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/portfolio/positions",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "portfolio",
+                "positions"
+              ]
+            },
+            "description": "PortfolioController.getOpenPositions"
+          },
+          "response": []
+        },
+        {
+          "name": "GET /api/portfolio/summary",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/portfolio/summary",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "portfolio",
+                "summary"
+              ]
+            },
+            "description": "PortfolioController.getPortfolioSummary"
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "positions",
+      "item": [
+        {
+          "name": "GET /api/positions/me",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/positions/me",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "positions",
+                "me"
+              ]
+            },
+            "description": "PositionController.getMyPositions"
+          },
+          "response": []
+        },
+        {
+          "name": "GET /api/positions/me/question/{id}",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/positions/me/question/{{id}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "positions",
+                "me",
+                "question",
+                "{{id}}"
+              ]
+            },
+            "description": "PositionController.getMyPositionsByQuestion"
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "premium-data",
+      "item": [
+        {
+          "name": "POST /api/premium-data/export",
+          "request": {
+            "method": "POST",
+            "url": {
+              "raw": "{{baseUrl}}/api/premium-data/export",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "premium-data",
+                "export"
+              ]
+            },
+            "description": "PremiumDataController.exportPremiumData",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"questionId\": \"{{questionId}}\",\n  \"format\": \"json\"\n}"
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "POST /api/premium-data/preview",
+          "request": {
+            "method": "POST",
+            "url": {
+              "raw": "{{baseUrl}}/api/premium-data/preview",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "premium-data",
+                "preview"
+              ]
+            },
+            "description": "PremiumDataController.previewPremiumData",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"questionId\": \"{{questionId}}\",\n  \"format\": \"json\"\n}"
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "GET /api/premium-data/quality-summary/{questionId}",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/premium-data/quality-summary/{{questionId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "premium-data",
+                "quality-summary",
+                "{{questionId}}"
+              ]
+            },
+            "description": "PremiumDataController.getQualitySummary"
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "questions",
+      "item": [
+        {
+          "name": "GET /api/questions",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/questions",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "questions"
+              ]
+            },
+            "description": "ActivityController.getAllQuestions",
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "GET /api/questions/status/{status}",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/questions/status/{{status}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "questions",
+                "status",
+                "{{status}}"
+              ]
+            },
+            "description": "ActivityController.getQuestionsByStatus",
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "GET /api/questions/{id}",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/questions/{{id}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "questions",
+                "{{id}}"
+              ]
+            },
+            "description": "ActivityController.getQuestion",
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "GET /api/questions/{id}/odds",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/questions/{{id}}/odds",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "questions",
+                "{{id}}",
+                "odds"
+              ]
+            },
+            "description": "ActivityController.getOdds",
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "GET /api/questions/{id}/orderbook",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/questions/{{id}}/orderbook",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "questions",
+                "{{id}}",
+                "orderbook"
+              ]
+            },
+            "description": "OrderController.getOrderBook",
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "GET /api/questions/{id}/price",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/questions/{{id}}/price",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "questions",
+                "{{id}}",
+                "price"
+              ]
+            },
+            "description": "PriceController.getPrice",
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "GET /api/questions/{id}/price-history",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/questions/{{id}}/price-history",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "questions",
+                "{{id}}",
+                "price-history"
+              ]
+            },
+            "description": "PriceController.getPriceHistory",
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "referrals",
+      "item": [
+        {
+          "name": "POST /api/referrals/apply",
+          "request": {
+            "method": "POST",
+            "url": {
+              "raw": "{{baseUrl}}/api/referrals/apply",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "referrals",
+                "apply"
+              ]
+            },
+            "description": "ReferralController.applyReferral",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"referralCode\": \"ABC123\"\n}"
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "GET /api/referrals/code",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/referrals/code",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "referrals",
+                "code"
+              ]
+            },
+            "description": "ReferralController.getMyCode"
+          },
+          "response": []
+        },
+        {
+          "name": "GET /api/referrals/stats",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/referrals/stats",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "referrals",
+                "stats"
+              ]
+            },
+            "description": "ReferralController.getStats"
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "rewards",
+      "item": [
+        {
+          "name": "GET /api/rewards/{memberId}",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/rewards/{{memberId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "rewards",
+                "{{memberId}}"
+              ]
+            },
+            "description": "RewardController.getTotalRewards"
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "settlements",
+      "item": [
+        {
+          "name": "GET /api/settlements/history/me",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/settlements/history/me",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "settlements",
+                "history",
+                "me"
+              ]
+            },
+            "description": "SettlementController.getMySettlementHistory"
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "sports",
+      "item": [
+        {
+          "name": "GET /api/sports/matches",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/sports/matches",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "sports",
+                "matches"
+              ]
+            },
+            "description": "SportsMatchController.getMatches",
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "tiers",
+      "item": [
+        {
+          "name": "GET /api/tiers/progress/{memberId}",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/tiers/progress/{{memberId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "tiers",
+                "progress",
+                "{{memberId}}"
+              ]
+            },
+            "description": "TierController.getTierProgress",
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "GET /api/tiers/statistics",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/tiers/statistics",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "tiers",
+                "statistics"
+              ]
+            },
+            "description": "TierController.getTierStatistics",
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "transactions",
+      "item": [
+        {
+          "name": "GET /api/transactions/my",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/transactions/my",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "transactions",
+                "my"
+              ]
+            },
+            "description": "TransactionController.getMyTransactions"
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "vote",
+      "item": [
+        {
+          "name": "POST /api/vote",
+          "request": {
+            "method": "POST",
+            "url": {
+              "raw": "{{baseUrl}}/api/vote",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "vote"
+              ]
+            },
+            "description": "ActivityController.vote",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"questionId\": \"{{questionId}}\",\n  \"choice\": \"YES\"\n}"
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "votes",
+      "item": [
+        {
+          "name": "POST /api/votes/commit",
+          "request": {
+            "method": "POST",
+            "url": {
+              "raw": "{{baseUrl}}/api/votes/commit",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "votes",
+                "commit"
+              ]
+            },
+            "description": "VoteController.commit",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"questionId\": \"{{questionId}}\",\n  \"choice\": \"YES\"\n}"
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "GET /api/votes/results/{questionId}",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/votes/results/{{questionId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "votes",
+                "results",
+                "{{questionId}}"
+              ]
+            },
+            "description": "VoteController.getResults"
+          },
+          "response": []
+        },
+        {
+          "name": "POST /api/votes/reveal",
+          "request": {
+            "method": "POST",
+            "url": {
+              "raw": "{{baseUrl}}/api/votes/reveal",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "votes",
+                "reveal"
+              ]
+            },
+            "description": "VoteController.reveal",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"questionId\": \"{{questionId}}\",\n  \"choice\": \"YES\",\n  \"salt\": \"RANDOM_SALT\"\n}"
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "GET /api/votes/status/{questionId}",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/votes/status/{{questionId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "votes",
+                "status",
+                "{{questionId}}"
+              ]
+            },
+            "description": "VoteController.getStatus"
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "voting-pass",
+      "item": [
+        {
+          "name": "POST /api/voting-pass/purchase",
+          "request": {
+            "method": "POST",
+            "url": {
+              "raw": "{{baseUrl}}/api/voting-pass/purchase",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "voting-pass",
+                "purchase"
+              ]
+            },
+            "description": "TicketPurchaseController.purchaseVotingPass",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"quantity\": 1\n}"
+            }
+          },
+          "response": []
+        }
+      ]
+    }
+  ]
+}

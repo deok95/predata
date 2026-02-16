@@ -11,10 +11,13 @@ import com.predata.backend.sports.repository.MatchRepository
 import org.slf4j.LoggerFactory
 import com.predata.backend.sports.service.MatchQuestionGeneratorService
 import org.springframework.context.ApplicationEventPublisher
+import org.springframework.beans.factory.annotation.Value
 import org.springframework.scheduling.annotation.Scheduled
 import org.springframework.stereotype.Component
 import org.springframework.transaction.annotation.Transactional
+import java.time.LocalDate
 import java.time.LocalDateTime
+import java.time.ZoneId
 
 @Component
 class MatchSyncScheduler(
@@ -22,15 +25,68 @@ class MatchSyncScheduler(
     private val matchRepository: MatchRepository,
     private val leagueRepository: LeagueRepository,
     private val eventPublisher: ApplicationEventPublisher,
-    private val matchQuestionGeneratorService: MatchQuestionGeneratorService
+    private val matchQuestionGeneratorService: MatchQuestionGeneratorService,
+    @Value("\${sports.scheduler.sync-hours:0,2,4,6,8,10,12,14,16,18}")
+    private val syncHoursConfig: String,
+    @Value("\${sports.scheduler.no-match-sync-hour:12}")
+    private val noMatchSyncHour: Int,
+    @Value("\${sports.scheduler.zone:UTC}")
+    private val schedulerZone: String
 ) {
 
     private val logger = LoggerFactory.getLogger(MatchSyncScheduler::class.java)
+    private val syncHours: Set<Int> by lazy {
+        syncHoursConfig.split(",")
+            .mapNotNull { it.trim().toIntOrNull() }
+            .filter { it in 0..23 }
+            .toSet()
+    }
 
     /**
-     * 매일 06:00 → PL 경기 동기화 (신규 insert, 기존 update)
+     * 1시간마다 실행되며 실제 동기화 시점은 정책으로 제어:
+     * - 기본: 하루 10회 (sync-hours)
+     * - 오늘 경기 없음: 12시(no-match-sync-hour) 1회만 실행
      */
-    @Scheduled(cron = "\${sports.scheduler.sync-cron}")
+    @Scheduled(
+        cron = "\${sports.scheduler.auto-sync-check-cron:0 0 * * * *}",
+        zone = "\${sports.scheduler.zone:UTC}"
+    )
+    @Transactional
+    fun scheduledSyncCheck() {
+        val now = LocalDateTime.now(ZoneId.of(schedulerZone))
+        val today = LocalDate.now(ZoneId.of(schedulerZone))
+        val hour = now.hour
+
+        val startOfDay = today.atStartOfDay()
+        val endOfDay = today.plusDays(1).atStartOfDay().minusSeconds(1)
+        val hasTodayMatches = matchRepository.existsByMatchTimeBetween(startOfDay, endOfDay)
+
+        if (!hasTodayMatches) {
+            if (hour != noMatchSyncHour) {
+                logger.debug(
+                    "[MatchSync] 오늘 경기 없음 - {}시 아님(현재 {}시), 스킵",
+                    noMatchSyncHour,
+                    hour
+                )
+                return
+            }
+            logger.info("[MatchSync] 오늘 경기 없음 - {}시 1회 동기화 실행", noMatchSyncHour)
+            syncUpcomingMatches()
+            return
+        }
+
+        if (hour !in syncHours) {
+            logger.debug("[MatchSync] 호출 허용 시간이 아님 (현재 {}시, 허용={}), 스킵", hour, syncHours)
+            return
+        }
+
+        logger.info("[MatchSync] 호출 허용 시간({}시) - 동기화 실행", hour)
+        syncUpcomingMatches()
+    }
+
+    /**
+     * PL 경기 동기화 (신규 insert, 기존 update)
+     */
     @Transactional
     fun syncUpcomingMatches(): MatchSyncResult {
         logger.info("[MatchSync] 매일 동기화 시작")

@@ -9,8 +9,11 @@ import com.predata.backend.sports.scheduler.MatchSyncResult
 import com.predata.backend.sports.scheduler.MatchSyncScheduler
 import com.predata.backend.sports.service.MatchQuestionGenerateResult
 import com.predata.backend.sports.service.MatchQuestionGeneratorService
+import org.springframework.beans.factory.annotation.Value
 import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.*
+import java.time.LocalDateTime
+import java.time.ZoneOffset
 
 @RestController
 @RequestMapping("/api/admin/sports")
@@ -19,7 +22,9 @@ class SportsManagementController(
     private val matchSyncScheduler: MatchSyncScheduler,
     private val matchRepository: MatchRepository,
     private val matchQuestionGeneratorService: MatchQuestionGeneratorService,
-    private val questionRepository: QuestionRepository
+    private val questionRepository: QuestionRepository,
+    @Value("\${sports.football-data.fetch-window-days:7}")
+    private val fetchWindowDays: Long
 ) {
 
     /**
@@ -63,8 +68,14 @@ class SportsManagementController(
      */
     @GetMapping("/upcoming")
     fun getUpcomingMatches(): ResponseEntity<List<UpcomingMatchInfo>> {
+        val start = LocalDateTime.now(ZoneOffset.UTC)
+        val end = start.plusDays(fetchWindowDays)
         val questionIdByMatch = buildQuestionIdByMatch()
-        val upcomingMatches = matchRepository.findByMatchStatus(MatchStatus.SCHEDULED)
+        val upcomingMatches = matchRepository.findByMatchStatusAndMatchTimeBetween(
+            MatchStatus.SCHEDULED,
+            start,
+            end
+        ).sortedBy { it.matchTime }
             .map { match ->
                 UpcomingMatchInfo(
                     matchId = match.id ?: 0,
@@ -85,7 +96,13 @@ class SportsManagementController(
      */
     @GetMapping("/questions")
     fun getMatchQuestions(): ResponseEntity<List<MatchQuestionView>> {
+        val start = LocalDateTime.now(ZoneOffset.UTC)
+        val end = start.plusDays(fetchWindowDays)
         val questions = questionRepository.findAllMatchQuestions()
+            .filter { q ->
+                val matchTime = q.match?.matchTime ?: return@filter false
+                !matchTime.isBefore(start) && !matchTime.isAfter(end)
+            }
         val views = questions.map { q ->
             MatchQuestionView(
                 questionId = q.id!!,

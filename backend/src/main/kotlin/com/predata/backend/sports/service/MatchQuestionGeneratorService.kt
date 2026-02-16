@@ -10,14 +10,19 @@ import com.predata.backend.sports.domain.MatchStatus
 import com.predata.backend.sports.domain.QuestionPhase
 import com.predata.backend.sports.repository.MatchRepository
 import org.slf4j.LoggerFactory
+import org.springframework.beans.factory.annotation.Value
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import java.math.BigDecimal
+import java.time.LocalDateTime
+import java.time.ZoneOffset
 
 @Service
 class MatchQuestionGeneratorService(
     private val matchRepository: MatchRepository,
-    private val questionRepository: QuestionRepository
+    private val questionRepository: QuestionRepository,
+    @Value("\${sports.football-data.fetch-window-days:7}")
+    private val fetchWindowDays: Long
 ) {
 
     private val logger = LoggerFactory.getLogger(MatchQuestionGeneratorService::class.java)
@@ -30,7 +35,13 @@ class MatchQuestionGeneratorService(
      */
     @Transactional
     fun generateQuestions(): MatchQuestionGenerateResult {
-        val matches = matchRepository.findByMatchStatus(MatchStatus.SCHEDULED)
+        val start = LocalDateTime.now(ZoneOffset.UTC)
+        val end = start.plusDays(fetchWindowDays)
+        val matches = matchRepository.findByMatchStatusAndMatchTimeBetween(
+            MatchStatus.SCHEDULED,
+            start,
+            end
+        ).sortedBy { it.matchTime }
         var created = 0
         var skipped = 0
 

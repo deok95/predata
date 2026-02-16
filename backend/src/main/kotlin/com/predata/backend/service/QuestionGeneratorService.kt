@@ -54,7 +54,7 @@ class QuestionGeneratorService(
         const val DEFAULT_VOTING_DURATION = 3600L
         const val DEFAULT_BETTING_DURATION = 3600L
 
-        val VALID_CATEGORIES = listOf("ECONOMY", "TECH", "SPORTS", "POLITICS", "CULTURE")
+        val VALID_CATEGORIES = listOf("ECONOMY", "TECH", "SPORTS", "POLITICS", "CULTURE", "CRYPTO")
 
         // 데모 모드용 샘플 질문
         val DEMO_QUESTIONS = mapOf(
@@ -80,6 +80,11 @@ class QuestionGeneratorService(
             "CULTURE" to listOf(
                 "넷플릭스 오징어게임3이 글로벌 1위를 할까?",
                 "BTS가 2026년에 완전체 컴백할까?"
+            ),
+            "CRYPTO" to listOf(
+                "비트코인이 이번 주 안에 150,000달러를 돌파할까?",
+                "이더리움이 이번 라운드 마감 전 5% 이상 상승할까?",
+                "솔라나 네트워크 일일 활성 지갑 수가 이번 주 최고치를 경신할까?"
             )
         )
     }
@@ -90,7 +95,7 @@ class QuestionGeneratorService(
     fun getSettings(): QuestionGeneratorSettingsResponse {
         val enabled = getSetting(SETTING_ENABLED, "false").toBoolean()
         val interval = getSetting(SETTING_INTERVAL, "3600").toLong()
-        val categories = getSetting(SETTING_CATEGORIES, "ECONOMY,TECH,SPORTS,POLITICS,CULTURE")
+        val categories = getSetting(SETTING_CATEGORIES, "ECONOMY,TECH,SPORTS,POLITICS,CULTURE,CRYPTO")
             .split(",")
             .map { it.trim() }
             .filter { it.isNotEmpty() }
@@ -184,7 +189,7 @@ class QuestionGeneratorService(
     }
 
     fun getCategories(): List<String> {
-        return getSetting(SETTING_CATEGORIES, "ECONOMY,TECH,SPORTS,POLITICS,CULTURE")
+        return getSetting(SETTING_CATEGORIES, "ECONOMY,TECH,SPORTS,POLITICS,CULTURE,CRYPTO")
             .split(",")
             .map { it.trim() }
             .filter { it.isNotEmpty() }
@@ -323,6 +328,7 @@ class QuestionGeneratorService(
             "SPORTS" -> "스포츠, 축구, 야구, 농구, 올림픽, 월드컵 등"
             "POLITICS" -> "정치, 선거, 정책, 국제관계, 외교 등"
             "CULTURE" -> "문화, 연예, 영화, 음악, 예술, 트렌드 등"
+            "CRYPTO" -> "암호화폐, 블록체인, 비트코인, 이더리움, 온체인 데이터, 디파이 등"
             else -> category
         }
 

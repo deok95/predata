@@ -5,6 +5,7 @@ import com.predata.backend.domain.Question
 import com.predata.backend.domain.QuestionStatus
 import com.predata.backend.domain.QuestionType
 import com.predata.backend.repository.QuestionRepository
+import org.springframework.jdbc.core.JdbcTemplate
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import jakarta.validation.constraints.NotBlank
@@ -15,7 +16,8 @@ import java.time.format.DateTimeFormatter
 @Service
 class QuestionManagementService(
     private val questionRepository: QuestionRepository,
-    private val blockchainService: BlockchainService
+    private val blockchainService: BlockchainService,
+    private val jdbcTemplate: JdbcTemplate
 ) {
 
     companion object {
@@ -177,6 +179,12 @@ class QuestionManagementService(
             }
         }
 
+        val voteResultSettlement = request.voteResultSettlement
+            ?: (request.marketType == com.predata.backend.domain.MarketType.OPINION)
+        if (request.marketType == com.predata.backend.domain.MarketType.OPINION && !voteResultSettlement) {
+            throw IllegalArgumentException("OPINION 타입 질문은 voteResultSettlement=true 이어야 합니다")
+        }
+
         val now = LocalDateTime.now()
 
         // 자동 시간 계산
@@ -199,6 +207,7 @@ class QuestionManagementService(
             resolutionSource = request.resolutionSource,
             resolveAt = resolveAt,
             disputeUntil = disputeUntil,
+            voteResultSettlement = voteResultSettlement,
             votingEndAt = votingEndAt,
             bettingStartAt = bettingStartAt,
             bettingEndAt = bettingEndAt,
@@ -225,6 +234,95 @@ class QuestionManagementService(
             expiredAt = savedQuestion.expiredAt.toString(),
             message = "질문이 생성되었습니다."
         )
+    }
+
+    /**
+     * 질문 전체 하드 삭제 (연관 question_id 데이터 포함 정리)
+     */
+    @Transactional
+    fun purgeAllQuestions(): PurgeQuestionsResponse {
+        val existingCount = jdbcTemplate.queryForObject("SELECT COUNT(*) FROM questions", Int::class.java) ?: 0
+        if (existingCount == 0) {
+            return PurgeQuestionsResponse(
+                success = true,
+                deletedQuestions = 0,
+                cleanedTables = emptyMap(),
+                message = "삭제할 질문이 없습니다."
+            )
+        }
+
+        val cleaned = linkedMapOf<String, Int>()
+
+        // 생성 배치 히스토리에서 삭제된 질문 참조를 끊어 정합성 유지
+        if (columnExists("question_generation_items", "published_question_id")) {
+            val updated = jdbcTemplate.update(
+                """
+                UPDATE question_generation_items
+                SET published_question_id = NULL,
+                    status = CASE
+                        WHEN status = 'PUBLISHED' THEN 'FAILED'
+                        ELSE status
+                    END,
+                    reject_reason = CASE
+                        WHEN reject_reason IS NULL OR reject_reason = '' THEN '질문 전체 초기화로 연결 해제'
+                        ELSE reject_reason
+                    END,
+                    updated_at = NOW()
+                WHERE published_question_id IS NOT NULL
+                """.trimIndent()
+            )
+            if (updated > 0) cleaned["question_generation_items(published_link_reset)"] = updated
+        }
+
+        // 구형 sports_matches.question_id 연결 해제
+        if (columnExists("sports_matches", "question_id")) {
+            val updated = jdbcTemplate.update("UPDATE sports_matches SET question_id = NULL WHERE question_id IS NOT NULL")
+            if (updated > 0) cleaned["sports_matches(question_link_reset)"] = updated
+        }
+
+        // question_id를 가진 모든 테이블의 연관 데이터 선삭제
+        val dependentTables = jdbcTemplate.queryForList(
+            """
+            SELECT TABLE_NAME
+            FROM information_schema.COLUMNS
+            WHERE TABLE_SCHEMA = DATABASE()
+              AND COLUMN_NAME = 'question_id'
+              AND TABLE_NAME <> 'questions'
+            ORDER BY TABLE_NAME
+            """.trimIndent(),
+            String::class.java
+        )
+
+        dependentTables.forEach { table ->
+            val affected = jdbcTemplate.update("DELETE FROM `$table` WHERE question_id IS NOT NULL")
+            if (affected > 0) cleaned[table] = affected
+        }
+
+        val deletedQuestions = jdbcTemplate.update("DELETE FROM questions")
+        cleaned["questions"] = deletedQuestions
+
+        return PurgeQuestionsResponse(
+            success = true,
+            deletedQuestions = deletedQuestions,
+            cleanedTables = cleaned,
+            message = "질문 및 연관 데이터 초기화가 완료되었습니다."
+        )
+    }
+
+    private fun columnExists(tableName: String, columnName: String): Boolean {
+        val count = jdbcTemplate.queryForObject(
+            """
+            SELECT COUNT(*)
+            FROM information_schema.COLUMNS
+            WHERE TABLE_SCHEMA = DATABASE()
+              AND TABLE_NAME = ?
+              AND COLUMN_NAME = ?
+            """.trimIndent(),
+            Int::class.java,
+            tableName,
+            columnName
+        )
+        return count > 0
     }
 }
 
@@ -272,4 +370,11 @@ data class QuestionAdminView(
     val totalVotes: Int,
     val expiredAt: String,
     val createdAt: String
+)
+
+data class PurgeQuestionsResponse(
+    val success: Boolean,
+    val deletedQuestions: Int,
+    val cleanedTables: Map<String, Int>,
+    val message: String
 )

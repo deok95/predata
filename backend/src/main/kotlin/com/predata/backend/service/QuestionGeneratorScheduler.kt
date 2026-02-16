@@ -1,11 +1,18 @@
 package com.predata.backend.service
 
 import org.slf4j.LoggerFactory
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
 import org.springframework.scheduling.annotation.Scheduled
 import org.springframework.stereotype.Service
 import java.util.concurrent.atomic.AtomicLong
 
 @Service
+@ConditionalOnProperty(
+    prefix = "app.questiongen",
+    name = ["legacy-interval-enabled"],
+    havingValue = "true",
+    matchIfMissing = false
+)
 class QuestionGeneratorScheduler(
     private val questionGeneratorService: QuestionGeneratorService
 ) {

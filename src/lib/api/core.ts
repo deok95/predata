@@ -54,35 +54,37 @@ export function unwrapApiEnvelope<T>(raw: T | ApiEnvelope<T>): T {
 }
 
 export async function apiRequest<T>(endpoint: string, options?: RequestInit): Promise<T> {
-  const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 15000);
   const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
 
   try {
-    let response = await fetch(`${API_URL}${endpoint}`, {
-      headers: {
-        'Content-Type': 'application/json',
-        ...(token && { Authorization: `Bearer ${token}` }),
-        ...options?.headers,
-      },
-      ...options,
-      signal: controller.signal,
-    });
+    const fetchOnce = async () => {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 15000);
+      try {
+        return await fetch(`${API_URL}${endpoint}`, {
+          headers: {
+            'Content-Type': 'application/json',
+            ...(token && { Authorization: `Bearer ${token}` }),
+            ...options?.headers,
+          },
+          ...options,
+          signal: controller.signal,
+        });
+      } finally {
+        clearTimeout(timeoutId);
+      }
+    };
+
+    let response = await fetchOnce();
 
     // 429 Rate Limit 대응: Retry-After 헤더 확인 후 1회 재시도
     if (response.status === 429) {
-      const retryAfter = parseInt(response.headers.get('Retry-After') || '5', 10);
-      await new Promise(r => setTimeout(r, retryAfter * 1000));
+      const retryAfterRaw = response.headers.get('Retry-After');
+      const retryAfter = Number.isFinite(Number(retryAfterRaw)) ? parseInt(retryAfterRaw || '1', 10) : 1;
+      await new Promise(r => setTimeout(r, Math.max(1, retryAfter) * 1000));
 
-      response = await fetch(`${API_URL}${endpoint}`, {
-        headers: {
-          'Content-Type': 'application/json',
-          ...(token && { Authorization: `Bearer ${token}` }),
-          ...options?.headers,
-        },
-        ...options,
-        signal: controller.signal,
-      });
+      // NOTE: body는 string(JSON) 기반을 전제로 1회 재요청합니다. (Stream body는 재사용 불가)
+      response = await fetchOnce();
     }
 
     let data;
@@ -126,7 +128,5 @@ export async function apiRequest<T>(endpoint: string, options?: RequestInit): Pr
       error instanceof Error ? error.message : '네트워크 오류가 발생했습니다.',
       error
     );
-  } finally {
-    clearTimeout(timeoutId);
   }
 }

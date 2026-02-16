@@ -6,7 +6,11 @@ import type {
   Question,
   SettleQuestionRequest,
   SettlementHistory,
+  VoteCommitRequest,
+  VoteCommitResponse,
   VoteRequest,
+  VoteRevealRequest,
+  VoteRevealResponse,
 } from '@/types/api';
 import { apiRequest, unwrapApiEnvelope } from './core';
 import { mapQuestion } from './mappers';
@@ -62,6 +66,19 @@ export const bettingApi = {
 
   bet: (data: BetRequest) =>
     apiRequest<{ success: boolean; message?: string; activityId?: number; remainingTickets?: number }>('/api/bet', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+
+  // Commit-Reveal Vote APIs
+  voteCommit: (data: VoteCommitRequest): Promise<VoteCommitResponse> =>
+    apiRequest<VoteCommitResponse>('/api/votes/commit', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+
+  voteReveal: (data: VoteRevealRequest): Promise<VoteRevealResponse> =>
+    apiRequest<VoteRevealResponse>('/api/votes/reveal', {
       method: 'POST',
       body: JSON.stringify(data),
     }),

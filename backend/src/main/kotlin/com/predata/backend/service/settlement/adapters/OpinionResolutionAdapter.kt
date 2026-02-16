@@ -21,6 +21,10 @@ class OpinionResolutionAdapter(
     }
 
     override fun resolve(question: Question): ResolutionResult {
+        if (!question.voteResultSettlement) {
+            throw IllegalStateException("OPINION 질문은 voteResultSettlement=true 이어야 합니다.")
+        }
+
         val questionId = question.id
             ?: throw IllegalArgumentException("Question ID가 없습니다.")
 
