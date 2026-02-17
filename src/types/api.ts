@@ -461,6 +461,7 @@ export interface VoteCommitResponse {
   success: boolean;
   message: string;
   voteCommitId?: number;
+  remainingTickets?: number;
 }
 
 export interface VoteRevealRequest {

@@ -22,7 +22,8 @@ data class VoteCommitRequest(
 data class VoteCommitResponse(
     val success: Boolean,
     val message: String,
-    val voteCommitId: Long? = null
+    val voteCommitId: Long? = null,
+    val remainingTickets: Int? = null
 )
 
 /**

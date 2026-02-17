@@ -1,14 +1,15 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { CheckCircle, UserPlus, Clock, Shield, AlertTriangle } from 'lucide-react';
+import { CheckCircle, UserPlus, Clock, Shield, AlertTriangle, Ticket } from 'lucide-react';
 import { useTheme } from '@/hooks/useTheme';
 import { useToast } from '@/components/ui/Toast';
 import { useAuth } from '@/hooks/useAuth';
 import { useRegisterModal } from '@/components/RegisterModal';
-import { bettingApi, orderApi, ApiError } from '@/lib/api';
+import { bettingApi, orderApi, ticketApi, ApiError } from '@/lib/api';
 import { BET_MIN_USDC, BET_MAX_USDC } from '@/lib/contracts';
 import DepositModal from '@/components/payment/DepositModal';
+import type { TicketStatus } from '@/lib/api/ticket';
 import {
   generateSalt,
   generateCommitHash,
@@ -41,6 +42,7 @@ export default function TradingPanel({ question, user, onTradeComplete, votedCho
   const [showDepositModal, setShowDepositModal] = useState(false);
   const [hasCommitted, setHasCommitted] = useState(false);
   const [committedChoice, setCommittedChoice] = useState<'YES' | 'NO' | null>(null);
+  const [ticketStatus, setTicketStatus] = useState<TicketStatus | null>(null);
 
   const isExternalSportsMatch = Boolean(question.matchId);
 
@@ -56,6 +58,13 @@ export default function TradingPanel({ question, user, onTradeComplete, votedCho
       }
     }
   }, [question.id, user?.id]);
+
+  // Fetch ticket status for voting phase
+  useEffect(() => {
+    if (question.status === 'VOTING' && user?.id) {
+      ticketApi.getStatus().then(setTicketStatus).catch(() => setTicketStatus(null));
+    }
+  }, [question.status, user?.id]);
 
   const yesOdds = question.totalBetPool > 0
     ? Math.round((question.yesBetPool / question.totalBetPool) * 100)
@@ -198,6 +207,12 @@ export default function TradingPanel({ question, user, onTradeComplete, votedCho
         setHasCommitted(true);
         setCommittedChoice(choice);
         onVoted?.(choice);
+
+        // Update ticket status from response
+        if (result.remainingTickets !== undefined) {
+          setTicketStatus(prev => prev ? { ...prev, remainingTickets: result.remainingTickets! } : null);
+        }
+
         await refreshUser();
         onTradeComplete();
       }
@@ -337,6 +352,31 @@ export default function TradingPanel({ question, user, onTradeComplete, votedCho
           </div>
         )}
 
+        {/* 티켓 상태 표시 */}
+        {ticketStatus && (
+          <div className={`mb-6 px-4 py-3 rounded-xl flex items-center gap-3 ${
+            ticketStatus.remainingTickets === 0
+              ? isDark ? 'bg-red-950 border border-red-800' : 'bg-red-50 border border-red-200'
+              : isDark ? 'bg-indigo-950 border border-indigo-800' : 'bg-indigo-50 border border-indigo-200'
+          }`}>
+            <Ticket className={`w-4 h-4 ${
+              ticketStatus.remainingTickets === 0
+                ? 'text-red-500'
+                : isDark ? 'text-indigo-400' : 'text-indigo-600'
+            }`} />
+            <p className={`text-sm font-bold ${
+              ticketStatus.remainingTickets === 0
+                ? isDark ? 'text-red-400' : 'text-red-600'
+                : isDark ? 'text-indigo-400' : 'text-indigo-600'
+            }`}>
+              {ticketStatus.remainingTickets === 0
+                ? '오늘 투표 가능 횟수를 모두 사용했습니다'
+                : `남은 투표권: ${ticketStatus.remainingTickets}/${ticketStatus.maxTickets}`
+              }
+            </p>
+          </div>
+        )}
+
         {isGuest ? (
           <div className={`text-center py-8 rounded-xl ${isDark ? 'bg-slate-800/50' : 'bg-slate-50'}`}>
             <p className={`text-sm ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>회원가입 후 투표에 참여할 수 있습니다</p>
@@ -372,14 +412,14 @@ export default function TradingPanel({ question, user, onTradeComplete, votedCho
               <div className="grid grid-cols-2 gap-4 mb-4">
                 <button
                   onClick={() => handleVoteCommit('YES')}
-                  disabled={loading}
+                  disabled={loading || ticketStatus?.remainingTickets === 0}
                   className="bg-green-500 hover:bg-green-600 text-white py-4 rounded-xl text-lg font-bold transition-all disabled:opacity-50"
                 >
                   {loading ? '처리 중...' : 'YES 투표'}
                 </button>
                 <button
                   onClick={() => handleVoteCommit('NO')}
-                  disabled={loading}
+                  disabled={loading || ticketStatus?.remainingTickets === 0}
                   className="bg-red-500 hover:bg-red-600 text-white py-4 rounded-xl text-lg font-bold transition-all disabled:opacity-50"
                 >
                   {loading ? '처리 중...' : 'NO 투표'}
