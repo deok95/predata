@@ -46,7 +46,8 @@ class QuestionService(
                 bettingEndAt = question.bettingEndAt.format(formatter),
                 expiredAt = question.expiredAt.format(formatter),
                 createdAt = question.createdAt.format(formatter),
-                viewCount = question.viewCount
+                viewCount = question.viewCount,
+                matchId = question.match?.id
             )
         }
     }
@@ -120,7 +121,8 @@ class QuestionService(
                 bettingEndAt = question.bettingEndAt.format(formatter),
                 expiredAt = question.expiredAt.format(formatter),
                 createdAt = question.createdAt.format(formatter),
-                viewCount = question.viewCount
+                viewCount = question.viewCount,
+                matchId = question.match?.id
             )
         }
     }

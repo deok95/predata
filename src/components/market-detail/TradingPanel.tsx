@@ -42,6 +42,10 @@ export default function TradingPanel({ question, user, onTradeComplete, votedCho
   const [hasCommitted, setHasCommitted] = useState(false);
   const [committedChoice, setCommittedChoice] = useState<'YES' | 'NO' | null>(null);
 
+  // Debug: Check question fields
+  console.log('question object:', question);
+  console.log('category:', question.category, 'type:', question.type);
+
   // Check if user has already committed (salt exists in localStorage)
   useEffect(() => {
     if (question.id && user?.id) {
@@ -375,7 +379,7 @@ export default function TradingPanel({ question, user, onTradeComplete, votedCho
                   {loading ? '처리 중...' : 'NO 투표'}
                 </button>
               </div>
-              {question.category === 'SPORTS' && question.type === 'VERIFIABLE' && (
+              {question.matchId && (
                 <div className={`mb-3 px-4 py-2 rounded-xl text-xs font-bold ${
                   isDark ? 'bg-slate-800 text-slate-300' : 'bg-slate-50 text-slate-700'
                 }`}>

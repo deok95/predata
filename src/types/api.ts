@@ -55,6 +55,7 @@ export interface Question {
   expiredAt: string;
   createdAt: string;
   viewCount?: number;
+  matchId?: number;
 }
 
 export interface CreateQuestionRequest {

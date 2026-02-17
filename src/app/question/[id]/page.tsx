@@ -195,11 +195,20 @@ function QuestionDetailContent() {
             {question.status !== 'VOTING' && (
               <span className="font-bold">Vol. {question.totalBetPool.toLocaleString()} USDC</span>
             )}
-            {question.bettingStartAt && (
-              <span className="flex items-center gap-1">
-                <Clock size={14} />
-                경기 일시: {new Date(question.bettingStartAt).toLocaleString('ko-KR')}
-              </span>
+            {question.matchId ? (
+              question.bettingStartAt && (
+                <span className="flex items-center gap-1">
+                  <Clock size={14} />
+                  경기 일시: {new Date(question.bettingStartAt).toLocaleString('ko-KR')}
+                </span>
+              )
+            ) : (
+              question.expiredAt && (
+                <span className="flex items-center gap-1">
+                  <Clock size={14} />
+                  종료 일시: {new Date(question.expiredAt).toLocaleString('ko-KR')}
+                </span>
+              )
             )}
           </div>
         </div>
@@ -314,13 +323,24 @@ function QuestionDetailContent() {
               {question.title}
             </h1>
             <div className="space-y-2">
-              {question.bettingStartAt && (
-                <div className={`flex items-center gap-2 text-sm ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
-                  <Clock size={16} />
-                  <span>
-                    경기 일시: {new Date(question.bettingStartAt).toLocaleString('ko-KR')}
-                  </span>
-                </div>
+              {question.matchId ? (
+                question.bettingStartAt && (
+                  <div className={`flex items-center gap-2 text-sm ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
+                    <Clock size={16} />
+                    <span>
+                      경기 일시: {new Date(question.bettingStartAt).toLocaleString('ko-KR')}
+                    </span>
+                  </div>
+                )
+              ) : (
+                question.expiredAt && (
+                  <div className={`flex items-center gap-2 text-sm ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
+                    <Clock size={16} />
+                    <span>
+                      종료 일시: {new Date(question.expiredAt).toLocaleString('ko-KR')}
+                    </span>
+                  </div>
+                )
               )}
               {question.votingEndAt && (
                 <div className={`flex items-center gap-2 text-sm ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
