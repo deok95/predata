@@ -80,6 +80,9 @@ function QuestionDetailContent() {
 
   // 조회수 증가 (탭(session) 기준 1회만: StrictMode 재마운트에도 중복 호출 방지)
   useEffect(() => {
+    // 서버에 존재하는 질문일 때만 호출한다.
+    // (404로 mock fallback된 경우엔 조회수 API를 호출하면 404/에러 로그만 발생)
+    if (!question || isMockData) return;
     if (!questionId || isNaN(questionId)) return;
     if (typeof window === 'undefined') return;
 
@@ -88,7 +91,7 @@ function QuestionDetailContent() {
 
     sessionStorage.setItem(storageKey, 'true');
     questionApi.incrementViewCount(questionId).catch(() => {});
-  }, [questionId]);
+  }, [questionId, question, isMockData]);
 
   useEffect(() => {
     if (!question || isMockData) return;
