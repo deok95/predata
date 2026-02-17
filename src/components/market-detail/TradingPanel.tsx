@@ -6,7 +6,8 @@ import { useTheme } from '@/hooks/useTheme';
 import { useToast } from '@/components/ui/Toast';
 import { useAuth } from '@/hooks/useAuth';
 import { useRegisterModal } from '@/components/RegisterModal';
-import { bettingApi, orderApi, ticketApi, ApiError } from '@/lib/api';
+import { bettingApi, orderApi, ticketApi, ApiError, getMyPositionsByQuestion } from '@/lib/api';
+import type { PositionData, OrderData } from '@/lib/api';
 import { BET_MIN_USDC, BET_MAX_USDC } from '@/lib/contracts';
 import DepositModal from '@/components/payment/DepositModal';
 import type { TicketStatus } from '@/lib/api/ticket';
@@ -43,8 +44,29 @@ export default function TradingPanel({ question, user, onTradeComplete, votedCho
   const [hasCommitted, setHasCommitted] = useState(false);
   const [committedChoice, setCommittedChoice] = useState<'YES' | 'NO' | null>(null);
   const [ticketStatus, setTicketStatus] = useState<TicketStatus | null>(null);
+  const [positions, setPositions] = useState<PositionData[]>([]);
+  const [openSellOrders, setOpenSellOrders] = useState<OrderData[]>([]);
 
   const isExternalSportsMatch = Boolean(question.matchId);
+
+  // Refresh positions and orders (for SELL tab)
+  const refreshPositionsAndOrders = async () => {
+    if (user?.id && question.status === 'BETTING') {
+      try {
+        const [posData, orderData] = await Promise.all([
+          getMyPositionsByQuestion(question.id),
+          orderApi.getOrdersByQuestion(question.id)
+        ]);
+        setPositions(posData);
+        const sellOrders = orderData.filter(
+          o => o.direction === 'SELL' && (o.status === 'OPEN' || o.status === 'PARTIAL')
+        );
+        setOpenSellOrders(sellOrders);
+      } catch (error) {
+        console.error('Failed to refresh positions/orders:', error);
+      }
+    }
+  };
 
   // Check if user has already committed (salt exists in localStorage)
   useEffect(() => {
@@ -66,6 +88,22 @@ export default function TradingPanel({ question, user, onTradeComplete, votedCho
     }
   }, [question.status, user?.id]);
 
+  // Fetch positions and open sell orders for SELL tab
+  useEffect(() => {
+    if (activeTab === 'sell' && user?.id && question.status === 'BETTING') {
+      // Fetch positions
+      getMyPositionsByQuestion(question.id).then(setPositions).catch(() => setPositions([]));
+
+      // Fetch open sell orders
+      orderApi.getOrdersByQuestion(question.id).then(orders => {
+        const sellOrders = orders.filter(
+          o => o.direction === 'SELL' && (o.status === 'OPEN' || o.status === 'PARTIAL')
+        );
+        setOpenSellOrders(sellOrders);
+      }).catch(() => setOpenSellOrders([]));
+    }
+  }, [activeTab, user?.id, question.id, question.status]);
+
   const yesOdds = question.totalBetPool > 0
     ? Math.round((question.yesBetPool / question.totalBetPool) * 100)
     : 50;
@@ -83,10 +121,36 @@ export default function TradingPanel({ question, user, onTradeComplete, votedCho
     }
 
     // BUY: 잔액 부족 시 충전 모달
-    // SELL: 포지션 체크는 서버에서 검증
-    if (activeTab === 'buy' && user.usdcBalance < amt) {
-      setShowDepositModal(true);
-      return;
+    // SELL: 포지션 체크
+    if (activeTab === 'buy') {
+      // LIMIT이면 지정가 기준, MARKET이면 최악(0.99) 기준으로 보수적으로 체크
+      const priceForCheck =
+        orderType === 'limit' && limitPrice && !isNaN(parseFloat(limitPrice))
+          ? parseFloat(limitPrice)
+          : 0.99;
+      const required = amt * priceForCheck;
+      if (user.usdcBalance < required) {
+        setShowDepositModal(true);
+        return;
+      }
+    } else {
+      // SELL: 보유 수량 체크
+      const currentPosition = positions.find(p => p.side === selectedOutcome);
+      const holdingQty = currentPosition?.quantity || 0;
+      const pendingSellQty = openSellOrders
+        .filter(o => o.side === selectedOutcome)
+        .reduce((sum, o) => sum + o.remainingAmount, 0);
+      const availableToSell = Math.max(0, holdingQty - pendingSellQty);
+
+      if (holdingQty === 0) {
+        showToast(`${selectedOutcome} 포지션이 없습니다. 먼저 구매해주세요.`, 'error');
+        return;
+      }
+
+      if (amt > availableToSell) {
+        showToast(`판매 가능 수량을 초과합니다. (판매 가능: ${availableToSell}개)`, 'error');
+        return;
+      }
     }
 
     // Limit Order인 경우 별도 처리
@@ -101,7 +165,7 @@ export default function TradingPanel({ question, user, onTradeComplete, votedCho
       const result = await orderApi.createOrder({
         questionId: question.id,
         side: selectedOutcome,
-        price: 1.0, // Market order는 서버가 최적가로 매칭
+        price: 0.5, // MARKET은 서버가 상대 호가로 가격을 결정하므로 placeholder(0.01~0.99)
         amount: Number(tradeAmount),
         direction: activeTab === 'buy' ? 'BUY' : 'SELL',
         orderType: 'MARKET',
@@ -111,6 +175,7 @@ export default function TradingPanel({ question, user, onTradeComplete, votedCho
         showToast(`${selectedOutcome} ${action} 완료! ${result.filledAmount > 0 ? `(${result.filledAmount} $ 체결)` : ''}`);
         setTradeAmount('');
         await refreshUser();
+        await refreshPositionsAndOrders();
         onTradeComplete();
       }
     } catch (error) {
@@ -141,7 +206,7 @@ export default function TradingPanel({ question, user, onTradeComplete, votedCho
       });
 
       if (result.success) {
-        const actionLabel = activeTab === 'buy' ? '매수' : '매도(헤지)';
+        const actionLabel = activeTab === 'buy' ? '매수' : '매도';
         if (result.filledAmount === Number(tradeAmount)) {
           showToast(`${actionLabel} 주문이 완전 체결되었습니다!`);
         } else if (result.filledAmount > 0) {
@@ -152,6 +217,7 @@ export default function TradingPanel({ question, user, onTradeComplete, votedCho
         setTradeAmount('');
         setLimitPrice('');
         await refreshUser();
+        await refreshPositionsAndOrders();
         onTradeComplete();
       }
     } catch (error) {
@@ -604,11 +670,56 @@ export default function TradingPanel({ question, user, onTradeComplete, votedCho
         </button>
       </div>
 
-      {activeTab === 'sell' && (
-        <div className={`rounded-2xl p-3 mb-4 text-xs ${isDark ? 'bg-amber-950/20 border border-amber-900/30 text-amber-400' : 'bg-amber-50 border border-amber-200 text-amber-700'}`}>
-          매도는 반대 포지션을 구매하여 기존 포지션을 헤지합니다
-        </div>
-      )}
+      {activeTab === 'sell' && (() => {
+        const currentPosition = positions.find(p => p.side === selectedOutcome);
+        const holdingQty = currentPosition?.quantity || 0;
+
+        // Calculate pending sell quantity for the selected side
+        const pendingSellQty = openSellOrders
+          .filter(o => o.side === selectedOutcome)
+          .reduce((sum, o) => sum + o.remainingAmount, 0);
+
+        const availableToSell = Math.max(0, holdingQty - pendingSellQty);
+
+        return (
+          <div className="mb-4 space-y-3">
+            {/* Position info */}
+            <div className={`rounded-2xl p-4 ${isDark ? 'bg-slate-800 border border-slate-700' : 'bg-slate-50 border border-slate-200'}`}>
+              <div className="flex justify-between items-center mb-2">
+                <span className="text-xs font-bold text-slate-400 uppercase">보유 포지션</span>
+                <span className={`text-sm font-black ${holdingQty > 0 ? 'text-indigo-500' : 'text-slate-500'}`}>
+                  {selectedOutcome} {holdingQty}개
+                </span>
+              </div>
+              {pendingSellQty > 0 && (
+                <div className="flex justify-between items-center mb-2">
+                  <span className="text-xs text-slate-400">판매 대기</span>
+                  <span className="text-sm font-bold text-amber-500">{pendingSellQty}개</span>
+                </div>
+              )}
+              <div className="flex justify-between items-center pt-2 border-t border-slate-200 dark:border-slate-700">
+                <span className="text-xs font-bold text-slate-400 uppercase">판매 가능</span>
+                <span className={`text-base font-black ${availableToSell > 0 ? 'text-green-500' : 'text-red-500'}`}>
+                  {availableToSell}개
+                </span>
+              </div>
+            </div>
+
+            {holdingQty === 0 && (
+              <div className={`rounded-2xl p-3 text-xs flex items-center gap-2 ${isDark ? 'bg-rose-950/20 border border-rose-900/30 text-rose-400' : 'bg-rose-50 border border-rose-200 text-rose-700'}`}>
+                <AlertTriangle size={14} />
+                <span>보유 포지션이 없습니다. 먼저 {selectedOutcome} 포지션을 구매해주세요.</span>
+              </div>
+            )}
+
+            {availableToSell < holdingQty && availableToSell > 0 && (
+              <div className={`rounded-2xl p-3 text-xs ${isDark ? 'bg-amber-950/20 border border-amber-900/30 text-amber-400' : 'bg-amber-50 border border-amber-200 text-amber-700'}`}>
+                판매 대기 중인 주문이 있습니다. 추가 판매는 {availableToSell}개까지 가능합니다.
+              </div>
+            )}
+          </div>
+        );
+      })()}
 
       {/* Limit Order 가격 입력 */}
       {orderType === 'limit' && (
@@ -697,25 +808,37 @@ export default function TradingPanel({ question, user, onTradeComplete, votedCho
           <UserPlus size={20} />
           회원가입 후 참여 가능
         </button>
-      ) : (
-        <button
-          onClick={handleTrade}
-          disabled={loading || !tradeAmount}
-          className={`w-full py-4 rounded-2xl font-black text-lg transition-all shadow-xl active:scale-95 disabled:opacity-50 ${
-            activeTab === 'buy'
-              ? selectedOutcome === 'YES'
-                ? 'bg-emerald-500 text-white shadow-emerald-500/20 hover:bg-emerald-600'
-                : 'bg-rose-500 text-white shadow-rose-500/20 hover:bg-rose-600'
-              : 'bg-orange-500 text-white shadow-orange-500/20 hover:bg-orange-600'
-          }`}
-        >
-          {loading ? '처리 중...' : orderType === 'limit'
-            ? (activeTab === 'buy'
-              ? `Place ${selectedOutcome} Limit Order`
-              : `Place ${selectedOutcome} Sell Hedge Order`)
-            : activeTab === 'buy' ? `Buy ${selectedOutcome}` : `Sell ${selectedOutcome}`}
-        </button>
-      )}
+      ) : (() => {
+        // Calculate available to sell for button state
+        const currentPosition = positions.find(p => p.side === selectedOutcome);
+        const holdingQty = currentPosition?.quantity || 0;
+        const pendingSellQty = openSellOrders
+          .filter(o => o.side === selectedOutcome)
+          .reduce((sum, o) => sum + o.remainingAmount, 0);
+        const availableToSell = Math.max(0, holdingQty - pendingSellQty);
+
+        const isDisabled = loading || !tradeAmount || (activeTab === 'sell' && availableToSell === 0);
+
+        return (
+          <button
+            onClick={handleTrade}
+            disabled={isDisabled}
+            className={`w-full py-4 rounded-2xl font-black text-lg transition-all shadow-xl active:scale-95 disabled:opacity-50 ${
+              activeTab === 'buy'
+                ? selectedOutcome === 'YES'
+                  ? 'bg-emerald-500 text-white shadow-emerald-500/20 hover:bg-emerald-600'
+                  : 'bg-rose-500 text-white shadow-rose-500/20 hover:bg-rose-600'
+                : 'bg-orange-500 text-white shadow-orange-500/20 hover:bg-orange-600'
+            }`}
+          >
+            {loading ? '처리 중...' : orderType === 'limit'
+              ? (activeTab === 'buy'
+                ? `Place ${selectedOutcome} Limit Order`
+                : `Place ${selectedOutcome} Sell Hedge Order`)
+              : activeTab === 'buy' ? `Buy ${selectedOutcome}` : `Sell ${selectedOutcome}`}
+          </button>
+        );
+      })()}
 
       <DepositModal isOpen={showDepositModal} onClose={() => setShowDepositModal(false)} />
     </div>

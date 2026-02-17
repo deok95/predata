@@ -192,6 +192,50 @@ class PositionService(
     }
 
     /**
+     * SELL 체결 시 포지션 감소 (비관적 락 + 영속성 + 0 삭제)
+     * - SELL 주문 체결 시 보유 포지션 감소
+     * - quantity가 0이 되면 포지션 삭제
+     */
+    @Transactional
+    fun decreasePosition(
+        memberId: Long,
+        questionId: Long,
+        side: OrderSide,
+        decreaseAmount: BigDecimal
+    ) {
+        // 비관적 락으로 포지션 조회
+        val position = positionRepository.findByMemberIdAndQuestionIdAndSideForUpdate(
+            memberId, questionId, side
+        ) ?: throw IllegalStateException("Position not found for SELL execution")
+
+        // 수량 감소
+        position.quantity = position.quantity.subtract(decreaseAmount)
+        position.updatedAt = LocalDateTime.now()
+
+        if (position.quantity <= BigDecimal.ZERO) {
+            // 포지션이 0 이하가 되면 삭제
+            positionRepository.delete(position)
+            auditService.log(
+                memberId = memberId,
+                action = com.predata.backend.domain.AuditAction.POSITION_UPDATE,
+                entityType = "POSITION",
+                entityId = position.id,
+                detail = "Position closed (SELL): $side quantity reduced to 0"
+            )
+        } else {
+            // 포지션이 남아있으면 저장
+            positionRepository.save(position)
+            auditService.log(
+                memberId = memberId,
+                action = com.predata.backend.domain.AuditAction.POSITION_UPDATE,
+                entityType = "POSITION",
+                entityId = position.id,
+                detail = "Position decreased (SELL): $side quantity ${position.quantity.add(decreaseAmount)} → ${position.quantity}"
+            )
+        }
+    }
+
+    /**
      * 정산 완료 마킹
      */
     @Transactional

@@ -212,15 +212,27 @@ class OrderMatchingService(
             val position = positionService.getPositionsByQuestion(memberId, request.questionId)
                 .find { it.side == request.side }
 
-            if (position == null || position.quantity < BigDecimal(request.amount)) {
+            val availableQty = position?.quantity ?: BigDecimal.ZERO
+
+            // 기존 OPEN 상태 SELL 주문 합산 조회 (초과판매 방지)
+            val existingOpenSellQty = orderRepository.sumRemainingAmountByMemberAndQuestionAndSideAndDirectionAndStatuses(
+                memberId = memberId,
+                questionId = request.questionId,
+                side = request.side,
+                direction = OrderDirection.SELL,
+                statuses = listOf(OrderStatus.OPEN, OrderStatus.PARTIAL)
+            )
+
+            val totalSellQty = existingOpenSellQty + request.amount
+
+            if (availableQty.toLong() < totalSellQty) {
                 return CreateOrderResponse(
                     success = false,
-                    message = "보유 포지션이 부족합니다. (보유: ${position?.quantity ?: 0}, 필요: ${request.amount})"
+                    message = "판매 가능 수량을 초과합니다. (보유: ${availableQty.toLong()}, 판매 대기: $existingOpenSellQty, 현재 판매 가능: ${availableQty.toLong() - existingOpenSellQty})"
                 )
             }
 
             // SELL 주문은 USDC 차감 없음 (포지션을 담보로 사용)
-            // TODO: 포지션 락 로직 (중복 판매 방지) - 향후 구현
         }
 
         // 6. 주문 생성
@@ -318,14 +330,13 @@ class OrderMatchingService(
             val fillAmount = minOf(order.remainingAmount, counterOrder.remainingAmount)
             val tradePrice = order.price  // Taker 가격 사용
 
-            // 체결 기록 - direction 기반으로 buyOrder/sellOrder 구분
-            val buyOrder = if (order.direction == OrderDirection.BUY) order else counterOrder
-            val sellOrder = if (order.direction == OrderDirection.SELL) order else counterOrder
-
+            // 체결 기록 - Taker/Maker 모델
+            // Taker = 주문을 넣어서 체결을 일으킨 쪽 (order)
+            // Maker = 오더북에 대기 중이던 쪽 (counterOrder)
             val trade = Trade(
                 questionId = order.questionId,
-                buyOrderId = buyOrder.id!!,
-                sellOrderId = sellOrder.id!!,
+                takerOrderId = order.id!!,
+                makerOrderId = counterOrder.id!!,
                 price = tradePrice,
                 amount = fillAmount,
                 side = order.side
@@ -366,13 +377,13 @@ class OrderMatchingService(
                     newPrice = tradePrice
                 )
             } else {
-                // SELL 주문: 포지션 감소, USDC 지급
-                val position = positionService.getPositionsByQuestion(order.memberId, order.questionId)
-                    .find { it.side == order.side }
-                if (position != null) {
-                    position.quantity = position.quantity.subtract(BigDecimal(fillAmount))
-                    // Position will be saved by service layer
-                }
+                // SELL 주문: 포지션 감소 (락 + 영속성 + 0 삭제)
+                positionService.decreasePosition(
+                    memberId = order.memberId,
+                    questionId = order.questionId,
+                    side = order.side,
+                    decreaseAmount = BigDecimal(fillAmount)
+                )
 
                 // USDC 지급 (체결가 * 수량)
                 val sellerProceeds = BigDecimal(fillAmount).multiply(tradePrice)
@@ -401,12 +412,13 @@ class OrderMatchingService(
                     newPrice = oppositePrice
                 )
             } else {
-                // SELL 주문: 포지션 감소, USDC 지급
-                val position = positionService.getPositionsByQuestion(counterOrder.memberId, counterOrder.questionId)
-                    .find { it.side == counterOrder.side }
-                if (position != null) {
-                    position.quantity = position.quantity.subtract(BigDecimal(fillAmount))
-                }
+                // SELL 주문: 포지션 감소 (락 + 영속성 + 0 삭제)
+                positionService.decreasePosition(
+                    memberId = counterOrder.memberId,
+                    questionId = counterOrder.questionId,
+                    side = counterOrder.side,
+                    decreaseAmount = BigDecimal(fillAmount)
+                )
 
                 // USDC 지급
                 val sellerProceeds = BigDecimal(fillAmount).multiply(oppositePrice)

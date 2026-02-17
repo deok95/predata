@@ -15,11 +15,11 @@ data class Trade(
     @Column(name = "question_id", nullable = false)
     val questionId: Long,
 
-    @Column(name = "buy_order_id", nullable = false)
-    val buyOrderId: Long,
+    @Column(name = "taker_order_id", nullable = false)
+    val takerOrderId: Long,
 
-    @Column(name = "sell_order_id", nullable = false)
-    val sellOrderId: Long,
+    @Column(name = "maker_order_id", nullable = false)
+    val makerOrderId: Long,
 
     @Column(precision = 4, scale = 2, nullable = false)
     val price: BigDecimal,
