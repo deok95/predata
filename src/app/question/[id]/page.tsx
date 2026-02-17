@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useParams } from 'next/navigation';
 import { ArrowLeft, CheckCircle, Clock, Shield, ExternalLink, AlertTriangle } from 'lucide-react';
 import Link from 'next/link';
@@ -29,7 +29,6 @@ function QuestionDetailContent() {
   const [refreshKey, setRefreshKey] = useState(0);
   const [isMockData, setIsMockData] = useState(false);
   const [loadError, setLoadError] = useState<{ status: number; message: string } | null>(null);
-  const viewCountedIdRef = useRef<number | null>(null);
 
   const fetchQuestion = useCallback(async () => {
     try {
@@ -79,14 +78,16 @@ function QuestionDetailContent() {
     else setLoading(false);
   }, [questionId, fetchQuestion]);
 
-  // 조회수 증가 (페이지 진입 시 1회만, StrictMode 재마운트 방지)
+  // 조회수 증가 (탭(session) 기준 1회만: StrictMode 재마운트에도 중복 호출 방지)
   useEffect(() => {
-    if (questionId && !isNaN(questionId) && viewCountedIdRef.current !== questionId) {
-      viewCountedIdRef.current = questionId;
-      questionApi.incrementViewCount(questionId).catch(() => {
-        // 조회수 증가 실패는 무시 (사용자 경험에 영향 없음)
-      });
-    }
+    if (!questionId || isNaN(questionId)) return;
+    if (typeof window === 'undefined') return;
+
+    const storageKey = `viewed_${questionId}`;
+    if (sessionStorage.getItem(storageKey)) return;
+
+    sessionStorage.setItem(storageKey, 'true');
+    questionApi.incrementViewCount(questionId).catch(() => {});
   }, [questionId]);
 
   useEffect(() => {
