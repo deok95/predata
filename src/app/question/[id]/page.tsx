@@ -16,6 +16,7 @@ import { mockQuestions } from '@/lib/mockData';
 import { useAuth } from '@/hooks/useAuth';
 import { useVotedQuestions } from '@/hooks/useVotedQuestions';
 import type { Question } from '@/types/api';
+import { ApiError } from '@/lib/api/core';
 
 function QuestionDetailContent() {
   const { isDark } = useTheme();
@@ -27,6 +28,7 @@ function QuestionDetailContent() {
   const [loading, setLoading] = useState(true);
   const [refreshKey, setRefreshKey] = useState(0);
   const [isMockData, setIsMockData] = useState(false);
+  const [loadError, setLoadError] = useState<{ status: number; message: string } | null>(null);
 
   const fetchQuestion = useCallback(async () => {
     try {
@@ -34,15 +36,38 @@ function QuestionDetailContent() {
       if (response.success && response.data) {
         setQuestion(response.data);
         setIsMockData(false);
+        setLoadError(null); // 성공 시 에러 초기화
       } else {
         const mock = mockQuestions.find(q => q.id === questionId) || null;
         setQuestion(mock);
         setIsMockData(true);
+        setLoadError(null);
       }
-    } catch {
-      const mock = mockQuestions.find(q => q.id === questionId) || null;
-      setQuestion(mock);
-      setIsMockData(true);
+    } catch (error) {
+      // ApiError인 경우 status 코드로 분기
+      if (error instanceof ApiError) {
+        if (error.status === 404) {
+          // 404: 질문이 존재하지 않음 → mock 데이터로 전환
+          const mock = mockQuestions.find(q => q.id === questionId) || null;
+          setQuestion(mock);
+          setIsMockData(true);
+          setLoadError(null);
+        } else {
+          // 429, 5xx, 408(timeout) 등: 일시적 에러 → 기존 데이터 유지
+          setLoadError({
+            status: error.status,
+            message: error.message
+          });
+          // isMockData는 변경하지 않음
+          // question도 기존 값 유지 (최초 로딩이면 null 유지)
+        }
+      } else {
+        // 네트워크 에러 등 예상치 못한 에러
+        setLoadError({
+          status: 0,
+          message: error instanceof Error ? error.message : '알 수 없는 오류가 발생했습니다.'
+        });
+      }
     } finally {
       setLoading(false);
     }
@@ -77,6 +102,31 @@ function QuestionDetailContent() {
   }
 
   if (!question) {
+    // 일시적 에러 (429, 5xx, timeout 등)로 최초 로딩이 실패한 경우
+    if (loadError) {
+      return (
+        <div className={`text-center py-20 ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>
+          <AlertTriangle className="mx-auto mb-4 text-amber-500" size={48} />
+          <p className="text-lg font-bold mb-2">질문을 불러올 수 없습니다</p>
+          <p className="text-sm text-slate-400 mb-1">
+            {loadError.status > 0 ? `HTTP ${loadError.status}` : '네트워크 오류'}
+          </p>
+          <p className="text-sm text-slate-400 mb-6">{loadError.message}</p>
+          <button
+            onClick={() => {
+              setLoading(true);
+              setLoadError(null);
+              fetchQuestion();
+            }}
+            className="px-6 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl transition"
+          >
+            다시 시도
+          </button>
+        </div>
+      );
+    }
+
+    // 질문이 존재하지 않는 경우 (404 등)
     return (
       <div className="text-center py-20">
         <p className="text-slate-400 text-lg">마켓을 찾을 수 없습니다.</p>
@@ -140,6 +190,31 @@ function QuestionDetailContent() {
               </span>
             )}
           </div>
+        </div>
+      )}
+
+      {loadError && (
+        <div className={`mb-6 p-4 rounded-2xl border ${
+          isDark ? 'bg-rose-950/20 border-rose-900/30 text-rose-400' : 'bg-rose-50 border-rose-200 text-rose-700'
+        }`}>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <AlertTriangle size={18} />
+              <span>
+                데이터 업데이트 실패 ({loadError.status > 0 ? `HTTP ${loadError.status}` : '네트워크 오류'})
+              </span>
+            </div>
+            <button
+              onClick={() => {
+                setLoadError(null);
+                fetchQuestion();
+              }}
+              className="px-3 py-1 text-xs font-bold rounded-lg bg-rose-600 hover:bg-rose-700 text-white transition"
+            >
+              재시도
+            </button>
+          </div>
+          <p className="text-xs mt-1 ml-6">{loadError.message}</p>
         </div>
       )}
 
