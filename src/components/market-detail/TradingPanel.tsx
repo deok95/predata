@@ -375,6 +375,11 @@ export default function TradingPanel({ question, user, onTradeComplete, votedCho
                   {loading ? '처리 중...' : 'NO 투표'}
                 </button>
               </div>
+              <div className={`mb-3 px-4 py-2 rounded-xl text-xs font-bold ${
+                isDark ? 'bg-slate-800 text-slate-300' : 'bg-slate-50 text-slate-700'
+              }`}>
+                홈팀 승리를 예상하면 YES, 승리하지 못할 것 같으면 NO를 선택하세요.
+              </div>
               <div className={`p-3 rounded-xl text-sm flex items-start gap-2 ${isDark ? 'bg-slate-800 text-slate-400' : 'bg-slate-50 text-slate-600'}`}>
                 <Shield className="mt-0.5 flex-shrink-0" size={14} />
                 <span>선택은 암호화되어 저장되며, 베팅 종료 후 공개됩니다.</span>
