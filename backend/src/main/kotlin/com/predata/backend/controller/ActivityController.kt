@@ -140,7 +140,9 @@ class ActivityController(
         return if (question != null) {
             ResponseEntity.ok(ApiEnvelope(success = true, data = question))
         } else {
-            ResponseEntity.notFound().build()
+            ResponseEntity.status(HttpStatus.NOT_FOUND).body(
+                ApiEnvelope(success = false, data = null, message = "질문을 찾을 수 없습니다.")
+            )
         }
     }
 
@@ -153,7 +155,9 @@ class ActivityController(
         return if (success) {
             ResponseEntity.ok(ApiEnvelope(success = true, data = true))
         } else {
-            ResponseEntity.notFound().build()
+            ResponseEntity.status(HttpStatus.NOT_FOUND).body(
+                ApiEnvelope(success = false, data = null, message = "질문을 찾을 수 없습니다.")
+            )
         }
     }
 
@@ -250,7 +254,9 @@ class ActivityController(
         val question = questionService.getQuestion(id)
 
         if (question == null) {
-            return ResponseEntity.notFound().build()
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(
+                ApiEnvelope(success = false, data = null, message = "질문을 찾을 수 없습니다.")
+            )
         }
 
         // VOTING 상태에서는 배당률 조회 차단
