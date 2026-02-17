@@ -318,7 +318,7 @@ class SettlementService(
         if (votes.isNotEmpty()) {
             // 수수료는 이미 개별 payout에서 수집됨 (0.99 multiplier)
             // 보상 풀 계산: 수집된 수수료의 50%
-            val rewardPool = totalFeeCollected.multiply(BigDecimal(RewardService.REWARD_POOL_PERCENTAGE)).toLong()
+            val rewardPool = totalFeeCollected.multiply(BigDecimal.valueOf(RewardService.REWARD_POOL_PERCENTAGE)).toLong()
             totalRewardPool = rewardPool
 
             logger.info("[Settlement] Fee collected from payouts: questionId={}, totalFee={}, rewardPool={}",

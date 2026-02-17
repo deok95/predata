@@ -1,5 +1,6 @@
 package com.predata.backend.dto
 
+import com.predata.backend.domain.OrderDirection
 import com.predata.backend.domain.OrderSide
 import com.predata.backend.domain.OrderStatus
 import com.predata.backend.domain.OrderType
@@ -26,7 +27,10 @@ data class CreateOrderRequest(
     @field:Min(value = 1, message = "수량은 1 이상이어야 합니다")
     val amount: Long,
 
-    val orderType: OrderType? = null  // 기본값: LIMIT (null이면 LIMIT으로 처리)
+    val orderType: OrderType? = null,  // 기본값: LIMIT (null이면 LIMIT으로 처리)
+
+    @field:NotNull(message = "주문 방향은 필수입니다")
+    val direction: OrderDirection = OrderDirection.BUY  // BUY: 매수(USDC 예치), SELL: 매도(포지션 담보)
 )
 
 /**
@@ -77,6 +81,7 @@ data class OrderResponse(
     val memberId: Long,
     val questionId: Long,
     val side: OrderSide,
+    val direction: OrderDirection,
     val price: BigDecimal,
     val amount: Long,
     val remainingAmount: Long,

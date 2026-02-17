@@ -97,6 +97,7 @@ export default function TradingPanel({ question, user, onTradeComplete, votedCho
     setLoading(true);
     try {
       if (activeTab === 'buy') {
+        // BUY Market Order: 레거시 AMM 방식 사용 (빠른 체결)
         const result = await bettingApi.bet({
           memberId: user.id,
           questionId: question.id,
@@ -110,16 +111,17 @@ export default function TradingPanel({ question, user, onTradeComplete, votedCho
           onTradeComplete();
         }
       } else {
-        // Sell: 반대 포지션에 베팅하여 헤지
-        const oppositeChoice = selectedOutcome === 'YES' ? 'NO' : 'YES';
-        const result = await bettingApi.bet({
-          memberId: user.id,
+        // SELL Market Order: 포지션 판매
+        const result = await orderApi.createOrder({
           questionId: question.id,
-          choice: oppositeChoice as 'YES' | 'NO',
+          side: selectedOutcome,
+          price: 0.5, // Market order는 가격 무관 (즉시 체결)
           amount: Number(tradeAmount),
+          direction: 'SELL',
+          orderType: 'MARKET',
         });
         if (result.success) {
-          showToast(`${selectedOutcome} 매도(헤지) 완료! (${oppositeChoice} 포지션 구매)`);
+          showToast(`${selectedOutcome} 매도 완료! ${result.filledAmount > 0 ? `(${result.filledAmount} $ 체결)` : ''}`);
           setTradeAmount('');
           await refreshUser();
           onTradeComplete();
@@ -144,15 +146,12 @@ export default function TradingPanel({ question, user, onTradeComplete, votedCho
 
     setLoading(true);
     try {
-      const orderSide = activeTab === 'buy'
-        ? selectedOutcome
-        : (selectedOutcome === 'YES' ? 'NO' : 'YES');
-
       const result = await orderApi.createOrder({
         questionId: question.id,
-        side: orderSide,
+        side: selectedOutcome,
         price: parseFloat(limitPrice),
         amount: Number(tradeAmount),
+        direction: activeTab === 'buy' ? 'BUY' : 'SELL',
       });
 
       if (result.success) {

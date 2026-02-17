@@ -19,6 +19,8 @@ export interface CreateOrderRequest {
   side: 'YES' | 'NO';
   price: number;
   amount: number;
+  direction?: 'BUY' | 'SELL'; // BUY: 매수(USDC 예치), SELL: 매도(포지션 담보), 기본값 BUY
+  orderType?: 'LIMIT' | 'MARKET'; // 주문 타입, 기본값 LIMIT
 }
 
 export interface CreateOrderResponse {
@@ -34,6 +36,7 @@ export interface OrderData {
   memberId: number;
   questionId: number;
   side: 'YES' | 'NO';
+  direction: 'BUY' | 'SELL';
   price: number;
   amount: number;
   remainingAmount: number;
