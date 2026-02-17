@@ -255,14 +255,17 @@ class SettlementService(
         var totalWinners = 0
         var totalPayout = 0L
         var totalRewardPool = 0L
+        var totalFeeCollected = 0L
 
-        // === 메모리 처리 1: 포지션 기반 승자 배당금 지급 ===
+        // === 메모리 처리 1: 포지션 기반 승자 배당금 지급 (0.99 multiplier) ===
         val winningPositions = positions.filter { it.side == winningSide }
         winningPositions.forEach { position ->
             val member = membersMap[position.memberId]
             if (member != null) {
-                // 폴리마켓 방식: winning side는 quantity * 1.0 포인트 지급
-                val payout = position.quantity.toLong()
+                // 0.99 multiplier 적용 (1% 수수료)
+                val payout = position.quantity.multiply(BigDecimal("0.99")).toLong()
+                val fee = position.quantity.multiply(BigDecimal("0.01")).toLong()
+
                 member.usdcBalance = member.usdcBalance.add(BigDecimal(payout))
                 transactionHistoryService.record(
                     memberId = position.memberId,
@@ -274,7 +277,13 @@ class SettlementService(
                 )
                 totalWinners++
                 totalPayout += payout
+                totalFeeCollected += fee
             }
+        }
+
+        // 수집된 수수료를 FeePool에 기록
+        if (totalFeeCollected > 0) {
+            feePoolService.collectFee(questionId, BigDecimal(totalFeeCollected))
         }
 
         // 정산 완료 시 모든 포지션에 settled=true 마킹
@@ -304,24 +313,17 @@ class SettlementService(
             }
         }
 
-        // === 메모리 처리 3: 수수료 수집 및 보상 분배 (새 엔진 사용) ===
+        // === 메모리 처리 3: 보상 분배 (새 엔진 사용) ===
         if (votes.isNotEmpty()) {
-            val totalBetAmount = question.totalBetPool
-            val totalFee = (totalBetAmount * RewardService.FEE_PERCENTAGE).toLong()
-            val rewardPool = (totalFee * RewardService.REWARD_POOL_PERCENTAGE).toLong()
+            // 수수료는 이미 개별 payout에서 수집됨 (0.99 multiplier)
+            // 보상 풀 계산: 수집된 수수료의 50%
+            val rewardPool = (totalFeeCollected * RewardService.REWARD_POOL_PERCENTAGE).toLong()
             totalRewardPool = rewardPool
 
-            // 1. 수수료 풀에 수수료 기록 (투표 시스템 연동)
-            if (totalFee > 0) {
-                try {
-                    feePoolService.collectFee(questionId, BigDecimal(totalFee))
-                    logger.info("[Settlement] Fee collected: questionId={}, totalFee={}", questionId, totalFee)
-                } catch (e: Exception) {
-                    logger.warn("[Settlement] FeePool 수수료 기록 실패 questionId={}: {}", questionId, e.message)
-                }
-            }
+            logger.info("[Settlement] Fee collected from payouts: questionId={}, totalFee={}, rewardPool={}",
+                questionId, totalFeeCollected, rewardPool)
 
-            // 2. 새로운 보상 분배 엔진 사용 (VoteRewardDistributionService)
+            // 새로운 보상 분배 엔진 사용 (VoteRewardDistributionService)
             // - 레벨 기반 가중치, idempotency 보장, 재시도 메커니즘
             // - 분배 실패해도 정산은 롤백하지 않음 (수동 재시도 가능)
             try {

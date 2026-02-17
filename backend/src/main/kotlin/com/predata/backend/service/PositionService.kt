@@ -10,6 +10,8 @@ import java.math.BigDecimal
 import java.math.RoundingMode
 import java.time.LocalDateTime
 
+// Removed: PositionUpdateResult (현금 이동 없으므로 불필요)
+
 @Service
 class PositionService(
     private val positionRepository: PositionRepository,
@@ -86,6 +88,85 @@ class PositionService(
             detail = "Position updated: ${side} qty=${totalQty} avgPrice=${newAvgPrice}"
         )
         return savedPosition
+    }
+
+    /**
+     * Net Position: 양쪽 포지션 불허 정책 적용
+     * - 한 질문당 유저는 YES 또는 NO 중 하나만 보유 가능
+     * - 반대 체결 = 청산/리버설 (헤지 아님)
+     * - 현금 이동 없음 (정산에서만 처리)
+     * - 비관적 락으로 동시성 보장
+     */
+    @Transactional
+    fun netPosition(
+        memberId: Long,
+        questionId: Long,
+        newSide: OrderSide,
+        newQty: BigDecimal,
+        newPrice: BigDecimal
+    ) {
+        // 1. Get opposite side position with pessimistic lock (데드락 방지: 항상 YES 먼저, NO 나중에)
+        val oppositeSide = if (newSide == OrderSide.YES) OrderSide.NO else OrderSide.YES
+        val oppositePosition = positionRepository.findByMemberIdAndQuestionIdAndSideForUpdate(
+            memberId, questionId, oppositeSide
+        )
+
+        // 2. If no opposite position, create/update normally
+        if (oppositePosition == null) {
+            createOrUpdatePosition(memberId, questionId, newSide, newQty, newPrice)
+            return
+        }
+
+        // 3. Netting logic (수량만 조정)
+        val oppositeQty = oppositePosition.quantity
+
+        if (newQty <= oppositeQty) {
+            // Case A: New quantity fully nets against opposite
+            // Example: YES 10 보유, NO 3 매수 → YES 7 남음 (complete set 3개 소각)
+            oppositePosition.quantity = oppositeQty.subtract(newQty)
+            oppositePosition.updatedAt = LocalDateTime.now()
+
+            if (oppositePosition.quantity == BigDecimal.ZERO) {
+                // Close position if fully netted
+                positionRepository.delete(oppositePosition)
+                auditService.log(
+                    memberId = memberId,
+                    action = com.predata.backend.domain.AuditAction.POSITION_UPDATE,
+                    entityType = "POSITION",
+                    entityId = oppositePosition.id,
+                    detail = "Position fully netted and closed: $oppositeSide qty=${oppositeQty} (complete set burned: $newQty)"
+                )
+            } else {
+                positionRepository.save(oppositePosition)
+                auditService.log(
+                    memberId = memberId,
+                    action = com.predata.backend.domain.AuditAction.POSITION_UPDATE,
+                    entityType = "POSITION",
+                    entityId = oppositePosition.id,
+                    detail = "Position netted: $oppositeSide ${oppositeQty} → ${oppositePosition.quantity} (complete set burned: $newQty)"
+                )
+            }
+
+        } else {
+            // Case B: New quantity exceeds opposite
+            // Example: YES 5 보유, NO 8 매수 → YES 0 (complete set 5개 소각), NO 3 신규
+            val remainingQty = newQty.subtract(oppositeQty)
+
+            // Close opposite position
+            auditService.log(
+                memberId = memberId,
+                action = com.predata.backend.domain.AuditAction.POSITION_UPDATE,
+                entityType = "POSITION",
+                entityId = oppositePosition.id,
+                detail = "Position fully netted and closed: $oppositeSide qty=${oppositeQty} (complete set burned: $oppositeQty)"
+            )
+            positionRepository.delete(oppositePosition)
+
+            // Create new position with remaining quantity
+            createOrUpdatePosition(
+                memberId, questionId, newSide, remainingQty, newPrice
+            )
+        }
     }
 
     /**

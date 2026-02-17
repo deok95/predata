@@ -22,6 +22,25 @@ interface PositionRepository : JpaRepository<MarketPosition, Long> {
     ): MarketPosition?
 
     /**
+     * 특정 멤버의 특정 질문에 대한 특정 포지션 조회 (비관적 락)
+     * - 포지션 넷팅/리딤처럼 수량을 감소/삭제하는 경로에서 동시성 정합성 확보용
+     */
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query(
+        """
+        SELECT p FROM MarketPosition p
+        WHERE p.memberId = :memberId
+          AND p.questionId = :questionId
+          AND p.side = :side
+        """
+    )
+    fun findByMemberIdAndQuestionIdAndSideForUpdate(
+        @Param("memberId") memberId: Long,
+        @Param("questionId") questionId: Long,
+        @Param("side") side: OrderSide
+    ): MarketPosition?
+
+    /**
      * 특정 멤버의 모든 포지션 조회
      */
     fun findByMemberId(memberId: Long): List<MarketPosition>

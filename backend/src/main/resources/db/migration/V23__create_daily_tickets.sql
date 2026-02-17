@@ -10,3 +10,4 @@ CREATE TABLE IF NOT EXISTS daily_tickets (
 
 -- 인덱스 추가 (조회 성능 향상)
 CREATE INDEX idx_daily_ticket_member_date ON daily_tickets(member_id, reset_date);
+

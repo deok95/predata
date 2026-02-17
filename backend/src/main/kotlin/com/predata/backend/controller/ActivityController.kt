@@ -112,50 +112,13 @@ class ActivityController(
         @Valid @RequestBody request: SellBetRequest,
         httpRequest: HttpServletRequest
     ): ResponseEntity<SellBetResponse> {
-        // JWT에서 인증된 memberId 가져오기 (IDOR 방지)
-        val authenticatedMemberId = httpRequest.getAttribute(com.predata.backend.config.JwtAuthInterceptor.ATTR_MEMBER_ID) as? Long
-            ?: return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(
-                SellBetResponse(success = false, message = "인증이 필요합니다.")
+        // AMM 판매 기능 비활성화 - 410 Gone 반환
+        return ResponseEntity.status(410).body(
+            SellBetResponse(
+                success = false,
+                message = "AMM 판매는 더 이상 지원되지 않습니다. 마켓 탭에서 반대 주문으로 포지션을 청산할 수 있습니다."
             )
-
-        val clientIp = clientIpService.extractClientIp(httpRequest)
-
-        // Path와 Body의 betId 일치 확인
-        if (betId != request.betId) {
-            return ResponseEntity.badRequest().body(
-                SellBetResponse(
-                    success = false,
-                    message = "경로의 betId와 요청의 betId가 일치하지 않습니다."
-                )
-            )
-        }
-
-        // 베팅 조회하여 questionId 확인 (쿨다운 체크를 위해)
-        val bet = activityRepository.findById(betId).orElse(null)
-        if (bet != null) {
-            // 베팅 일시 중지 체크 (쿨다운)
-            val suspensionStatus = bettingSuspensionService.isBettingSuspendedByQuestionId(bet.questionId)
-            if (suspensionStatus.suspended) {
-                return ResponseEntity.status(HttpStatus.FORBIDDEN).body(
-                    SellBetResponse(
-                        success = false,
-                        message = "⚠️ 골 직후 베팅 판매가 일시 중지되었습니다. ${suspensionStatus.remainingSeconds}초 후 재개됩니다."
-                    )
-                )
-            }
-        }
-
-        val response = betSellService.sellBet(authenticatedMemberId, request, clientIp)
-
-        if (response.success) {
-            clientIpService.updateMemberLastIp(authenticatedMemberId, clientIp)
-        }
-
-        return if (response.success) {
-            ResponseEntity.ok(response)
-        } else {
-            ResponseEntity.status(HttpStatus.BAD_REQUEST).body(response)
-        }
+        )
     }
 
     /**

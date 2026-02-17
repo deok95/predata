@@ -327,23 +327,24 @@ class OrderMatchingService(
                 amount = fillAmount
             ))
 
-            // 포지션 업데이트 (양쪽 모두)
+            // 포지션 업데이트 (양쪽 모두) - Net Position 정책 적용
+            // 양쪽 포지션 불허: YES 또는 NO 중 하나만 보유, 현금 이동 없음
             // Taker 포지션 업데이트
-            positionService.createOrUpdatePosition(
+            positionService.netPosition(
                 memberId = order.memberId,
                 questionId = order.questionId,
-                side = order.side,
-                qty = BigDecimal(fillAmount),
-                price = tradePrice
+                newSide = order.side,
+                newQty = BigDecimal(fillAmount),
+                newPrice = tradePrice
             )
 
             // Maker 포지션 업데이트
-            positionService.createOrUpdatePosition(
+            positionService.netPosition(
                 memberId = counterOrder.memberId,
                 questionId = counterOrder.questionId,
-                side = counterOrder.side,
-                qty = BigDecimal(fillAmount),
-                price = oppositePrice  // 상대방은 역가격으로 체결
+                newSide = counterOrder.side,
+                newQty = BigDecimal(fillAmount),
+                newPrice = oppositePrice  // 상대방은 역가격으로 체결
             )
 
             // 주문 수량 업데이트
