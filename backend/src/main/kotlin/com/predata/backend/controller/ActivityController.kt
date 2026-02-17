@@ -173,9 +173,22 @@ class ActivityController(
     @GetMapping("/questions/{id}")
     fun getQuestion(@PathVariable id: Long): ResponseEntity<ApiEnvelope<QuestionResponse>> {
         val question = questionService.getQuestion(id)
-        
+
         return if (question != null) {
             ResponseEntity.ok(ApiEnvelope(success = true, data = question))
+        } else {
+            ResponseEntity.notFound().build()
+        }
+    }
+
+    /**
+     * 질문 조회수 증가
+     */
+    @PostMapping("/questions/{id}/view")
+    fun incrementViewCount(@PathVariable id: Long): ResponseEntity<ApiEnvelope<Boolean>> {
+        val success = questionService.incrementViewCount(id)
+        return if (success) {
+            ResponseEntity.ok(ApiEnvelope(success = true, data = true))
         } else {
             ResponseEntity.notFound().build()
         }

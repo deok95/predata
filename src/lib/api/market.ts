@@ -55,6 +55,17 @@ export const questionApi = {
     const raw = await apiRequest<Record<string, unknown>[]>('/api/admin/questions');
     return { success: true, data: Array.isArray(raw) ? raw.map((item) => mapQuestion(item)) : [] };
   },
+
+  incrementViewCount: async (id: number): Promise<ApiResponse<boolean>> => {
+    try {
+      const raw = await apiRequest<{ success: boolean; data?: boolean }>(`/api/questions/${id}/view`, {
+        method: 'POST',
+      });
+      return { success: raw?.success ?? true, data: raw?.data ?? true };
+    } catch {
+      return { success: false, data: false };
+    }
+  },
 };
 
 export const bettingApi = {

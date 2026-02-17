@@ -54,6 +54,7 @@ export interface Question {
   bettingEndAt: string;
   expiredAt: string;
   createdAt: string;
+  viewCount?: number;
 }
 
 export interface CreateQuestionRequest {

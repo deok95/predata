@@ -18,13 +18,16 @@ function VoteContent() {
   const [questions, setQuestions] = useState<Question[]>([]);
   const [loading, setLoading] = useState(true);
   const [category, setCategory] = useState<QuestionCategory>('ALL');
-  const [sortBy, setSortBy] = useState<'volume' | 'recent'>('recent');
+  const [sortBy, setSortBy] = useState<'views' | 'recent'>('views');
 
   const fetchQuestions = useCallback(() => {
     questionApi.getAll().then(res => {
       if (res.success && res.data) {
-        // VOTING 상태만 필터링
-        const votingQuestions = res.data.filter(q => q.status === 'VOTING');
+        // VOTING 상태이면서 투표 종료 시간이 지나지 않은 질문만 필터링
+        const now = new Date();
+        const votingQuestions = res.data.filter(q =>
+          q.status === 'VOTING' && new Date(q.votingEndAt) > now
+        );
         setQuestions(votingQuestions);
       }
     }).catch(() => {
@@ -51,8 +54,8 @@ function VoteContent() {
     if (category !== 'ALL') {
       result = result.filter(q => q.category === category);
     }
-    if (sortBy === 'volume') {
-      result = [...result].sort((a, b) => b.totalBetPool - a.totalBetPool);
+    if (sortBy === 'views') {
+      result = [...result].sort((a, b) => (b.viewCount || 0) - (a.viewCount || 0));
     } else {
       result = [...result].sort((a, b) =>
         new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
@@ -84,14 +87,14 @@ function VoteContent() {
         <div className="flex items-center gap-2">
           <SlidersHorizontal size={16} className="text-slate-400" />
           <button
-            onClick={() => setSortBy('volume')}
+            onClick={() => setSortBy('views')}
             className={`px-3 py-1.5 rounded-xl text-xs font-bold transition ${
-              sortBy === 'volume'
+              sortBy === 'views'
                 ? 'bg-indigo-600 text-white'
                 : isDark ? 'text-slate-400 hover:bg-slate-800' : 'text-slate-500 hover:bg-slate-100'
             }`}
           >
-            거래량순
+            조회순
           </button>
           <button
             onClick={() => setSortBy('recent')}

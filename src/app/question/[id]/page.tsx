@@ -78,6 +78,15 @@ function QuestionDetailContent() {
     else setLoading(false);
   }, [questionId, fetchQuestion]);
 
+  // 조회수 증가 (페이지 진입 시 1회만)
+  useEffect(() => {
+    if (questionId && !isNaN(questionId)) {
+      questionApi.incrementViewCount(questionId).catch(() => {
+        // 조회수 증가 실패는 무시 (사용자 경험에 영향 없음)
+      });
+    }
+  }, [questionId]);
+
   useEffect(() => {
     if (!question || isMockData) return;
     const interval = setInterval(() => {

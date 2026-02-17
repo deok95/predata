@@ -83,7 +83,8 @@ data class QuestionResponse(
     val bettingStartAt: String,
     val bettingEndAt: String,
     val expiredAt: String,
-    val createdAt: String
+    val createdAt: String,
+    val viewCount: Long = 0
 )
 
 // 티켓 현황 응답

@@ -45,7 +45,8 @@ class QuestionService(
                 bettingStartAt = question.bettingStartAt.format(formatter),
                 bettingEndAt = question.bettingEndAt.format(formatter),
                 expiredAt = question.expiredAt.format(formatter),
-                createdAt = question.createdAt.format(formatter)
+                createdAt = question.createdAt.format(formatter),
+                viewCount = question.viewCount
             )
         }
     }
@@ -82,7 +83,8 @@ class QuestionService(
             bettingStartAt = question.bettingStartAt.format(formatter),
             bettingEndAt = question.bettingEndAt.format(formatter),
             expiredAt = question.expiredAt.format(formatter),
-            createdAt = question.createdAt.format(formatter)
+            createdAt = question.createdAt.format(formatter),
+            viewCount = question.viewCount
         )
     }
 
@@ -117,8 +119,20 @@ class QuestionService(
                 bettingStartAt = question.bettingStartAt.format(formatter),
                 bettingEndAt = question.bettingEndAt.format(formatter),
                 expiredAt = question.expiredAt.format(formatter),
-                createdAt = question.createdAt.format(formatter)
+                createdAt = question.createdAt.format(formatter),
+                viewCount = question.viewCount
             )
         }
+    }
+
+    /**
+     * 조회수 증가
+     */
+    @Transactional
+    fun incrementViewCount(id: Long): Boolean {
+        val question = questionRepository.findById(id).orElse(null) ?: return false
+        question.viewCount++
+        questionRepository.save(question)
+        return true
     }
 }
