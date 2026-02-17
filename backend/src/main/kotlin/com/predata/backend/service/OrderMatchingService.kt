@@ -256,20 +256,23 @@ class OrderMatchingService(
             savedOrder.updatedAt = LocalDateTime.now()
             orderRepository.save(savedOrder)
 
-            // 미체결분 환불 = 미체결 수량 × 가격
-            val unfilledQty = request.amount - matchResult.filledAmount
-            val refundAmount = BigDecimal(unfilledQty).multiply(orderPrice)
-            member.usdcBalance = member.usdcBalance.add(refundAmount)
-            memberRepository.save(member)
+            // BUY 주문만 환불 (SELL은 USDC 예치 없었으므로 환불 불필요)
+            if (request.direction == OrderDirection.BUY) {
+                // 미체결분 환불 = 미체결 수량 × 가격
+                val unfilledQty = request.amount - matchResult.filledAmount
+                val refundAmount = BigDecimal(unfilledQty).multiply(orderPrice)
+                member.usdcBalance = member.usdcBalance.add(refundAmount)
+                memberRepository.save(member)
 
-            transactionHistoryService.record(
-                memberId = memberId,
-                type = "SETTLEMENT",
-                amount = refundAmount,
-                balanceAfter = member.usdcBalance,
-                description = "시장가 IOC 주문 미체결분 환불 - Question #${request.questionId}",
-                questionId = request.questionId
-            )
+                transactionHistoryService.record(
+                    memberId = memberId,
+                    type = "SETTLEMENT",
+                    amount = refundAmount,
+                    balanceAfter = member.usdcBalance,
+                    description = "시장가 IOC 주문 미체결분 환불 (BUY) - Question #${request.questionId}",
+                    questionId = request.questionId
+                )
+            }
         }
 
         return CreateOrderResponse(
@@ -315,11 +318,14 @@ class OrderMatchingService(
             val fillAmount = minOf(order.remainingAmount, counterOrder.remainingAmount)
             val tradePrice = order.price  // Taker 가격 사용
 
-            // 체결 기록
+            // 체결 기록 - direction 기반으로 buyOrder/sellOrder 구분
+            val buyOrder = if (order.direction == OrderDirection.BUY) order else counterOrder
+            val sellOrder = if (order.direction == OrderDirection.SELL) order else counterOrder
+
             val trade = Trade(
                 questionId = order.questionId,
-                buyOrderId = order.id!!,
-                sellOrderId = counterOrder.id!!,
+                buyOrderId = buyOrder.id!!,
+                sellOrderId = sellOrder.id!!,
                 price = tradePrice,
                 amount = fillAmount,
                 side = order.side

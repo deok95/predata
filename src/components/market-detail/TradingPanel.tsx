@@ -82,8 +82,9 @@ export default function TradingPanel({ question, user, onTradeComplete, votedCho
       return;
     }
 
-    // 잔액 부족 시 충전 모달
-    if (user.usdcBalance < amt) {
+    // BUY: 잔액 부족 시 충전 모달
+    // SELL: 포지션 체크는 서버에서 검증
+    if (activeTab === 'buy' && user.usdcBalance < amt) {
       setShowDepositModal(true);
       return;
     }
@@ -96,36 +97,21 @@ export default function TradingPanel({ question, user, onTradeComplete, votedCho
 
     setLoading(true);
     try {
-      if (activeTab === 'buy') {
-        // BUY Market Order: 레거시 AMM 방식 사용 (빠른 체결)
-        const result = await bettingApi.bet({
-          memberId: user.id,
-          questionId: question.id,
-          choice: selectedOutcome,
-          amount: Number(tradeAmount),
-        });
-        if (result.success) {
-          showToast(`${selectedOutcome} 구매 완료!`);
-          setTradeAmount('');
-          await refreshUser();
-          onTradeComplete();
-        }
-      } else {
-        // SELL Market Order: 포지션 판매
-        const result = await orderApi.createOrder({
-          questionId: question.id,
-          side: selectedOutcome,
-          price: 0.5, // Market order는 가격 무관 (즉시 체결)
-          amount: Number(tradeAmount),
-          direction: 'SELL',
-          orderType: 'MARKET',
-        });
-        if (result.success) {
-          showToast(`${selectedOutcome} 매도 완료! ${result.filledAmount > 0 ? `(${result.filledAmount} $ 체결)` : ''}`);
-          setTradeAmount('');
-          await refreshUser();
-          onTradeComplete();
-        }
+      // BUY/SELL 모두 주문 모델로 통일
+      const result = await orderApi.createOrder({
+        questionId: question.id,
+        side: selectedOutcome,
+        price: 1.0, // Market order는 서버가 최적가로 매칭
+        amount: Number(tradeAmount),
+        direction: activeTab === 'buy' ? 'BUY' : 'SELL',
+        orderType: 'MARKET',
+      });
+      if (result.success) {
+        const action = activeTab === 'buy' ? '구매' : '매도';
+        showToast(`${selectedOutcome} ${action} 완료! ${result.filledAmount > 0 ? `(${result.filledAmount} $ 체결)` : ''}`);
+        setTradeAmount('');
+        await refreshUser();
+        onTradeComplete();
       }
     } catch (error) {
       if (error instanceof ApiError) {
