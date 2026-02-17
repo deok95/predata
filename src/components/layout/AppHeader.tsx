@@ -77,7 +77,7 @@ export default function AppHeader() {
     : user?.email || '';
 
   return (
-    <header className={`h-20 border-b px-8 flex items-center justify-between sticky top-0 z-40 transition-all ${isDark ? 'bg-slate-950/80 border-slate-800 backdrop-blur-md' : 'bg-white/80 border-slate-100 backdrop-blur-md'}`}>
+    <header className={`h-16 lg:h-20 border-b px-4 lg:px-8 flex items-center justify-between sticky top-0 z-40 transition-all ${isDark ? 'bg-slate-950/80 border-slate-800 backdrop-blur-md' : 'bg-white/80 border-slate-100 backdrop-blur-md'}`}>
       <div ref={searchRef} className="flex-1 max-w-xl relative hidden md:block">
         <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
         <input
