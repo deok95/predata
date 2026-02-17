@@ -135,15 +135,17 @@ export default function AppHeader() {
   };
 
   return (
-    <header className={`h-16 lg:h-20 border-b px-4 lg:px-8 flex items-center gap-4 lg:gap-6 sticky top-0 z-40 transition-all ${isDark ? 'bg-slate-950/80 border-slate-800 backdrop-blur-md' : 'bg-white/80 border-slate-100 backdrop-blur-md'}`}>
-      {/* Logo - Desktop Only */}
-      <div className="hidden lg:block flex-shrink-0">
-        <PredataLogo iconOnly className="w-10 h-10" />
+    <header className={`h-16 lg:h-20 border-b px-4 lg:px-8 flex items-center justify-between sticky top-0 z-40 transition-all ${isDark ? 'bg-slate-950/80 border-slate-800 backdrop-blur-md' : 'bg-white/80 border-slate-100 backdrop-blur-md'}`}>
+      {/* Left: Logo */}
+      <div className="flex items-center flex-shrink-0">
+        <Link href="/">
+          <PredataLogo iconOnly className="w-8 h-8 lg:w-10 lg:h-10" />
+        </Link>
       </div>
 
-      {/* Search Bar */}
-      <div ref={searchRef} className="flex-1 max-w-xl relative hidden md:block">
-        <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
+      {/* Center: Search Bar */}
+      <div ref={searchRef} className="flex-1 mx-2 lg:mx-4 max-w-xl relative">
+        <Search className="absolute left-3 lg:left-4 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
         <input
           type="text"
           value={searchQuery}
@@ -153,11 +155,11 @@ export default function AppHeader() {
           }}
           onFocus={() => searchQuery.trim() && setShowResults(true)}
           placeholder="마켓 검색..."
-          className={`w-full border-none rounded-2xl py-3.5 pl-12 pr-10 text-sm focus:ring-2 focus:ring-indigo-500/20 transition-all ${isDark ? 'bg-slate-900 text-slate-200' : 'bg-slate-50 text-slate-900'}`}
+          className={`w-full border-none rounded-2xl py-2.5 lg:py-3.5 pl-9 lg:pl-12 pr-8 lg:pr-10 text-xs lg:text-sm focus:ring-2 focus:ring-indigo-500/20 transition-all ${isDark ? 'bg-slate-900 text-slate-200' : 'bg-slate-50 text-slate-900'}`}
         />
         {searchQuery && (
-          <button onClick={() => { setSearchQuery(''); setShowResults(false); }} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-300">
-            <X size={16} />
+          <button onClick={() => { setSearchQuery(''); setShowResults(false); }} className="absolute right-2 lg:right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-300">
+            <X size={14} />
           </button>
         )}
 
@@ -191,10 +193,8 @@ export default function AppHeader() {
         )}
       </div>
 
-      <div className="flex items-center space-x-4 ml-auto">
-        <Link href="/" className={`p-3 rounded-xl transition-all ${isDark ? 'bg-slate-800 text-indigo-400 hover:bg-slate-700' : 'bg-slate-50 text-indigo-600 hover:bg-slate-100'}`}>
-          <PredataLogo iconOnly className="w-5 h-5" />
-        </Link>
+      {/* Right: Notifications + User */}
+      <div className="flex items-center space-x-3 flex-shrink-0">
 
         <div ref={notiRef} className="relative">
           <button
@@ -210,7 +210,7 @@ export default function AppHeader() {
           </button>
 
           {showNotifications && (
-            <div className={`fixed left-4 right-4 top-16 lg:absolute lg:left-auto lg:right-0 lg:top-full lg:mt-2 lg:w-80 rounded-2xl border shadow-2xl overflow-hidden z-50 ${isDark ? 'bg-slate-900 border-slate-700' : 'bg-white border-slate-200'}`}>
+            <div className={`fixed left-4 right-4 top-16 max-h-[70vh] overflow-y-auto lg:absolute lg:left-auto lg:right-0 lg:top-full lg:mt-2 lg:w-80 lg:max-h-none lg:overflow-visible rounded-2xl border shadow-2xl z-50 ${isDark ? 'bg-slate-900 border-slate-700' : 'bg-white border-slate-200'}`}>
               <div className={`flex items-center justify-between px-5 py-3 border-b ${isDark ? 'border-slate-800' : 'border-slate-100'}`}>
                 <h4 className={`font-black text-sm ${isDark ? 'text-white' : 'text-slate-900'}`}>알림</h4>
                 {unreadCount > 0 && (
