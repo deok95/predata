@@ -45,6 +45,7 @@ class PositionService(
                 questionId = questionId,
                 side = side,
                 quantity = qty,
+                reservedQuantity = BigDecimal.ZERO,
                 avgPrice = price,
                 settled = false
             )
@@ -208,7 +209,16 @@ class PositionService(
             memberId, questionId, side
         ) ?: throw IllegalStateException("Position not found for SELL execution")
 
-        // 수량 감소
+        // SELL 체결: 예약 수량(reserved)과 실제 보유(quantity)를 함께 감소
+        // reserved는 체결 수량만큼 우선 해제된다.
+        if (position.reservedQuantity > BigDecimal.ZERO) {
+            position.reservedQuantity = position.reservedQuantity.subtract(decreaseAmount)
+            if (position.reservedQuantity < BigDecimal.ZERO) {
+                position.reservedQuantity = BigDecimal.ZERO
+            }
+        }
+
+        // 실제 보유 수량 감소
         position.quantity = position.quantity.subtract(decreaseAmount)
         position.updatedAt = LocalDateTime.now()
 
@@ -233,6 +243,52 @@ class PositionService(
                 detail = "Position decreased (SELL): $side quantity ${position.quantity.add(decreaseAmount)} → ${position.quantity}"
             )
         }
+    }
+
+    /**
+     * SELL 주문 생성 시 포지션 예약(reserve)
+     * - 초과판매 방지: (quantity - reservedQuantity) >= reserveAmount 이어야 함
+     * - 비관적 락으로 동시성 정합성 확보
+     */
+    @Transactional
+    fun reserveForSellOrder(
+        memberId: Long,
+        questionId: Long,
+        side: OrderSide,
+        reserveAmount: BigDecimal
+    ) {
+        val position = positionRepository.findByMemberIdAndQuestionIdAndSideForUpdate(memberId, questionId, side)
+            ?: throw IllegalStateException("Position not found for SELL order")
+
+        val available = position.quantity.subtract(position.reservedQuantity)
+        if (available < reserveAmount) {
+            throw IllegalStateException("INSUFFICIENT_AVAILABLE_TO_SELL:${available.setScale(0, RoundingMode.DOWN)}")
+        }
+
+        position.reservedQuantity = position.reservedQuantity.add(reserveAmount)
+        position.updatedAt = LocalDateTime.now()
+        positionRepository.save(position)
+    }
+
+    /**
+     * SELL 주문 취소/IOC 미체결 시 예약 해제(release)
+     */
+    @Transactional
+    fun releaseSellReservation(
+        memberId: Long,
+        questionId: Long,
+        side: OrderSide,
+        releaseAmount: BigDecimal
+    ) {
+        val position = positionRepository.findByMemberIdAndQuestionIdAndSideForUpdate(memberId, questionId, side)
+            ?: return
+
+        position.reservedQuantity = position.reservedQuantity.subtract(releaseAmount)
+        if (position.reservedQuantity < BigDecimal.ZERO) {
+            position.reservedQuantity = BigDecimal.ZERO
+        }
+        position.updatedAt = LocalDateTime.now()
+        positionRepository.save(position)
     }
 
     /**

@@ -69,9 +69,8 @@ class OrderMatchingService(
             )
         }
 
-        // 2. 회원 및 잔액 확인
-        val member = memberRepository.findById(memberId)
-            .orElse(null) ?: return CreateOrderResponse(
+        // 2. 회원 및 잔액 확인 (row lock으로 잔고 변경 정합성 확보)
+        val member = memberRepository.findByIdForUpdate(memberId) ?: return CreateOrderResponse(
                 success = false,
                 message = "회원을 찾을 수 없습니다."
             )
@@ -208,31 +207,25 @@ class OrderMatchingService(
                 questionId = request.questionId
             )
         } else {
-            // SELL 주문: 포지션 체크 및 락
-            val position = positionService.getPositionsByQuestion(memberId, request.questionId)
-                .find { it.side == request.side }
-
-            val availableQty = position?.quantity ?: BigDecimal.ZERO
-
-            // 기존 OPEN 상태 SELL 주문 합산 조회 (초과판매 방지)
-            val existingOpenSellQty = orderRepository.sumRemainingAmountByMemberAndQuestionAndSideAndDirectionAndStatuses(
-                memberId = memberId,
-                questionId = request.questionId,
-                side = request.side,
-                direction = OrderDirection.SELL,
-                statuses = listOf(OrderStatus.OPEN, OrderStatus.PARTIAL)
-            )
-
-            val totalSellQty = existingOpenSellQty + request.amount
-
-            if (availableQty.toLong() < totalSellQty) {
-                return CreateOrderResponse(
-                    success = false,
-                    message = "판매 가능 수량을 초과합니다. (보유: ${availableQty.toLong()}, 판매 대기: $existingOpenSellQty, 현재 판매 가능: ${availableQty.toLong() - existingOpenSellQty})"
+            // SELL 주문: reserved 기반으로 초과판매 방지 (quantity - reserved >= amount)
+            try {
+                positionService.reserveForSellOrder(
+                    memberId = memberId,
+                    questionId = request.questionId,
+                    side = request.side,
+                    reserveAmount = BigDecimal(request.amount)
                 )
+            } catch (e: IllegalStateException) {
+                val msg = e.message ?: "보유 포지션이 부족합니다."
+                if (msg.startsWith("INSUFFICIENT_AVAILABLE_TO_SELL:")) {
+                    val available = msg.substringAfter(":")
+                    return CreateOrderResponse(
+                        success = false,
+                        message = "판매 가능 수량을 초과합니다. (현재 판매 가능: ${available}개)"
+                    )
+                }
+                return CreateOrderResponse(success = false, message = msg)
             }
-
-            // SELL 주문은 USDC 차감 없음 (포지션을 담보로 사용)
         }
 
         // 6. 주문 생성
@@ -284,6 +277,18 @@ class OrderMatchingService(
                     description = "시장가 IOC 주문 미체결분 환불 (BUY) - Question #${request.questionId}",
                     questionId = request.questionId
                 )
+            }
+            // SELL MARKET: 미체결분은 예약만 해제
+            if (request.direction == OrderDirection.SELL) {
+                val unfilledQty = request.amount - matchResult.filledAmount
+                if (unfilledQty > 0) {
+                    positionService.releaseSellReservation(
+                        memberId = memberId,
+                        questionId = request.questionId,
+                        side = request.side,
+                        releaseAmount = BigDecimal(unfilledQty)
+                    )
+                }
             }
         }
 
@@ -387,7 +392,8 @@ class OrderMatchingService(
 
                 // USDC 지급 (체결가 * 수량)
                 val sellerProceeds = BigDecimal(fillAmount).multiply(tradePrice)
-                val sellerMember = memberRepository.findById(order.memberId).orElseThrow()
+                val sellerMember = memberRepository.findByIdForUpdate(order.memberId)
+                    ?: throw IllegalArgumentException("Member not found: ${order.memberId}")
                 sellerMember.usdcBalance = sellerMember.usdcBalance.add(sellerProceeds)
                 memberRepository.save(sellerMember)
 
@@ -422,7 +428,8 @@ class OrderMatchingService(
 
                 // USDC 지급
                 val sellerProceeds = BigDecimal(fillAmount).multiply(oppositePrice)
-                val sellerMember = memberRepository.findById(counterOrder.memberId).orElseThrow()
+                val sellerMember = memberRepository.findByIdForUpdate(counterOrder.memberId)
+                    ?: throw IllegalArgumentException("Member not found: ${counterOrder.memberId}")
                 sellerMember.usdcBalance = sellerMember.usdcBalance.add(sellerProceeds)
                 memberRepository.save(sellerMember)
 
@@ -531,7 +538,7 @@ class OrderMatchingService(
         val refundAmount = if (order.direction == OrderDirection.BUY) {
             // BUY 주문: USDC 환불 = 미체결 수량 × 가격
             val amount = BigDecimal(order.remainingAmount).multiply(order.price)
-            val member = memberRepository.findById(memberId).orElse(null)
+            val member = memberRepository.findByIdForUpdate(memberId)
             if (member != null) {
                 member.usdcBalance = member.usdcBalance.add(amount)
                 memberRepository.save(member)
@@ -547,7 +554,15 @@ class OrderMatchingService(
             }
             amount
         } else {
-            // SELL 주문: 포지션 락 해제 (TODO: 향후 구현)
+            // SELL 주문: 미체결 수량만큼 예약 해제
+            if (order.remainingAmount > 0) {
+                positionService.releaseSellReservation(
+                    memberId = memberId,
+                    questionId = order.questionId,
+                    side = order.side,
+                    releaseAmount = BigDecimal(order.remainingAmount)
+                )
+            }
             BigDecimal.ZERO
         }
 
