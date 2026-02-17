@@ -11,6 +11,7 @@ import com.predata.backend.service.settlement.SettlementPolicyFactory
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import java.math.BigDecimal
+import java.math.RoundingMode
 import java.time.LocalDateTime
 
 @Service
@@ -253,37 +254,37 @@ class SettlementService(
         }
 
         var totalWinners = 0
-        var totalPayout = 0L
+        var totalPayout = BigDecimal.ZERO
         var totalRewardPool = 0L
-        var totalFeeCollected = 0L
+        var totalFeeCollected = BigDecimal.ZERO
 
         // === 메모리 처리 1: 포지션 기반 승자 배당금 지급 (0.99 multiplier) ===
         val winningPositions = positions.filter { it.side == winningSide }
         winningPositions.forEach { position ->
             val member = membersMap[position.memberId]
             if (member != null) {
-                // 0.99 multiplier 적용 (1% 수수료)
-                val payout = position.quantity.multiply(BigDecimal("0.99")).toLong()
-                val fee = position.quantity.multiply(BigDecimal("0.01")).toLong()
+                // 0.99 multiplier 적용 (1% 수수료) - BigDecimal로 정밀 처리
+                val payout = position.quantity.multiply(BigDecimal("0.99")).setScale(6, RoundingMode.DOWN)
+                val fee = position.quantity.multiply(BigDecimal("0.01")).setScale(6, RoundingMode.DOWN)
 
-                member.usdcBalance = member.usdcBalance.add(BigDecimal(payout))
+                member.usdcBalance = member.usdcBalance.add(payout)
                 transactionHistoryService.record(
                     memberId = position.memberId,
                     type = "SETTLEMENT",
-                    amount = BigDecimal(payout),
+                    amount = payout,
                     balanceAfter = member.usdcBalance,
                     description = "포지션 정산 승리 - Question #$questionId",
                     questionId = questionId
                 )
                 totalWinners++
-                totalPayout += payout
-                totalFeeCollected += fee
+                totalPayout = totalPayout.add(payout)
+                totalFeeCollected = totalFeeCollected.add(fee)
             }
         }
 
         // 수집된 수수료를 FeePool에 기록
-        if (totalFeeCollected > 0) {
-            feePoolService.collectFee(questionId, BigDecimal(totalFeeCollected))
+        if (totalFeeCollected > BigDecimal.ZERO) {
+            feePoolService.collectFee(questionId, totalFeeCollected)
         }
 
         // 정산 완료 시 모든 포지션에 settled=true 마킹
@@ -317,7 +318,7 @@ class SettlementService(
         if (votes.isNotEmpty()) {
             // 수수료는 이미 개별 payout에서 수집됨 (0.99 multiplier)
             // 보상 풀 계산: 수집된 수수료의 50%
-            val rewardPool = (totalFeeCollected * RewardService.REWARD_POOL_PERCENTAGE).toLong()
+            val rewardPool = totalFeeCollected.multiply(BigDecimal(RewardService.REWARD_POOL_PERCENTAGE)).toLong()
             totalRewardPool = rewardPool
 
             logger.info("[Settlement] Fee collected from payouts: questionId={}, totalFee={}, rewardPool={}",
@@ -378,7 +379,7 @@ class SettlementService(
             finalResult = finalResult.name,
             totalBets = positions.size,
             totalWinners = totalWinners,
-            totalPayout = totalPayout,
+            totalPayout = totalPayout.setScale(0, RoundingMode.DOWN).toLong(),
             voterRewards = totalRewardPool,
             message = "정산이 확정되었습니다. (보상: ${totalRewardPool}P 분배)"
         )

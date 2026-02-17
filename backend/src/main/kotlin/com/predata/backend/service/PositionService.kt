@@ -105,7 +105,8 @@ class PositionService(
         newQty: BigDecimal,
         newPrice: BigDecimal
     ) {
-        // 1. Get opposite side position with pessimistic lock (데드락 방지: 항상 YES 먼저, NO 나중에)
+        // 1. Get opposite side position with pessimistic lock
+        // Note: 현재는 opposite position 하나만 락. 향후 양쪽 락 필요 시 YES→NO 순서로 고정 필요
         val oppositeSide = if (newSide == OrderSide.YES) OrderSide.NO else OrderSide.YES
         val oppositePosition = positionRepository.findByMemberIdAndQuestionIdAndSideForUpdate(
             memberId, questionId, oppositeSide
