@@ -36,7 +36,6 @@ function ToastItem({ toast, onRemove }: { toast: Toast; onRemove: (id: string) =
       <CheckCircle size={20} />
       <div>
         <p className="font-black">{toast.message}</p>
-        {toast.type === 'vote' && <p className="text-xs opacity-80">+10 PRE 획득</p>}
       </div>
     </div>
   );
