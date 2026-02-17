@@ -183,10 +183,10 @@ function QuestionDetailContent() {
             {question.status !== 'VOTING' && (
               <span className="font-bold">Vol. {question.totalBetPool.toLocaleString()} USDC</span>
             )}
-            {question.expiredAt && (
+            {question.bettingStartAt && (
               <span className="flex items-center gap-1">
                 <Clock size={14} />
-                {new Date(question.expiredAt).toLocaleDateString('ko-KR')}
+                경기 일시: {new Date(question.bettingStartAt).toLocaleString('ko-KR')}
               </span>
             )}
           </div>
@@ -301,23 +301,33 @@ function QuestionDetailContent() {
             <h1 className={`text-2xl font-bold mb-4 ${isDark ? 'text-white' : 'text-slate-900'}`}>
               {question.title}
             </h1>
-            {question.votingEndAt && (
-              <div className={`flex items-center gap-2 text-sm ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
-                <Clock size={16} />
-                <span>
-                  투표 종료까지{' '}
-                  {(() => {
-                    const now = new Date().getTime();
-                    const end = new Date(question.votingEndAt).getTime();
-                    const diff = end - now;
-                    if (diff <= 0) return '종료됨';
-                    const hours = Math.floor(diff / (1000 * 60 * 60));
-                    const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
-                    return hours > 0 ? `${hours}시간 ${minutes}분` : `${minutes}분`;
-                  })()}
-                </span>
-              </div>
-            )}
+            <div className="space-y-2">
+              {question.bettingStartAt && (
+                <div className={`flex items-center gap-2 text-sm ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
+                  <Clock size={16} />
+                  <span>
+                    경기 일시: {new Date(question.bettingStartAt).toLocaleString('ko-KR')}
+                  </span>
+                </div>
+              )}
+              {question.votingEndAt && (
+                <div className={`flex items-center gap-2 text-sm ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
+                  <Clock size={16} />
+                  <span>
+                    투표 종료까지{' '}
+                    {(() => {
+                      const now = new Date().getTime();
+                      const end = new Date(question.votingEndAt).getTime();
+                      const diff = end - now;
+                      if (diff <= 0) return '종료됨';
+                      const hours = Math.floor(diff / (1000 * 60 * 60));
+                      const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+                      return hours > 0 ? `${hours}시간 ${minutes}분` : `${minutes}분`;
+                    })()}
+                  </span>
+                </div>
+              )}
+            </div>
           </div>
           {/* 투표 패널 */}
           {user && !isReadOnlyFallback && (
