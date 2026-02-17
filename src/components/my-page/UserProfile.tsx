@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { Wallet, Award, ArrowDownLeft, ArrowUpRight, Link as LinkIcon } from 'lucide-react';
+import { Wallet, Award, ArrowDownLeft, ArrowUpRight, Link as LinkIcon, LogOut, Sun, Moon } from 'lucide-react';
 import { useTheme } from '@/hooks/useTheme';
 import { useAccount } from 'wagmi';
 import { ConnectButton } from '@rainbow-me/rainbowkit';
@@ -23,9 +23,9 @@ const tierColors: Record<string, string> = {
 };
 
 export default function UserProfile({ user }: UserProfileProps) {
-  const { isDark } = useTheme();
+  const { isDark, toggleTheme } = useTheme();
   const { address, isConnected } = useAccount();
-  const { refreshUser } = useAuth();
+  const { refreshUser, logout } = useAuth();
   const [showDeposit, setShowDeposit] = useState(false);
   const [showWithdraw, setShowWithdraw] = useState(false);
   const [showWalletModal, setShowWalletModal] = useState(false);
@@ -108,6 +108,27 @@ export default function UserProfile({ user }: UserProfileProps) {
             className={`flex-1 py-2.5 rounded-xl font-bold text-sm transition-all flex items-center justify-center gap-1.5 active:scale-[0.98] ${isDark ? 'bg-slate-800 text-slate-200 hover:bg-slate-700' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'}`}
           >
             <ArrowUpRight size={14} /> 출금
+          </button>
+        </div>
+
+        {/* Theme Toggle */}
+        <div className="pt-3 border-t border-slate-200 dark:border-slate-800">
+          <button
+            onClick={toggleTheme}
+            className={`w-full py-2.5 rounded-xl font-bold text-sm transition-all flex items-center justify-center gap-1.5 active:scale-[0.98] ${isDark ? 'bg-slate-800 text-amber-400 hover:bg-slate-700' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'}`}
+          >
+            {isDark ? <Sun size={14} /> : <Moon size={14} />}
+            {isDark ? '라이트 모드' : '다크 모드'}
+          </button>
+        </div>
+
+        {/* Logout Button */}
+        <div className="pt-1">
+          <button
+            onClick={logout}
+            className={`w-full py-2.5 rounded-xl font-bold text-sm transition-all flex items-center justify-center gap-1.5 active:scale-[0.98] ${isDark ? 'bg-rose-500/10 text-rose-400 hover:bg-rose-500/20' : 'bg-rose-50 text-rose-600 hover:bg-rose-100'}`}
+          >
+            <LogOut size={14} /> 로그아웃
           </button>
         </div>
 
