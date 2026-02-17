@@ -42,6 +42,8 @@ export default function TradingPanel({ question, user, onTradeComplete, votedCho
   const [hasCommitted, setHasCommitted] = useState(false);
   const [committedChoice, setCommittedChoice] = useState<'YES' | 'NO' | null>(null);
 
+  const isExternalSportsMatch = Boolean(question.matchId);
+
   // Check if user has already committed (salt exists in localStorage)
   useEffect(() => {
     if (question.id && user?.id) {
@@ -327,6 +329,14 @@ export default function TradingPanel({ question, user, onTradeComplete, votedCho
           </div>
         )}
 
+        {isExternalSportsMatch && (
+          <div className={`mb-6 px-4 py-2 rounded-xl text-xs font-bold ${
+            isDark ? 'bg-slate-800 text-slate-300' : 'bg-slate-50 text-slate-700'
+          }`}>
+            홈팀 승리를 예상하면 YES, 승리하지 못할 것 같으면 NO를 선택하세요.
+          </div>
+        )}
+
         {isGuest ? (
           <div className={`text-center py-8 rounded-xl ${isDark ? 'bg-slate-800/50' : 'bg-slate-50'}`}>
             <p className={`text-sm ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>회원가입 후 투표에 참여할 수 있습니다</p>
@@ -375,13 +385,6 @@ export default function TradingPanel({ question, user, onTradeComplete, votedCho
                   {loading ? '처리 중...' : 'NO 투표'}
                 </button>
               </div>
-              {(question.matchId || (question.category === 'SPORTS' && question.type === 'VERIFIABLE')) && (
-                <div className={`mb-3 px-4 py-2 rounded-xl text-xs font-bold ${
-                  isDark ? 'bg-slate-800 text-slate-300' : 'bg-slate-50 text-slate-700'
-                }`}>
-                  홈팀 승리를 예상하면 YES, 승리하지 못할 것 같으면 NO를 선택하세요.
-                </div>
-              )}
               <div className={`p-3 rounded-xl text-sm flex items-start gap-2 ${isDark ? 'bg-slate-800 text-slate-400' : 'bg-slate-50 text-slate-600'}`}>
                 <Shield className="mt-0.5 flex-shrink-0" size={14} />
                 <span>선택은 암호화되어 저장되며, 베팅 종료 후 공개됩니다.</span>
