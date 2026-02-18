@@ -2,6 +2,7 @@ package com.predata.backend.domain
 
 import jakarta.persistence.*
 import java.math.BigDecimal
+import java.time.LocalDate
 import java.time.LocalDateTime
 
 @Entity
@@ -35,6 +36,13 @@ data class Member(
 
     @Column(name = "age_group")
     val ageGroup: Int? = null,
+
+    @Column(name = "gender", length = 10)
+    @Enumerated(EnumType.STRING)
+    val gender: Gender? = null,
+
+    @Column(name = "birth_date")
+    val birthDate: LocalDate? = null,
 
     @Column(length = 20)
     var tier: String = "BRONZE",
@@ -93,3 +101,9 @@ data class Member(
     @Column(name = "created_at", nullable = false, updatable = false)
     val createdAt: LocalDateTime = LocalDateTime.now()
 )
+
+enum class Gender {
+    MALE,
+    FEMALE,
+    OTHER
+}

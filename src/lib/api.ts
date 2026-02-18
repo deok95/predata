@@ -9,6 +9,16 @@ export type {
   OrderBookLevel,
   OrderData,
 } from './api/order';
+export { swapApi } from './api/swap';
+export type {
+  SwapRequest,
+  SwapResponse,
+  SwapSimulationResponse,
+  PoolStateResponse,
+  PriceSnapshot,
+  PoolSnapshot,
+  MySharesSnapshot,
+} from './api/swap';
 export { paymentApi, transactionApi, votingPassApi } from './api/finance';
 export { notificationApi } from './api/notification';
 export { ticketApi } from './api/ticket';
@@ -33,6 +43,7 @@ export {
 import { authApi, memberApi } from './api/account';
 import { bettingApi, questionApi, settlementApi } from './api/market';
 import { orderApi } from './api/order';
+import { swapApi } from './api/swap';
 import { paymentApi, transactionApi, votingPassApi } from './api/finance';
 import { notificationApi } from './api/notification';
 import { ticketApi } from './api/ticket';
@@ -66,6 +77,7 @@ export const api = {
   reward: rewardApi,
   leaderboard: leaderboardApi,
   order: orderApi,
+  swap: swapApi,
   notification: notificationApi,
   portfolio: portfolioApi,
   referral: referralApi,

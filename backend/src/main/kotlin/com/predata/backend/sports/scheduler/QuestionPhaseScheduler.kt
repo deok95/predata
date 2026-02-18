@@ -4,12 +4,18 @@ import com.predata.backend.domain.QuestionStatus
 import com.predata.backend.repository.QuestionRepository
 import com.predata.backend.sports.domain.QuestionPhase
 import org.slf4j.LoggerFactory
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
 import org.springframework.scheduling.annotation.Scheduled
 import org.springframework.stereotype.Component
 import org.springframework.transaction.annotation.Transactional
 import java.time.LocalDateTime
 
 @Component
+@ConditionalOnProperty(
+    name = ["app.scheduler.enabled"],
+    havingValue = "true",
+    matchIfMissing = true
+)
 class QuestionPhaseScheduler(
     private val questionRepository: QuestionRepository
 ) {

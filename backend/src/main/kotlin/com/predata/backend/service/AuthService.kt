@@ -123,7 +123,16 @@ class AuthService(
      * Step 3: 비밀번호 설정 및 회원 생성
      */
     @Transactional
-    fun completeSignup(email: String, code: String, password: String): Map<String, Any> {
+    fun completeSignup(
+        email: String,
+        code: String,
+        password: String,
+        countryCode: String,
+        gender: com.predata.backend.domain.Gender,
+        birthDate: String,
+        jobCategory: String? = null,
+        ageGroup: Int? = null
+    ): Map<String, Any> {
         val normalizedEmail = email.trim().lowercase()
 
         // 인증된 이메일인지 확인 (DB에서 직접 확인)
@@ -170,10 +179,15 @@ class AuthService(
 
         // 회원 생성
         val passwordHash = passwordEncoder.encode(password)
+        val birthDateParsed = java.time.LocalDate.parse(birthDate) // ISO 8601 파싱
         val member = Member(
             email = normalizedEmail,
             passwordHash = passwordHash,
-            countryCode = "KR", // 기본값
+            countryCode = countryCode,
+            gender = gender,
+            birthDate = birthDateParsed,
+            jobCategory = jobCategory,
+            ageGroup = ageGroup,
             tier = "BRONZE"
         )
         val savedMember = memberRepository.save(member)

@@ -2,6 +2,7 @@ package com.predata.backend.service
 
 import com.predata.backend.repository.IdempotencyKeyRepository
 import org.slf4j.LoggerFactory
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
 import org.springframework.scheduling.annotation.Scheduled
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
@@ -12,6 +13,11 @@ import java.time.LocalDateTime
  * - 테이블 무한 증가를 방지한다.
  */
 @Service
+@ConditionalOnProperty(
+    name = ["app.scheduler.enabled"],
+    havingValue = "true",
+    matchIfMissing = true
+)
 class IdempotencyCleanupScheduler(
     private val idempotencyKeyRepository: IdempotencyKeyRepository
 ) {

@@ -1,6 +1,7 @@
 package com.predata.backend.service
 
 import com.fasterxml.jackson.databind.ObjectMapper
+import com.predata.backend.domain.ExecutionModel
 import com.predata.backend.domain.FinalResult
 import com.predata.backend.domain.MarketType
 import com.predata.backend.domain.Question
@@ -15,6 +16,7 @@ import com.predata.backend.dto.LlmQuestionGenerationRequest
 import com.predata.backend.dto.PublishGeneratedBatchRequest
 import com.predata.backend.dto.PublishResultResponse
 import com.predata.backend.dto.RetryFailedGenerationRequest
+import com.predata.backend.dto.amm.SeedPoolRequest
 import com.predata.backend.repository.QuestionGenerationBatchRepository
 import com.predata.backend.repository.QuestionGenerationItemRepository
 import com.predata.backend.repository.QuestionRepository
@@ -37,7 +39,8 @@ class AutoQuestionGenerationService(
     private val batchRepository: QuestionGenerationBatchRepository,
     private val itemRepository: QuestionGenerationItemRepository,
     private val questionRepository: QuestionRepository,
-    private val blockchainService: BlockchainService
+    private val blockchainService: BlockchainService,
+    private val swapService: com.predata.backend.service.amm.SwapService
 ) {
 
     private val logger = LoggerFactory.getLogger(AutoQuestionGenerationService::class.java)
@@ -389,7 +392,23 @@ class AutoQuestionGenerationService(
                     questionRepository.findById(draft.publishedQuestionId!!).orElse(null)
                         ?: throw IllegalStateException("기존 질문을 찾을 수 없습니다: ${draft.publishedQuestionId}")
                 } else {
-                    questionRepository.save(buildQuestionFromDraft(draft))
+                    val newQuestion = questionRepository.save(buildQuestionFromDraft(draft))
+
+                    // 자동 시드 풀 생성 (실패해도 질문 생성은 유지)
+                    try {
+                        swapService.seedPool(
+                            SeedPoolRequest(
+                                questionId = newQuestion.id!!,
+                                seedUsdc = BigDecimal("1000"), // 기본 1000 USDC
+                                feeRate = BigDecimal("0.01")   // 1% 수수료
+                            )
+                        )
+                        logger.info("[AutoQuestionGeneration] 풀 시드 성공 - questionId: ${newQuestion.id}")
+                    } catch (e: Exception) {
+                        logger.warn("[AutoQuestionGeneration] 풀 시드 실패 (질문은 생성됨) - questionId: ${newQuestion.id}, error: ${e.message}")
+                    }
+
+                    newQuestion
                 }
 
                 if (blockchainEnabled) {
@@ -466,14 +485,15 @@ class AutoQuestionGenerationService(
             votingEndAt = draft.votingEndAt,
             bettingStartAt = draft.bettingStartAt,
             bettingEndAt = draft.bettingEndAt,
-            totalBetPool = QuestionManagementService.INITIAL_LIQUIDITY * 2,
-            yesBetPool = QuestionManagementService.INITIAL_LIQUIDITY,
-            noBetPool = QuestionManagementService.INITIAL_LIQUIDITY,
+            totalBetPool = 0,
+            yesBetPool = 0,
+            noBetPool = 0,
             initialYesPool = QuestionManagementService.INITIAL_LIQUIDITY,
             initialNoPool = QuestionManagementService.INITIAL_LIQUIDITY,
             finalResult = FinalResult.PENDING,
             expiredAt = draft.bettingEndAt,
-            createdAt = LocalDateTime.now(ZoneOffset.UTC)
+            createdAt = LocalDateTime.now(ZoneOffset.UTC),
+            executionModel = ExecutionModel.AMM_FPMM
         )
     }
 

@@ -8,6 +8,7 @@ import com.predata.backend.repository.QuestionRepository
 import com.predata.backend.repository.ActivityRepository
 import org.slf4j.LoggerFactory
 import org.springframework.beans.factory.annotation.Value
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
 import org.springframework.http.HttpEntity
 import org.springframework.http.HttpHeaders
 import org.springframework.http.HttpMethod
@@ -20,6 +21,11 @@ import java.time.LocalDate
 import java.time.LocalDateTime
 
 @Service
+@ConditionalOnProperty(
+    name = ["app.scheduler.enabled"],
+    havingValue = "true",
+    matchIfMissing = true
+)
 class QuestionLifecycleScheduler(
     private val questionRepository: QuestionRepository,
     private val activityRepository: ActivityRepository,

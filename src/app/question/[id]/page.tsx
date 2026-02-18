@@ -6,7 +6,6 @@ import { ArrowLeft, CheckCircle, Clock, Shield, ExternalLink, AlertTriangle } fr
 import Link from 'next/link';
 import MainLayout from '@/components/layout/MainLayout';
 import ProbabilityChart from '@/components/market-detail/ProbabilityChart';
-import OrderBook from '@/components/market-detail/OrderBook';
 import TradingPanel from '@/components/market-detail/TradingPanel';
 import ActivityFeed from '@/components/market-detail/ActivityFeed';
 import MyBetsPanel from '@/components/market-detail/MyBetsPanel';
@@ -17,6 +16,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { useVotedQuestions } from '@/hooks/useVotedQuestions';
 import type { Question } from '@/types/api';
 import { ApiError } from '@/lib/api/core';
+import { swapApi, type PoolStateResponse } from '@/lib/api/swap';
 
 function QuestionDetailContent() {
   const { isDark } = useTheme();
@@ -30,6 +30,7 @@ function QuestionDetailContent() {
   const [isMockData, setIsMockData] = useState(false);
   const [loadError, setLoadError] = useState<{ status: number; message: string } | null>(null);
   const [showTradingModal, setShowTradingModal] = useState(false);
+  const [poolState, setPoolState] = useState<PoolStateResponse | null>(null);
 
   const fetchQuestion = useCallback(async () => {
     try {
@@ -102,6 +103,26 @@ function QuestionDetailContent() {
     }, 15000); // 비활성 탭 스킵, 15초 폴링
     return () => clearInterval(interval);
   }, [question, isMockData, fetchQuestion]);
+
+  // Fetch pool state for AMM questions
+  useEffect(() => {
+    if (!question?.id || isMockData) {
+      setPoolState(null);
+      return;
+    }
+
+    const fetchPoolState = async () => {
+      try {
+        const state = await swapApi.getPoolState(question.id);
+        setPoolState(state);
+      } catch {
+        // Pool doesn't exist for this question (legacy or voting questions)
+        setPoolState(null);
+      }
+    };
+
+    fetchPoolState();
+  }, [question?.id, isMockData, refreshKey]);
 
   const handleTradeComplete = () => {
     fetchQuestion();
@@ -219,9 +240,16 @@ function QuestionDetailContent() {
     );
   }
 
-  const yesPercent = question.totalBetPool > 0
+  const legacyYesPercent = question.totalBetPool > 0
     ? Math.round((question.yesBetPool / question.totalBetPool) * 100)
     : 50;
+
+  // AMM 질문은 poolState.currentPrice 기반으로 확률/풀 금액을 표시한다.
+  const yesPercent = poolState?.currentPrice?.yes != null
+    ? Math.round(poolState.currentPrice.yes * 100)
+    : legacyYesPercent;
+
+  const displayTotalPool = poolState?.collateralLocked ?? question.totalBetPool;
 
   // Determine back link based on question status
   const backLink = question.status === 'VOTING' ? '/vote' : '/marketplace';
@@ -483,18 +511,23 @@ function QuestionDetailContent() {
             </div>
 
             {/* 모바일: 하단 / 데스크톱: 좌측 메인 컨텐츠 */}
-            <div className="order-2 lg:order-1 lg:col-span-8 space-y-6 pb-20 lg:pb-0">
-              <ProbabilityChart
-                yesPercent={yesPercent}
-                totalPool={question.totalBetPool}
-                yesPool={question.yesBetPool}
-                noPool={question.noBetPool}
-                questionId={question.id}
-                disableApi={isReadOnlyFallback}
+	            <div className="order-2 lg:order-1 lg:col-span-8 space-y-6 pb-20 lg:pb-0">
+	              <ProbabilityChart
+	                yesPercent={yesPercent}
+	                totalPool={displayTotalPool}
+	                yesPool={question.yesBetPool}
+	                noPool={question.noBetPool}
+	                questionId={question.id}
+	                disableApi={isReadOnlyFallback}
+	                executionModel={question.executionModel}
+	                ammPool={poolState ? {
+	                  collateralLocked: Number(poolState.collateralLocked),
+	                  yesShares: Number(poolState.yesShares),
+	                  noShares: Number(poolState.noShares),
+	                  totalVolumeUsdc: Number(poolState.totalVolumeUsdc),
+	                  version: poolState.version
+	                } : null}
               />
-              {!isReadOnlyFallback && (
-                <OrderBook questionId={question.id} yesPercent={yesPercent} totalPool={question.totalBetPool} />
-              )}
               {!isReadOnlyFallback && (
                 <ActivityFeed questionId={question.id} refreshKey={refreshKey} />
               )}
@@ -503,26 +536,26 @@ function QuestionDetailContent() {
           </div>
 
           {/* 모바일: 하단 고정 버튼 */}
-          {user && !isReadOnlyFallback && (
-            <div className="lg:hidden fixed bottom-0 left-0 right-0 z-50">
-              <div className={`grid grid-cols-2 gap-2 p-4 border-t ${
-                isDark ? 'bg-slate-950/95 border-slate-800 backdrop-blur-xl' : 'bg-white/95 border-slate-200 backdrop-blur-xl'
-              }`}>
+	          {user && !isReadOnlyFallback && (
+	            <div className="lg:hidden fixed bottom-0 left-0 right-0 z-50">
+	              <div className={`grid grid-cols-2 gap-2 p-4 border-t ${
+	                isDark ? 'bg-slate-950/95 border-slate-800 backdrop-blur-xl' : 'bg-white/95 border-slate-200 backdrop-blur-xl'
+	              }`}>
                 <button
                   onClick={() => setShowTradingModal(true)}
-                  className="py-3 px-4 rounded-xl font-bold text-sm bg-emerald-500 hover:bg-emerald-600 text-white transition"
-                >
-                  Buy {yesPercent}%
-                </button>
+	                  className="py-3 px-4 rounded-xl font-bold text-sm bg-emerald-500 hover:bg-emerald-600 text-white transition"
+	                >
+	                  Buy {yesPercent}%
+	                </button>
                 <button
                   onClick={() => setShowTradingModal(true)}
-                  className="py-3 px-4 rounded-xl font-bold text-sm bg-rose-500 hover:bg-rose-600 text-white transition"
-                >
-                  Sell {100 - yesPercent}%
-                </button>
-              </div>
-            </div>
-          )}
+	                  className="py-3 px-4 rounded-xl font-bold text-sm bg-rose-500 hover:bg-rose-600 text-white transition"
+	                >
+	                  Sell {100 - yesPercent}%
+	                </button>
+	              </div>
+	            </div>
+	          )}
 
           {/* 모바일: TradingPanel 모달 */}
           {showTradingModal && user && (

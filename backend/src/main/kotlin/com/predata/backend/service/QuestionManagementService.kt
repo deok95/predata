@@ -17,7 +17,8 @@ import java.time.format.DateTimeFormatter
 class QuestionManagementService(
     private val questionRepository: QuestionRepository,
     private val blockchainService: BlockchainService,
-    private val jdbcTemplate: JdbcTemplate
+    private val jdbcTemplate: JdbcTemplate,
+    private val swapService: com.predata.backend.service.amm.SwapService
 ) {
 
     companion object {
@@ -211,17 +212,42 @@ class QuestionManagementService(
             votingEndAt = votingEndAt,
             bettingStartAt = bettingStartAt,
             bettingEndAt = bettingEndAt,
-            totalBetPool = INITIAL_LIQUIDITY * 2,
-            yesBetPool = INITIAL_LIQUIDITY,
-            noBetPool = INITIAL_LIQUIDITY,
-            initialYesPool = INITIAL_LIQUIDITY,
-            initialNoPool = INITIAL_LIQUIDITY,
+            // AMM인 경우 풀이 0으로 시작 (seedPool 호출 전까지)
+            totalBetPool = 0,
+            yesBetPool = 0,
+            noBetPool = 0,
+            initialYesPool = 0,
+            initialNoPool = 0,
             finalResult = FinalResult.PENDING,
             expiredAt = bettingEndAt,
-            createdAt = now
+            createdAt = now,
+            // executionModel 설정
+            executionModel = request.executionModel
         )
 
         val savedQuestion = questionRepository.save(question)
+
+        // AMM_FPMM인 경우 자동으로 풀 시드
+        if (request.executionModel == com.predata.backend.domain.ExecutionModel.AMM_FPMM) {
+            try {
+                val seedRequest = com.predata.backend.dto.amm.SeedPoolRequest(
+                    questionId = savedQuestion.id!!,
+                    seedUsdc = request.seedUsdc,
+                    feeRate = request.feeRate
+                )
+                swapService.seedPool(seedRequest)
+            } catch (e: Exception) {
+                throw IllegalStateException("질문은 생성되었지만 AMM 풀 시드에 실패했습니다: ${e.message}")
+            }
+        } else {
+            // ORDERBOOK_LEGACY인 경우 기존 로직
+            savedQuestion.totalBetPool = INITIAL_LIQUIDITY * 2
+            savedQuestion.yesBetPool = INITIAL_LIQUIDITY
+            savedQuestion.noBetPool = INITIAL_LIQUIDITY
+            savedQuestion.initialYesPool = INITIAL_LIQUIDITY
+            savedQuestion.initialNoPool = INITIAL_LIQUIDITY
+            questionRepository.save(savedQuestion)
+        }
 
         // 온체인에 질문 생성 (비동기)
         blockchainService.createQuestionOnChain(savedQuestion)
