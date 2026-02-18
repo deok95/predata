@@ -77,11 +77,34 @@ export async function apiRequest<T>(endpoint: string, options?: RequestInit): Pr
 
     let response = await fetchOnce();
 
-    // 429 Rate Limit 대응: Retry-After 헤더 확인 후 1회 재시도
+    // 429 Rate Limit 대응: 안전한 메서드(GET, HEAD)만 1회 재시도
     if (response.status === 429) {
+      const method = (options?.method || 'GET').toUpperCase();
+      const isSafeMethod = method === 'GET' || method === 'HEAD';
+
+      if (!isSafeMethod) {
+        // POST, PUT, DELETE, PATCH 등은 재시도하지 않고 즉시 에러 throw
+        let data;
+        try {
+          data = await response.json();
+        } catch {
+          throw new ApiError(429, 'Rate limit exceeded (안전하지 않은 메서드는 재시도하지 않습니다)');
+        }
+        throw new ApiError(429, data.message || 'Rate limit exceeded', data);
+      }
+
+      // Retry-After 헤더 값 사용, 없으면 기본 2초, 최대 5초로 제한
       const retryAfterRaw = response.headers.get('Retry-After');
-      const retryAfter = Number.isFinite(Number(retryAfterRaw)) ? parseInt(retryAfterRaw || '1', 10) : 1;
-      await new Promise(r => setTimeout(r, Math.max(1, retryAfter) * 1000));
+      let retryAfterSeconds = 2; // 기본값 2초
+
+      if (retryAfterRaw) {
+        const parsed = parseInt(retryAfterRaw, 10);
+        if (Number.isFinite(parsed) && parsed > 0) {
+          retryAfterSeconds = Math.min(parsed, 5); // 최대 5초로 cap
+        }
+      }
+
+      await new Promise(r => setTimeout(r, retryAfterSeconds * 1000));
 
       // NOTE: body는 string(JSON) 기반을 전제로 1회 재요청합니다. (Stream body는 재사용 불가)
       response = await fetchOnce();

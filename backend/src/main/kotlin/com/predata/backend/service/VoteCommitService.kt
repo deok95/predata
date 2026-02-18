@@ -33,7 +33,8 @@ class VoteCommitService(
     private val votingConfig: com.predata.backend.config.VotingConfig,
     private val auditService: AuditService,
     private val pauseService: PauseService,
-    private val circuitBreaker: VotingCircuitBreaker
+    private val circuitBreaker: VotingCircuitBreaker,
+    private val ticketService: TicketService
 ) {
     private val logger = LoggerFactory.getLogger(VoteCommitService::class.java)
 
@@ -64,6 +65,12 @@ class VoteCommitService(
                 success = false,
                 message = "계정이 정지되었습니다. 사유: ${member.banReason ?: "이용약관 위반"}"
             )
+        }
+
+        // 2-1. 티켓 차감 (5개 제한)
+        val ticketConsumed = ticketService.consumeTicket(memberId)
+        if (!ticketConsumed) {
+            throw IllegalStateException("오늘 투표 가능 횟수를 모두 사용했습니다")
         }
 
         // 3. 질문 존재 확인
@@ -129,10 +136,14 @@ class VoteCommitService(
             // 서킷브레이커 성공 기록
             circuitBreaker.recordSuccess()
 
+            // 남은 티켓 조회
+            val remainingTickets = ticketService.getRemainingTickets(memberId)
+
             VoteCommitResponse(
                 success = true,
                 message = "투표 커밋이 완료되었습니다.",
-                voteCommitId = saved.id
+                voteCommitId = saved.id,
+                remainingTickets = remainingTickets
             )
         } catch (e: DataIntegrityViolationException) {
             logger.warn("Duplicate vote commit attempt: memberId=$memberId, questionId=${request.questionId}")

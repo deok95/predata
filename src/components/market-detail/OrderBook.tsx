@@ -3,7 +3,7 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import { ChevronDown, RefreshCw } from 'lucide-react';
 import { useTheme } from '@/hooks/useTheme';
-import { orderApi, type OrderBookData, type OrderBookLevel } from '@/lib/api';
+import { orderApi, ApiError, type OrderBookData, type OrderBookLevel } from '@/lib/api';
 
 interface OrderBookProps {
   questionId: number;
@@ -24,8 +24,14 @@ export default function OrderBook({ questionId, yesPercent, totalPool }: OrderBo
     try {
       const data = await orderApi.getOrderBook(questionId);
       setOrderBook(data);
-    } catch {
-      // API 실패 시 fallback 모드로 전환
+    } catch (error) {
+      // 429 에러는 일시적 제한이므로 API를 끄지 않고 다음 폴링에서 재시도
+      if (error instanceof ApiError && error.status === 429) {
+        // 429는 무시하고 다음 폴링 주기에 자동으로 재시도
+        return;
+      }
+
+      // 5xx, 네트워크 에러 등 다른 에러는 fallback 모드로 전환
       setUseApi(false);
       setOrderBook(null);
     } finally {

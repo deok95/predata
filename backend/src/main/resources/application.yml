@@ -13,7 +13,8 @@ spring:
     locations: classpath:db/migration
     baseline-on-migrate: true
     baseline-version: 0
-    repair-on-migrate: true
+    validate-on-migrate: true
+    out-of-order: false
 
   jpa:
     hibernate:
@@ -46,8 +47,8 @@ spring:
       client:
         registration:
           google:
-            client-id: ${GOOGLE_CLIENT_ID}
-            client-secret: ${GOOGLE_CLIENT_SECRET}
+            client-id: ${GOOGLE_CLIENT_ID:dummy}
+            client-secret: ${GOOGLE_CLIENT_SECRET:dummy}
             scope:
               - email
               - profile
@@ -74,8 +75,8 @@ auth:
 
 google:
   oauth:
-    client-id: ${GOOGLE_CLIENT_ID}
-    client-secret: ${GOOGLE_CLIENT_SECRET}
+    client-id: ${GOOGLE_CLIENT_ID:dummy}
+    client-secret: ${GOOGLE_CLIENT_SECRET:dummy}
 
 sports:
   api:
@@ -159,3 +160,7 @@ app:
     daily-cron: ${QUESTIONGEN_DAILY_CRON:0 5 0 * * *}
     legacy-interval-enabled: ${QUESTIONGEN_LEGACY_INTERVAL_ENABLED:false}
     trends-url: ${QUESTIONGEN_TRENDS_URL:https://trends.google.com/trends/api/dailytrends}
+
+  # 마켓메이커 설정
+  market-maker:
+    member-id: ${MARKET_MAKER_MEMBER_ID:1}  # 마켓메이커 계정 ID (DB에서 생성 필요)

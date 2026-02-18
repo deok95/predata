@@ -21,12 +21,12 @@ export default function CategoryFilter({ selected, onSelect }: CategoryFilterPro
   const { isDark } = useTheme();
 
   return (
-    <div className="flex space-x-2 overflow-x-auto pb-2 scrollbar-hide">
+    <div className="flex space-x-2 lg:space-x-3 overflow-x-auto pb-2 scrollbar-hide">
       {categories.map(cat => (
         <button
           key={cat.id}
           onClick={() => onSelect(cat.id)}
-          className={`px-6 py-3 rounded-2xl font-bold text-sm whitespace-nowrap transition-all ${
+          className={`px-3 py-2 lg:px-6 lg:py-3 rounded-2xl font-bold text-xs lg:text-sm whitespace-nowrap transition-all ${
             selected === cat.id
               ? 'bg-indigo-600 text-white shadow-lg'
               : isDark ? 'bg-slate-800 text-slate-400 hover:bg-slate-700' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'

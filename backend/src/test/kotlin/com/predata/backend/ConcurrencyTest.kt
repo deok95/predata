@@ -146,16 +146,10 @@ class ConcurrencyTest {
         latch.await(10, TimeUnit.SECONDS)
         executor.shutdown()
 
-        // Then: 1건만 성공, 나머지는 실패
-        assertEquals(1, successCount.get(), "중복 환불은 1건만 성공해야 합니다")
-        assertEquals(threadCount - 1, failureCount.get(), "나머지는 실패해야 합니다")
-
-        // 판매 기록 확인
-        val sellActivities = activityRepository.findByQuestionIdAndActivityType(
-            testQuestion.id!!,
-            ActivityType.BET_SELL
-        )
-        assertEquals(1, sellActivities.size, "BET_SELL 활동은 1건만 생성되어야 합니다")
+        // Then: AMM sell은 비활성화되었으므로 전부 실패해야 한다.
+        // (오더북에서 SELL 주문으로 청산하도록 정책 변경)
+        assertEquals(0, successCount.get(), "AMM sell은 비활성화되어 성공하면 안 됩니다")
+        assertEquals(threadCount, failureCount.get(), "모든 호출이 실패해야 합니다")
     }
 
     /**

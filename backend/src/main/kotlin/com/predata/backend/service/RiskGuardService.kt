@@ -3,6 +3,7 @@ package com.predata.backend.service
 import com.predata.backend.config.RiskConfig
 import com.predata.backend.repository.PositionRepository
 import com.predata.backend.repository.TradeRepository
+import org.springframework.beans.factory.annotation.Value
 import org.springframework.stereotype.Service
 import java.math.BigDecimal
 import java.time.LocalDateTime
@@ -15,7 +16,8 @@ import java.time.LocalDateTime
 class RiskGuardService(
     private val positionRepository: PositionRepository,
     private val tradeRepository: TradeRepository,
-    private val config: RiskConfig
+    private val config: RiskConfig,
+    @Value("\${app.market-maker.member-id}") private val marketMakerMemberId: Long
 ) {
 
     /**
@@ -27,6 +29,11 @@ class RiskGuardService(
         questionId: Long,
         additionalQty: BigDecimal
     ): RiskCheckResult {
+        // Market maker is a system account intended to provide liquidity and can exceed normal risk limits.
+        if (memberId == marketMakerMemberId) {
+            return RiskCheckResult(passed = true)
+        }
+
         val currentPositions = positionRepository.findByMemberIdAndQuestionId(memberId, questionId)
         val currentTotal = currentPositions.sumOf { it.quantity }
         val newTotal = currentTotal.add(additionalQty)

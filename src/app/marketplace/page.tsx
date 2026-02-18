@@ -24,17 +24,26 @@ function MarketplaceContent() {
   const fetchQuestions = useCallback(() => {
     questionApi.getAll().then(res => {
       if (res.success && res.data && res.data.length > 0) {
-        // 투표가 완료된 질문만 표시 (VOTING 제외)
-        const completedVoting = res.data.filter(q => q.status !== 'VOTING');
-        setQuestions(completedVoting);
+        // BETTING 상태이면서 베팅 종료 시간이 지나지 않은 질문만 필터링
+        const now = new Date();
+        const bettingQuestions = res.data.filter(q =>
+          q.status === 'BETTING' && new Date(q.bettingEndAt) > now
+        );
+        setQuestions(bettingQuestions);
       }
       else {
-        const completedVoting = mockQuestions.filter(q => q.status !== 'VOTING');
-        setQuestions(completedVoting);
+        const now = new Date();
+        const bettingQuestions = mockQuestions.filter(q =>
+          q.status === 'BETTING' && new Date(q.bettingEndAt) > now
+        );
+        setQuestions(bettingQuestions);
       }
     }).catch(() => {
-      const completedVoting = mockQuestions.filter(q => q.status !== 'VOTING');
-      setQuestions(completedVoting);
+      const now = new Date();
+      const bettingQuestions = mockQuestions.filter(q =>
+        q.status === 'BETTING' && new Date(q.bettingEndAt) > now
+      );
+      setQuestions(bettingQuestions);
     }).finally(() => setLoading(false));
   }, []);
 

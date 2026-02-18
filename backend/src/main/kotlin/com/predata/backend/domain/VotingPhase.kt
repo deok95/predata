@@ -8,6 +8,7 @@ package com.predata.backend.domain
 enum class VotingPhase {
     VOTING_COMMIT_OPEN,    // 투표 커밋 단계 (해시 제출 가능)
     VOTING_REVEAL_OPEN,    // 투표 공개 단계 (선택 공개 가능)
+    VOTING_REVEAL_CLOSED,  // 투표 공개 단계 종료
     BETTING_OPEN,          // 베팅 단계 (베팅 가능)
     SETTLEMENT_PENDING,    // 정산 대기
     SETTLED,               // 정산 완료

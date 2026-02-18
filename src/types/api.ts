@@ -54,6 +54,8 @@ export interface Question {
   bettingEndAt: string;
   expiredAt: string;
   createdAt: string;
+  viewCount?: number;
+  matchId?: number;
 }
 
 export interface CreateQuestionRequest {
@@ -459,6 +461,7 @@ export interface VoteCommitResponse {
   success: boolean;
   message: string;
   voteCommitId?: number;
+  remainingTickets?: number;
 }
 
 export interface VoteRevealRequest {

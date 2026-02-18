@@ -8,5 +8,7 @@ export const config = getDefaultConfig({
     polygonAmoy, // 테스트넷 (Amoy)
     polygon,     // 메인넷
   ],
-  ssr: true, // Next.js SSR 지원
+  // SSR/build 환경에서 일부 Web3 SDK가 외부 네트워크 호출을 시도해 빌드를 깨뜨릴 수 있어 비활성화.
+  // (예: api.web3modal.org usage fetch)
+  ssr: false,
 });

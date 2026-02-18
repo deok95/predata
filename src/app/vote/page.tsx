@@ -1,15 +1,16 @@
 'use client';
 
 import { useState, useEffect, useMemo, useCallback } from 'react';
-import { SlidersHorizontal, Vote as VoteIcon } from 'lucide-react';
+import { SlidersHorizontal, Vote as VoteIcon, AlertCircle, Ticket } from 'lucide-react';
 import MainLayout from '@/components/layout/MainLayout';
 import MarketCard from '@/components/market/MarketCard';
 import CategoryFilter from '@/components/market/CategoryFilter';
 import { useTheme } from '@/hooks/useTheme';
-import { questionApi } from '@/lib/api';
+import { questionApi, ticketApi } from '@/lib/api';
 import { useAuth } from '@/hooks/useAuth';
 import { useVotedQuestions } from '@/hooks/useVotedQuestions';
 import type { Question, QuestionCategory } from '@/types/api';
+import type { TicketStatus } from '@/lib/api/ticket';
 
 function VoteContent() {
   const { isDark } = useTheme();
@@ -18,13 +19,17 @@ function VoteContent() {
   const [questions, setQuestions] = useState<Question[]>([]);
   const [loading, setLoading] = useState(true);
   const [category, setCategory] = useState<QuestionCategory>('ALL');
-  const [sortBy, setSortBy] = useState<'volume' | 'recent'>('recent');
+  const [sortBy, setSortBy] = useState<'views' | 'recent'>('views');
+  const [ticketStatus, setTicketStatus] = useState<TicketStatus | null>(null);
 
   const fetchQuestions = useCallback(() => {
     questionApi.getAll().then(res => {
       if (res.success && res.data) {
-        // VOTING 상태만 필터링
-        const votingQuestions = res.data.filter(q => q.status === 'VOTING');
+        // VOTING 상태이면서 투표 종료 시간이 지나지 않은 질문만 필터링
+        const now = new Date();
+        const votingQuestions = res.data.filter(q =>
+          q.status === 'VOTING' && new Date(q.votingEndAt) > now
+        );
         setQuestions(votingQuestions);
       }
     }).catch(() => {
@@ -32,10 +37,17 @@ function VoteContent() {
     }).finally(() => setLoading(false));
   }, []);
 
+  // 티켓 상태 조회
+  const fetchTicketStatus = useCallback(() => {
+    if (!user) return;
+    ticketApi.getStatus().then(setTicketStatus).catch(() => setTicketStatus(null));
+  }, [user]);
+
   // 초기 로드
   useEffect(() => {
     fetchQuestions();
-  }, [fetchQuestions]);
+    fetchTicketStatus();
+  }, [fetchQuestions, fetchTicketStatus]);
 
   // 5초마다 자동 리프레시
   useEffect(() => {
@@ -51,8 +63,8 @@ function VoteContent() {
     if (category !== 'ALL') {
       result = result.filter(q => q.category === category);
     }
-    if (sortBy === 'volume') {
-      result = [...result].sort((a, b) => b.totalBetPool - a.totalBetPool);
+    if (sortBy === 'views') {
+      result = [...result].sort((a, b) => (b.viewCount || 0) - (a.viewCount || 0));
     } else {
       result = [...result].sort((a, b) =>
         new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
@@ -77,6 +89,33 @@ function VoteContent() {
           <h1 className={`text-3xl font-black ${isDark ? 'text-white' : 'text-slate-900'}`}>투표</h1>
         </div>
         <p className="text-slate-400">VOTING 상태의 질문에 투표하세요 (하루 5개 제한)</p>
+
+        {user && ticketStatus && (
+          <div className={`mt-4 p-4 rounded-xl flex items-center gap-3 ${
+            ticketStatus.remainingTickets === 0
+              ? isDark ? 'bg-red-950 border border-red-800' : 'bg-red-50 border border-red-200'
+              : isDark ? 'bg-indigo-950 border border-indigo-800' : 'bg-indigo-50 border border-indigo-200'
+          }`}>
+            {ticketStatus.remainingTickets === 0 ? (
+              <>
+                <AlertCircle className="w-5 h-5 text-red-500" />
+                <div className="flex-1">
+                  <p className={`font-bold ${isDark ? 'text-red-400' : 'text-red-600'}`}>
+                    오늘 투표 가능 횟수를 모두 사용했습니다
+                  </p>
+                  <p className="text-sm text-slate-400">내일 다시 투표하실 수 있습니다</p>
+                </div>
+              </>
+            ) : (
+              <>
+                <Ticket className={`w-5 h-5 ${isDark ? 'text-indigo-400' : 'text-indigo-600'}`} />
+                <p className={`font-bold ${isDark ? 'text-indigo-400' : 'text-indigo-600'}`}>
+                  남은 투표권: {ticketStatus.remainingTickets}/{ticketStatus.maxTickets}
+                </p>
+              </>
+            )}
+          </div>
+        )}
       </div>
 
       <div className="flex items-center justify-between mb-6 gap-4 flex-wrap">
@@ -84,14 +123,14 @@ function VoteContent() {
         <div className="flex items-center gap-2">
           <SlidersHorizontal size={16} className="text-slate-400" />
           <button
-            onClick={() => setSortBy('volume')}
+            onClick={() => setSortBy('views')}
             className={`px-3 py-1.5 rounded-xl text-xs font-bold transition ${
-              sortBy === 'volume'
+              sortBy === 'views'
                 ? 'bg-indigo-600 text-white'
                 : isDark ? 'text-slate-400 hover:bg-slate-800' : 'text-slate-500 hover:bg-slate-100'
             }`}
           >
-            거래량순
+            조회순
           </button>
           <button
             onClick={() => setSortBy('recent')}
