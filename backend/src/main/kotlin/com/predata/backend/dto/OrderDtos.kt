@@ -32,7 +32,13 @@ data class CreateOrderRequest(
 
     @field:NotNull(message = "주문 방향은 필수입니다")
     val direction: OrderDirection = OrderDirection.BUY  // BUY: 매수(USDC 예치), SELL: 매도(포지션 담보)
-)
+) {
+    @AssertTrue(message = "지정가(LIMIT) 주문은 가격을 입력해야 합니다.")
+    fun isLimitOrderPricePresent(): Boolean {
+        val resolvedOrderType = orderType ?: OrderType.LIMIT
+        return resolvedOrderType == OrderType.MARKET || price != null
+    }
+}
 
 /**
  * 주문 생성 응답

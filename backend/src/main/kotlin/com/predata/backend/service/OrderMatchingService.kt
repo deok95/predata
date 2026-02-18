@@ -64,7 +64,7 @@ class OrderMatchingService(
         if (request.direction == OrderDirection.SELL) {
             return CreateOrderResponse(
                 success = false,
-                message = "매도 기능은 현재 준비 중입니다. 포지션 청산은 POST /api/redeem을 이용해주세요."
+                message = "매도 기능은 준비 중입니다. 현재는 매수(BUY)만 가능합니다."
             )
         }
 
