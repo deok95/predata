@@ -3,7 +3,15 @@
 import { useState, useEffect } from 'react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Scatter } from 'recharts';
 import { useTheme } from '@/hooks/useTheme';
-import { getPriceHistory } from '@/lib/api/price';
+import { swapApi } from '@/lib/api/swap';
+
+interface AmmPool {
+  collateralLocked: number;
+  yesShares: number;
+  noShares: number;
+  totalVolumeUsdc: number;
+  version: number;
+}
 
 interface ProbabilityChartProps {
   yesPercent: number;
@@ -12,6 +20,8 @@ interface ProbabilityChartProps {
   noPool: number;
   questionId: number;
   disableApi?: boolean;
+  executionModel?: 'AMM_FPMM' | 'ORDERBOOK_LEGACY';
+  ammPool?: AmmPool | null;
 }
 
 interface ChartDataPoint {
@@ -26,7 +36,9 @@ export default function ProbabilityChart({
   yesPool,
   noPool,
   questionId,
-  disableApi = false
+  disableApi = false,
+  executionModel = 'ORDERBOOK_LEGACY',
+  ammPool = null
 }: ProbabilityChartProps) {
   const { isDark } = useTheme();
   const [chartData, setChartData] = useState<ChartDataPoint[]>([]);
@@ -55,10 +67,31 @@ export default function ProbabilityChart({
       }
 
       try {
-        const history = await getPriceHistory(questionId, '1m', 100);
+        // Only call AMM API if question uses AMM execution model
+        if (executionModel !== 'AMM_FPMM') {
+          // ORDERBOOK_LEGACY: show horizontal line with current yesPercent
+          const mockData: ChartDataPoint[] = Array.from({ length: 24 }, (_, i) => {
+            const now = new Date();
+            const timeAgo = new Date(now.getTime() - (23 - i) * 3600000);
+            const hours = timeAgo.getHours().toString().padStart(2, '0');
+            const mins = timeAgo.getMinutes().toString().padStart(2, '0');
+
+            return {
+              time: `${hours}:${mins}`,
+              probability: yesPercent,
+              lastTrade: null,
+            };
+          });
+          setChartData(mockData);
+          setLoading(false);
+          return;
+        }
+
+        // Use swap price history from AMM
+        const history = await swapApi.getPriceHistory(questionId, 100);
 
         if (history.length === 0) {
-          // No data: use mock data
+          // No pool (ORDERBOOK_LEGACY) - show horizontal line with current yesPercent
           const mockData: ChartDataPoint[] = Array.from({ length: 24 }, (_, i) => {
             const now = new Date();
             const timeAgo = new Date(now.getTime() - (23 - i) * 3600000);
@@ -73,35 +106,43 @@ export default function ProbabilityChart({
           });
           setChartData(mockData);
         } else {
-          // Real data from API
-          const formatted = history.reverse().map(d => {
+          // Real swap data from AMM
+          const formatted = history.map(d => {
             const timestamp = new Date(d.timestamp);
             const hours = timestamp.getHours().toString().padStart(2, '0');
             const mins = timestamp.getMinutes().toString().padStart(2, '0');
 
             return {
               time: `${hours}:${mins}`,
-              probability: d.midPrice ? d.midPrice * 100 : null,
-              lastTrade: d.lastTradePrice ? d.lastTradePrice * 100 : null,
+              probability: d.yesPrice * 100,
+              lastTrade: d.yesPrice * 100,
             };
           });
           setChartData(formatted);
         }
       } catch (error) {
         console.error('Failed to fetch price history:', error);
-        // Fallback to current price
-        setChartData([{
-          time: 'Now',
-          probability: yesPercent,
-          lastTrade: null,
-        }]);
+        // Fallback to horizontal line with current yesPercent
+        const mockData: ChartDataPoint[] = Array.from({ length: 24 }, (_, i) => {
+          const now = new Date();
+          const timeAgo = new Date(now.getTime() - (23 - i) * 3600000);
+          const hours = timeAgo.getHours().toString().padStart(2, '0');
+          const mins = timeAgo.getMinutes().toString().padStart(2, '0');
+
+          return {
+            time: `${hours}:${mins}`,
+            probability: yesPercent,
+            lastTrade: null,
+          };
+        });
+        setChartData(mockData);
       } finally {
         setLoading(false);
       }
     };
 
     fetchPriceHistory();
-  }, [questionId, yesPercent, disableApi]);
+  }, [questionId, yesPercent, disableApi, executionModel, ammPool?.version]);
 
   const yesChange = yesPercent >= 50 ? `+${yesPercent - 50}` : `${yesPercent - 50}`;
   const isPositive = yesPercent >= 50;
@@ -120,7 +161,7 @@ export default function ProbabilityChart({
         <div className="text-right">
           <p className="text-xs text-slate-400 uppercase font-bold mb-1">Pool</p>
           <span className={`font-bold text-lg ${isDark ? 'text-white' : 'text-slate-900'}`}>
-            {'$'}{totalPool.toLocaleString()}
+            {'$'}{Number(totalPool).toLocaleString()}
           </span>
         </div>
       </div>
@@ -191,24 +232,51 @@ export default function ProbabilityChart({
 
       {/* Pool Cards */}
       <div className="grid grid-cols-2 gap-4 mt-6">
-        <div className={`p-4 rounded-2xl ${isDark ? 'bg-emerald-950/20' : 'bg-emerald-50'}`}>
-          <p className="text-xs font-bold text-emerald-500 mb-1">Yes Pool</p>
-          <p className={`text-lg font-black ${isDark ? 'text-white' : 'text-slate-900'}`}>
-            {'$'}{yesPool.toLocaleString()}
-          </p>
-          <p className="text-[10px] text-slate-400 mt-0.5">
-            {totalPool > 0 ? ((yesPool / totalPool) * 100).toFixed(1) : '0'}% of total
-          </p>
-        </div>
-        <div className={`p-4 rounded-2xl ${isDark ? 'bg-rose-950/20' : 'bg-rose-50'}`}>
-          <p className="text-xs font-bold text-rose-500 mb-1">No Pool</p>
-          <p className={`text-lg font-black ${isDark ? 'text-white' : 'text-slate-900'}`}>
-            {'$'}{noPool.toLocaleString()}
-          </p>
-          <p className="text-[10px] text-slate-400 mt-0.5">
-            {totalPool > 0 ? ((noPool / totalPool) * 100).toFixed(1) : '0'}% of total
-          </p>
-        </div>
+        {ammPool ? (
+          <>
+            {/* AMM Liquidity & Volume */}
+            <div className={`p-4 rounded-2xl ${isDark ? 'bg-indigo-950/20' : 'bg-indigo-50'}`}>
+              <p className="text-xs font-bold text-indigo-500 mb-1">총 유동성</p>
+              <p className={`text-lg font-black ${isDark ? 'text-white' : 'text-slate-900'}`}>
+                {'$'}{ammPool.collateralLocked.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+              </p>
+              <p className="text-[10px] text-slate-400 mt-0.5">
+                Collateral Locked
+              </p>
+            </div>
+            <div className={`p-4 rounded-2xl ${isDark ? 'bg-purple-950/20' : 'bg-purple-50'}`}>
+              <p className="text-xs font-bold text-purple-500 mb-1">거래량</p>
+              <p className={`text-lg font-black ${isDark ? 'text-white' : 'text-slate-900'}`}>
+                {'$'}{ammPool.totalVolumeUsdc.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+              </p>
+              <p className="text-[10px] text-slate-400 mt-0.5">
+                Total Volume
+              </p>
+            </div>
+          </>
+        ) : (
+          <>
+            {/* Legacy Pool Statistics */}
+            <div className={`p-4 rounded-2xl ${isDark ? 'bg-emerald-950/20' : 'bg-emerald-50'}`}>
+              <p className="text-xs font-bold text-emerald-500 mb-1">Yes Pool</p>
+              <p className={`text-lg font-black ${isDark ? 'text-white' : 'text-slate-900'}`}>
+                {'$'}{yesPool.toLocaleString()}
+              </p>
+              <p className="text-[10px] text-slate-400 mt-0.5">
+                {totalPool > 0 ? ((yesPool / totalPool) * 100).toFixed(1) : '0'}% of total
+              </p>
+            </div>
+            <div className={`p-4 rounded-2xl ${isDark ? 'bg-rose-950/20' : 'bg-rose-50'}`}>
+              <p className="text-xs font-bold text-rose-500 mb-1">No Pool</p>
+              <p className={`text-lg font-black ${isDark ? 'text-white' : 'text-slate-900'}`}>
+                {'$'}{noPool.toLocaleString()}
+              </p>
+              <p className="text-[10px] text-slate-400 mt-0.5">
+                {totalPool > 0 ? ((noPool / totalPool) * 100).toFixed(1) : '0'}% of total
+              </p>
+            </div>
+          </>
+        )}
       </div>
     </div>
   );

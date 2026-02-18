@@ -8,6 +8,7 @@ import com.predata.backend.repository.AuditLogRepository
 import com.predata.backend.repository.QuestionRepository
 import com.predata.backend.repository.VoteCommitRepository
 import org.slf4j.LoggerFactory
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
 import org.springframework.scheduling.annotation.Scheduled
 import org.springframework.stereotype.Service
 import java.time.LocalDateTime
@@ -20,6 +21,11 @@ import java.time.ZoneOffset
  * - 스케줄러에서 5분마다 실행
  */
 @Service
+@ConditionalOnProperty(
+    name = ["app.scheduler.enabled"],
+    havingValue = "true",
+    matchIfMissing = true
+)
 class AlertService(
     private val questionRepository: QuestionRepository,
     private val voteCommitRepository: VoteCommitRepository,

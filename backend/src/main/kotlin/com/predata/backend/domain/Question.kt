@@ -100,6 +100,10 @@ data class Question(
     @Column(name = "phase", length = 20)
     var phase: QuestionPhase? = null,
 
+    @Enumerated(EnumType.STRING)
+    @Column(name = "execution_model", length = 20, nullable = false, columnDefinition = "VARCHAR(20) DEFAULT 'ORDERBOOK_LEGACY'")
+    var executionModel: ExecutionModel = ExecutionModel.ORDERBOOK_LEGACY,
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "match_id")
     val match: com.predata.backend.sports.domain.Match? = null
@@ -125,4 +129,9 @@ enum class MarketType {
 
 enum class FinalResult {
     YES, NO, PENDING
+}
+
+enum class ExecutionModel {
+    AMM_FPMM,          // AMM (Fixed Product Market Maker) 실행 모델
+    ORDERBOOK_LEGACY   // 레거시 오더북 실행 모델
 }

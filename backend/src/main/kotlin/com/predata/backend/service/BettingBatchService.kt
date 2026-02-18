@@ -2,6 +2,7 @@ package com.predata.backend.service
 
 import com.predata.backend.dto.BetOnChainData
 import org.slf4j.LoggerFactory
+import org.springframework.beans.factory.annotation.Value
 import org.springframework.scheduling.annotation.Scheduled
 import org.springframework.stereotype.Service
 import java.util.concurrent.ConcurrentLinkedQueue
@@ -12,7 +13,9 @@ import java.util.concurrent.ConcurrentLinkedQueue
  */
 @Service
 class BettingBatchService(
-    private val blockchainService: BlockchainService
+    private val blockchainService: BlockchainService,
+    @Value("\${app.scheduler.enabled:true}")
+    private val schedulerEnabled: Boolean
 ) {
     private val logger = LoggerFactory.getLogger(BettingBatchService::class.java)
     private val bettingQueue = ConcurrentLinkedQueue<PendingBet>()
@@ -34,6 +37,12 @@ class BettingBatchService(
      */
     @Scheduled(fixedDelay = 10000) // 10초마다
     fun processBatchBets() {
+        // 스케줄러 비활성화 체크
+        if (!schedulerEnabled) {
+            logger.debug("[BettingBatch] 스케줄러 비활성화됨 (app.scheduler.enabled=false)")
+            return
+        }
+
         if (bettingQueue.isEmpty()) {
             return
         }

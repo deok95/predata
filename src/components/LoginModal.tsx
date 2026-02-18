@@ -66,7 +66,7 @@ export default function LoginModal() {
 
   return (
     <div className={`min-h-screen flex flex-col items-center justify-center p-6 transition-all duration-500 ${isDark ? 'bg-slate-950' : 'bg-slate-50'}`}>
-      <div className="mb-12 scale-125">
+      <div className="mb-12 scale-125 w-full flex justify-center">
         <PredataLogo />
       </div>
 

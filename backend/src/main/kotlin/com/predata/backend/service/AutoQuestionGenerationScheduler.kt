@@ -3,10 +3,16 @@ package com.predata.backend.service
 import com.predata.backend.dto.BatchGenerateQuestionsRequest
 import org.slf4j.LoggerFactory
 import org.springframework.beans.factory.annotation.Value
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
 import org.springframework.scheduling.annotation.Scheduled
 import org.springframework.stereotype.Service
 
 @Service
+@ConditionalOnProperty(
+    name = ["app.scheduler.enabled"],
+    havingValue = "true",
+    matchIfMissing = true
+)
 class AutoQuestionGenerationScheduler(
     private val autoQuestionGenerationService: AutoQuestionGenerationService,
     private val settingsService: QuestionGenerationSettingsService,

@@ -48,6 +48,18 @@ body {
   font-family: Arial, Helvetica, sans-serif;
 }
 
+/* Hide native number input controls (some browsers show it like a checkbox/spinner). */
+input[type='number']::-webkit-outer-spin-button,
+input[type='number']::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+input[type='number'] {
+  -moz-appearance: textfield;
+  appearance: textfield;
+}
+
 /* ===== Custom scrollbar ===== */
 ::-webkit-scrollbar {
   width: 6px;

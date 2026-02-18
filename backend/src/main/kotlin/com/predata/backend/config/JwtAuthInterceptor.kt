@@ -43,6 +43,17 @@ class JwtAuthInterceptor(
             return true
         }
 
+        // Public AMM read endpoints (GET only)
+        if (request.method == "GET" && request.requestURI.matches(Regex("^/api/pool/\\d+$"))) {
+            return true
+        }
+        if (request.method == "GET" && request.requestURI.startsWith("/api/swap/simulate")) {
+            return true
+        }
+        if (request.method == "GET" && request.requestURI.matches(Regex("^/api/swap/price-history/\\d+$"))) {
+            return true
+        }
+
         val authHeader = request.getHeader("Authorization")
         if (authHeader == null || !authHeader.startsWith("Bearer ")) {
             writeError(response, HttpStatus.UNAUTHORIZED, "UNAUTHORIZED", "인증이 필요합니다.")

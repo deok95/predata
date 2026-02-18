@@ -119,13 +119,29 @@ export async function apiRequest<T>(endpoint: string, options?: RequestInit): Pr
 
     if (!response.ok) {
       if (response.status === 401 && typeof window !== 'undefined') {
-        const { clearAllAuthCookies } = await import('@/lib/cookieUtils');
-        localStorage.removeItem('predataUser');
-        localStorage.removeItem('token');
-        localStorage.removeItem('memberId');
-        clearAllAuthCookies();
-        if (window.location.pathname !== '/') {
-          window.location.href = '/';
+        // 게스트 체크: 게스트는 401이 발생해도 로그아웃하지 않음
+        const savedUser = localStorage.getItem('predataUser');
+        let isGuest = false;
+
+        if (savedUser) {
+          try {
+            const user = JSON.parse(savedUser);
+            isGuest = user.id < 0 || (user.email?.endsWith('@predata.demo') ?? false);
+          } catch {
+            // JSON 파싱 실패 시 게스트 아님
+          }
+        }
+
+        // 게스트가 아닌 경우에만 로그아웃 처리
+        if (!isGuest) {
+          const { clearAllAuthCookies } = await import('@/lib/cookieUtils');
+          localStorage.removeItem('predataUser');
+          localStorage.removeItem('token');
+          localStorage.removeItem('memberId');
+          clearAllAuthCookies();
+          if (window.location.pathname !== '/') {
+            window.location.href = '/';
+          }
         }
       }
 

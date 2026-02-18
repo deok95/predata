@@ -1,0 +1,15 @@
+# 테스트용 프로필: 스케줄러 및 폴링 비활성화
+# 실행 방법: ./gradlew bootRun --args='--spring.profiles.active=test-local'
+# 또는: SPRING_PROFILES_ACTIVE=test-local ./gradlew bootRun
+
+spring:
+  task:
+    scheduling:
+      enabled: false  # 전체 스케줄링 비활성화 (가장 강력한 방법)
+
+# 또는 스케줄러 개별 비활성화 (spring.task.scheduling.enabled=true일 때)
+app:
+  scheduler:
+    enabled: false  # 일반 스케줄러 비활성화
+  live-polling:
+    enabled: false  # LIVE 폴링 비활성화

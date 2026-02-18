@@ -31,7 +31,11 @@ class MatchSyncScheduler(
     @Value("\${sports.scheduler.no-match-sync-hour:12}")
     private val noMatchSyncHour: Int,
     @Value("\${sports.scheduler.zone:UTC}")
-    private val schedulerZone: String
+    private val schedulerZone: String,
+    @Value("\${app.scheduler.enabled:true}")
+    private val schedulerEnabled: Boolean,
+    @Value("\${app.live-polling.enabled:true}")
+    private val livePollingEnabled: Boolean
 ) {
 
     private val logger = LoggerFactory.getLogger(MatchSyncScheduler::class.java)
@@ -53,6 +57,12 @@ class MatchSyncScheduler(
     )
     @Transactional
     fun scheduledSyncCheck() {
+        // 스케줄러 비활성화 체크
+        if (!schedulerEnabled) {
+            logger.debug("[MatchSync] 스케줄러 비활성화됨 (app.scheduler.enabled=false)")
+            return
+        }
+
         val now = LocalDateTime.now(ZoneId.of(schedulerZone))
         val today = LocalDate.now(ZoneId.of(schedulerZone))
         val hour = now.hour
@@ -151,6 +161,18 @@ class MatchSyncScheduler(
     @Scheduled(fixedDelayString = "\${sports.scheduler.live-poll-interval-ms}")
     @Transactional
     fun pollLiveMatches(): LivePollResult {
+        // 스케줄러 비활성화 체크
+        if (!schedulerEnabled) {
+            logger.debug("[MatchSync] 스케줄러 비활성화됨 (app.scheduler.enabled=false)")
+            return LivePollResult(polled = 0, updated = 0, goalEvents = 0, finishedEvents = 0, cancelledEvents = 0)
+        }
+
+        // LIVE 폴링 비활성화 체크
+        if (!livePollingEnabled) {
+            logger.debug("[MatchSync] LIVE 폴링 비활성화됨 (app.live-polling.enabled=false)")
+            return LivePollResult(polled = 0, updated = 0, goalEvents = 0, finishedEvents = 0, cancelledEvents = 0)
+        }
+
         val now = LocalDateTime.now()
         val candidates = matchRepository.findPollCandidates(now)
 

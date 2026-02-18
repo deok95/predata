@@ -1,12 +1,18 @@
 package com.predata.backend.service
 
+import com.predata.backend.domain.Activity
+import com.predata.backend.domain.ActivityType
 import com.predata.backend.domain.Choice
-import com.predata.backend.domain.QuestionStatus
+import com.predata.backend.domain.ExecutionModel
 import com.predata.backend.domain.FinalResult
 import com.predata.backend.domain.OrderSide
+import com.predata.backend.domain.PoolStatus
+import com.predata.backend.domain.Question
+import com.predata.backend.domain.QuestionStatus
+import com.predata.backend.domain.ShareOutcome
 import com.predata.backend.repository.ActivityRepository
-import com.predata.backend.repository.QuestionRepository
 import com.predata.backend.repository.MemberRepository
+import com.predata.backend.repository.QuestionRepository
 import com.predata.backend.service.settlement.SettlementPolicyFactory
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
@@ -29,7 +35,9 @@ class SettlementService(
     private val resolutionAdapterRegistry: com.predata.backend.service.settlement.adapters.ResolutionAdapterRegistry,
     private val auditService: AuditService,
     private val feePoolService: FeePoolService,
-    private val voteRewardDistributionService: VoteRewardDistributionService
+    private val voteRewardDistributionService: VoteRewardDistributionService,
+    private val userSharesRepository: com.predata.backend.repository.amm.UserSharesRepository,
+    private val marketPoolRepository: com.predata.backend.repository.amm.MarketPoolRepository
 ) {
     private val logger = org.slf4j.LoggerFactory.getLogger(SettlementService::class.java)
 
@@ -179,17 +187,27 @@ class SettlementService(
             detail = "Settlement initiated: ${finalResult.name}"
         )
 
-        // Position 기준으로 정산 대상 확인
-        val positions = positionService.getPositionsByQuestionId(questionId)
-
-        if (positions.isEmpty()) {
-            throw IllegalStateException("정산 대상 포지션이 없습니다.")
+        // ExecutionModel에 따라 정산 대상 확인
+        val totalBets = when (question.executionModel) {
+            ExecutionModel.ORDERBOOK_LEGACY -> {
+                val positions = positionService.getPositionsByQuestionId(questionId)
+                if (positions.isEmpty()) {
+                    throw IllegalStateException("정산 대상 포지션이 없습니다.")
+                }
+                positions.size
+            }
+            ExecutionModel.AMM_FPMM -> {
+                marketPoolRepository.findById(questionId).orElseThrow {
+                    IllegalStateException("AMM 마켓 풀이 없습니다.")
+                }
+                userSharesRepository.findByQuestionId(questionId).size
+            }
         }
 
         return SettlementResult(
             questionId = questionId,
             finalResult = finalResult.name,
-            totalBets = positions.size,
+            totalBets = totalBets,
             totalWinners = 0,
             totalPayout = 0,
             voterRewards = 0,
@@ -222,6 +240,145 @@ class SettlementService(
         if (!skipDeadlineCheck && LocalDateTime.now().isBefore(question.disputeDeadline)) {
             throw IllegalStateException("이의 제기 기간이 아직 종료되지 않았습니다. (기한: ${question.disputeDeadline})")
         }
+
+        // execution_model에 따라 분기
+        return when (question.executionModel) {
+            ExecutionModel.AMM_FPMM -> finalizeAmmSettlement(question, skipDeadlineCheck)
+            ExecutionModel.ORDERBOOK_LEGACY -> finalizeOrderbookSettlement(question, skipDeadlineCheck)
+        }
+    }
+
+    /**
+     * AMM (FPMM) 정산 로직
+     * user_shares 기반으로 정산하고, 기존 오더북 로직과 완전히 분리됨
+     */
+    @Transactional
+    private fun finalizeAmmSettlement(question: Question, skipDeadlineCheck: Boolean): SettlementResult {
+        val questionId = question.id ?: throw IllegalStateException("Question ID is null")
+        val finalResult = question.finalResult
+
+        if (finalResult == FinalResult.PENDING) {
+            throw IllegalStateException("최종 결과가 확정되지 않아 정산을 확정할 수 없습니다.")
+        }
+
+        // 1) 결과 확인 - ShareOutcome으로 변환
+        val winningSide: ShareOutcome? = when (finalResult) {
+            FinalResult.YES -> ShareOutcome.YES
+            FinalResult.NO -> ShareOutcome.NO
+            // TODO: FinalResult enum에 DRAW, CANCELLED 추가 후 구현
+            // FinalResult.DRAW -> null
+            // FinalResult.CANCELLED -> null
+            else -> throw IllegalStateException("지원하지 않는 결과입니다: $finalResult")
+        }
+
+        // 2) 해당 question의 모든 user_shares 조회
+        val allShares = userSharesRepository.findByQuestionId(questionId)
+
+        var totalWinners = 0
+        var totalPayout = BigDecimal.ZERO
+
+        // 3) 정산 실행
+        allShares.forEach { userShare ->
+            val member = memberRepository.findById(userShare.memberId).orElse(null) ?: return@forEach
+
+            when {
+                // 승패가 있는 경우
+                winningSide != null -> {
+                    if (userShare.outcome == winningSide) {
+                        // 승자: 1 share = 1 USDC (수수료 없음, 스왑 시 이미 징수)
+                        val payout = userShare.shares.setScale(18, RoundingMode.DOWN)
+                        member.usdcBalance = member.usdcBalance.add(payout)
+
+                        // TransactionHistory 기록
+                        transactionHistoryService.record(
+                            memberId = userShare.memberId,
+                            type = "AMM_SETTLEMENT",
+                            amount = payout,
+                            balanceAfter = member.usdcBalance,
+                            description = "AMM 정산 승리 - Question #$questionId",
+                            questionId = questionId
+                        )
+
+                        // Activity 기록
+                        activityRepository.save(
+                            Activity(
+                                memberId = userShare.memberId,
+                                questionId = questionId,
+                                activityType = ActivityType.BET,
+                                choice = if (userShare.outcome == ShareOutcome.YES) Choice.YES else Choice.NO,
+                                amount = payout.toLong()
+                            )
+                        )
+
+                        totalWinners++
+                        totalPayout = totalPayout.add(payout)
+                    }
+                    // 패자: 아무것도 안 함 (shares 가치 = 0)
+                }
+
+                // TODO: DRAW 처리 (FinalResult enum 확장 필요)
+                // question.finalResult == FinalResult.DRAW -> {
+                //     val pool = marketPoolRepository.findById(questionId).orElse(null)
+                //     if (pool != null) {
+                //         val price = com.predata.backend.service.amm.FpmmMathEngine.calculatePrice(pool.yesShares, pool.noShares)
+                //         val sharePrice = if (userShare.outcome == ShareOutcome.YES) price.pYes else price.pNo
+                //         val refund = userShare.shares.multiply(sharePrice).setScale(18, RoundingMode.DOWN)
+                //         member.usdcBalance = member.usdcBalance.add(refund)
+                //     }
+                // }
+
+                // TODO: CANCELLED 처리 (FinalResult enum 확장 필요)
+                // question.finalResult == FinalResult.CANCELLED -> {
+                //     val refund = userShare.costBasisUsdc
+                //     member.usdcBalance = member.usdcBalance.add(refund)
+                // }
+            }
+
+            // shares를 0으로 마킹 (삭제하지 않음)
+            userShare.shares = BigDecimal.ZERO
+            userShare.costBasisUsdc = BigDecimal.ZERO
+            userSharesRepository.save(userShare)
+        }
+
+        // 4) 풀 상태 변경 및 collateralLocked 차감
+        val pool = marketPoolRepository.findById(questionId).orElse(null)
+        if (pool != null) {
+            val newLocked = pool.collateralLocked.subtract(totalPayout)
+                .setScale(18, RoundingMode.DOWN)
+            require(newLocked >= BigDecimal.ZERO) {
+                "인솔벤시 오류: payout=$totalPayout > collateralLocked=${pool.collateralLocked}"
+            }
+            pool.collateralLocked = newLocked
+            pool.status = PoolStatus.SETTLED
+            marketPoolRepository.save(pool)
+        }
+
+        // 5) 질문 상태 변경 및 disputeDeadline null로 설정 (이중 정산 방지)
+        question.status = QuestionStatus.SETTLED
+        question.disputeDeadline = null
+        questionRepository.save(question)
+
+        // 온체인 기록
+        blockchainService.settleQuestionOnChain(questionId, finalResult)
+
+        return SettlementResult(
+            questionId = questionId,
+            finalResult = finalResult.name,
+            totalBets = allShares.size,
+            totalWinners = totalWinners,
+            totalPayout = totalPayout.setScale(0, RoundingMode.DOWN).toLong(),
+            voterRewards = 0, // AMM은 voter rewards 없음
+            message = "AMM 정산이 확정되었습니다."
+        )
+    }
+
+    /**
+     * 오더북 정산 로직 (기존 로직)
+     * 기존 finalizeSettlement() 로직을 그대로 이동
+     */
+    @Transactional
+    private fun finalizeOrderbookSettlement(question: Question, skipDeadlineCheck: Boolean): SettlementResult {
+        val questionId = question.id ?: throw IllegalStateException("Question ID is null")
 
         val finalResult = question.finalResult
         if (finalResult == FinalResult.PENDING) {
