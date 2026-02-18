@@ -160,3 +160,7 @@ app:
     daily-cron: ${QUESTIONGEN_DAILY_CRON:0 5 0 * * *}
     legacy-interval-enabled: ${QUESTIONGEN_LEGACY_INTERVAL_ENABLED:false}
     trends-url: ${QUESTIONGEN_TRENDS_URL:https://trends.google.com/trends/api/dailytrends}
+
+  # 마켓메이커 설정
+  market-maker:
+    member-id: ${MARKET_MAKER_MEMBER_ID:1}  # 마켓메이커 계정 ID (DB에서 생성 필요)

@@ -32,7 +32,8 @@ class QuestionLifecycleService(
         // FSM 전환 검증
         val allowed = when (currentPhase) {
             VotingPhase.VOTING_COMMIT_OPEN -> newPhase == VotingPhase.VOTING_REVEAL_OPEN
-            VotingPhase.VOTING_REVEAL_OPEN -> newPhase == VotingPhase.BETTING_OPEN
+            VotingPhase.VOTING_REVEAL_OPEN -> newPhase == VotingPhase.VOTING_REVEAL_CLOSED || newPhase == VotingPhase.BETTING_OPEN
+            VotingPhase.VOTING_REVEAL_CLOSED -> newPhase == VotingPhase.BETTING_OPEN
             VotingPhase.BETTING_OPEN -> newPhase == VotingPhase.SETTLEMENT_PENDING
             VotingPhase.SETTLEMENT_PENDING -> newPhase == VotingPhase.SETTLED
             VotingPhase.SETTLED -> newPhase == VotingPhase.REWARD_DISTRIBUTED

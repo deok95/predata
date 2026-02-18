@@ -60,6 +60,14 @@ class OrderMatchingService(
     }
 
     private fun createOrderInternal(memberId: Long, request: CreateOrderRequest): CreateOrderResponse {
+        // 0. SELL 주문 임시 비활성화 (현재 YES BUY ↔ NO BUY 매칭 구조에서 SELL 정상 체결 불가)
+        if (request.direction == OrderDirection.SELL) {
+            return CreateOrderResponse(
+                success = false,
+                message = "매도 기능은 현재 준비 중입니다. 포지션 청산은 POST /api/redeem을 이용해주세요."
+            )
+        }
+
         // 1. 베팅 일시 중지 체크 (쿨다운)
         val suspensionStatus = bettingSuspensionService.isBettingSuspendedByQuestionId(request.questionId)
         if (suspensionStatus.suspended) {
@@ -84,6 +92,14 @@ class OrderMatchingService(
 
         // 3. 주문 타입 결정
         val orderType = request.orderType ?: OrderType.LIMIT  // 기본값: LIMIT
+
+        // 4. LIMIT 주문일 경우 price 필수 검증
+        if (orderType == OrderType.LIMIT && request.price == null) {
+            return CreateOrderResponse(
+                success = false,
+                message = "지정가 주문은 가격을 입력해야 합니다."
+            )
+        }
 
         // 2. 질문 상태 확인
         val question = questionRepository.findByIdWithLock(request.questionId)
@@ -142,13 +158,15 @@ class OrderMatchingService(
             )
         }
 
-        // 4. MARKET 주문일 경우 상대 오더북의 최우선 가격으로 체결
+        // 5. MARKET 주문일 경우 상대 오더북의 최우선 가격으로 체결
         val orderPrice = if (orderType == OrderType.MARKET) {
             // 상대 오더북에서 최우선 가격 가져오기
             val oppositeSide = if (request.side == OrderSide.YES) OrderSide.NO else OrderSide.YES
             val oppositeOrders = orderRepository.findMatchableOrdersWithLock(
                 questionId = request.questionId,
                 side = oppositeSide,
+                direction = OrderDirection.BUY,
+                excludeMemberId = memberId,
                 price = BigDecimal.ZERO  // 모든 가격 조회
             )
 
@@ -164,7 +182,8 @@ class OrderMatchingService(
             val oppositePrice = oppositeOrders.first().price
             BigDecimal.ONE.subtract(oppositePrice)  // 역가격 계산
         } else {
-            request.price
+            // LIMIT 주문: price는 이미 검증됨 (null이 아님)
+            request.price!!
         }
 
         // === BUY/SELL 분기 처리 ===
@@ -324,6 +343,8 @@ class OrderMatchingService(
         val matchableOrders = orderRepository.findMatchableOrdersWithLock(
             questionId = order.questionId,
             side = oppositeSide,
+            direction = OrderDirection.BUY,
+            excludeMemberId = order.memberId,
             price = oppositePrice
         )
 

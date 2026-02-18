@@ -18,10 +18,11 @@ data class CreateOrderRequest(
     @field:NotNull(message = "포지션(side)은 필수입니다")
     val side: OrderSide,  // YES or NO
 
-    @field:NotNull(message = "가격은 필수입니다")
+    // MARKET 주문일 경우 price는 optional (서버가 최적가로 체결)
+    // LIMIT 주문일 경우 price는 필수
     @field:DecimalMin(value = "0.01", message = "가격은 0.01 이상이어야 합니다")
     @field:DecimalMax(value = "0.99", message = "가격은 0.99 이하이어야 합니다")
-    val price: BigDecimal,
+    val price: BigDecimal? = null,
 
     @field:NotNull(message = "수량은 필수입니다")
     @field:Min(value = 1, message = "수량은 1 이상이어야 합니다")

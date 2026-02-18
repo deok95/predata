@@ -3,6 +3,7 @@ package com.predata.backend.service
 import com.predata.backend.domain.OrderSide
 import com.predata.backend.domain.MarketPosition
 import com.predata.backend.repository.PositionRepository
+import org.springframework.beans.factory.annotation.Value
 import org.springframework.dao.DataIntegrityViolationException
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
@@ -17,7 +18,8 @@ class PositionService(
     private val positionRepository: PositionRepository,
     private val auditService: AuditService,
     private val orderBookService: OrderBookService,
-    private val questionRepository: com.predata.backend.repository.QuestionRepository
+    private val questionRepository: com.predata.backend.repository.QuestionRepository,
+    @Value("\${app.market-maker.member-id}") private val marketMakerMemberId: Long
 ) {
 
     /**
@@ -97,6 +99,7 @@ class PositionService(
      * - 반대 체결 = 청산/리버설 (헤지 아님)
      * - 현금 이동 없음 (정산에서만 처리)
      * - 비관적 락으로 동시성 보장
+     * - 예외: 마켓메이커는 양쪽 포지션 보유 가능
      */
     @Transactional
     fun netPosition(
@@ -106,6 +109,12 @@ class PositionService(
         newQty: BigDecimal,
         newPrice: BigDecimal
     ) {
+        // 마켓메이커는 양쪽 포지션 보유 허용 (netting 정책 예외)
+        if (memberId == marketMakerMemberId) {
+            createOrUpdatePosition(memberId, questionId, newSide, newQty, newPrice)
+            return
+        }
+
         // 1. Get opposite side position with pessimistic lock
         // Note: 현재는 opposite position 하나만 락. 향후 양쪽 락 필요 시 YES→NO 순서로 고정 필요
         val oppositeSide = if (newSide == OrderSide.YES) OrderSide.NO else OrderSide.YES
@@ -352,6 +361,59 @@ class PositionService(
                 unrealizedPnL = unrealizedPnL,
                 createdAt = position.createdAt,
                 updatedAt = position.updatedAt
+            )
+        }
+    }
+
+    /**
+     * 시스템 전용: 초기 포지션 부여 (마켓메이커 시딩용)
+     * - 양쪽 포지션 정책 체크를 우회 (마켓메이커 전용)
+     * - 비관적 락으로 동시성 보장
+     * - avgPrice는 0으로 설정 (시딩용 포지션)
+     */
+    @Transactional
+    fun grantInitialPosition(
+        memberId: Long,
+        questionId: Long,
+        side: OrderSide,
+        qty: BigDecimal
+    ) {
+        val existingPosition = positionRepository.findByMemberIdAndQuestionIdAndSideForUpdate(
+            memberId, questionId, side
+        )
+
+        if (existingPosition != null) {
+            // 기존 포지션이 있으면 수량만 증가 (평균 가격은 0 유지)
+            existingPosition.quantity = existingPosition.quantity.add(qty)
+            existingPosition.updatedAt = LocalDateTime.now()
+            positionRepository.save(existingPosition)
+
+            auditService.log(
+                memberId = memberId,
+                action = com.predata.backend.domain.AuditAction.POSITION_UPDATE,
+                entityType = "POSITION",
+                entityId = existingPosition.id,
+                detail = "Market maker initial position increased: ${side} qty=${existingPosition.quantity}"
+            )
+        } else {
+            // 신규 포지션 생성 (평균 가격 0으로 시딩)
+            val newPosition = MarketPosition(
+                memberId = memberId,
+                questionId = questionId,
+                side = side,
+                quantity = qty,
+                reservedQuantity = BigDecimal.ZERO,
+                avgPrice = BigDecimal.ZERO,
+                settled = false
+            )
+            val savedPosition = positionRepository.save(newPosition)
+
+            auditService.log(
+                memberId = memberId,
+                action = com.predata.backend.domain.AuditAction.POSITION_UPDATE,
+                entityType = "POSITION",
+                entityId = savedPosition.id,
+                detail = "Market maker initial position granted: ${side} qty=${qty}"
             )
         }
     }

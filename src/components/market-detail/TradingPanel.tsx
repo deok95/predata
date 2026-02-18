@@ -41,6 +41,7 @@ export default function TradingPanel({ question, user, onTradeComplete, votedCho
   const [limitPrice, setLimitPrice] = useState('');
   const [loading, setLoading] = useState(false);
   const [showDepositModal, setShowDepositModal] = useState(false);
+  const [showAdvanced, setShowAdvanced] = useState(false);
   const [hasCommitted, setHasCommitted] = useState(false);
   const [committedChoice, setCommittedChoice] = useState<'YES' | 'NO' | null>(null);
   const [ticketStatus, setTicketStatus] = useState<TicketStatus | null>(null);
@@ -165,7 +166,7 @@ export default function TradingPanel({ question, user, onTradeComplete, votedCho
       const result = await orderApi.createOrder({
         questionId: question.id,
         side: selectedOutcome,
-        price: 0.5, // MARKET은 서버가 상대 호가로 가격을 결정하므로 placeholder(0.01~0.99)
+        // MARKET 주문은 price 불필요 (서버가 최적가로 체결)
         amount: Number(tradeAmount),
         direction: activeTab === 'buy' ? 'BUY' : 'SELL',
         orderType: 'MARKET',
@@ -355,17 +356,30 @@ export default function TradingPanel({ question, user, onTradeComplete, votedCho
     setTradeAmount(String(nextAmount));
   };
 
-  const estimatedProfit = tradeAmount && parseFloat(tradeAmount) > 0
+  // Polymarket 스타일 수익 계산
+  const tradeEstimates = tradeAmount && parseFloat(tradeAmount) > 0
     ? (() => {
-        const odds = selectedOutcome === 'YES' ? yesOdds : 100 - yesOdds;
-        if (odds <= 0) return '0.00';
+        const amount = parseFloat(tradeAmount);
+        const avgPrice = (selectedOutcome === 'YES' ? yesOdds : 100 - yesOdds) / 100;
+
+        if (avgPrice <= 0 || avgPrice >= 1) {
+          return { avgPrice: 0, shares: 0, toWin: 0, profit: 0 };
+        }
+
         if (activeTab === 'buy') {
-          return (parseFloat(tradeAmount) * (100 / odds) - parseFloat(tradeAmount)).toFixed(2);
+          const shares = amount / avgPrice;
+          const toWin = shares * 1.0; // 정답 시 $1 정산
+          const profit = toWin - amount;
+          return { avgPrice, shares, toWin, profit };
         } else {
           // Sell: 반대 포지션 수익 추정
           const oppositeOdds = selectedOutcome === 'YES' ? (100 - yesOdds) : yesOdds;
-          if (oppositeOdds <= 0) return '0.00';
-          return (parseFloat(tradeAmount) * (100 / oppositeOdds) - parseFloat(tradeAmount)).toFixed(2);
+          const oppositePrice = oppositeOdds / 100;
+          if (oppositePrice <= 0) return { avgPrice: 0, shares: 0, toWin: 0, profit: 0 };
+          const shares = amount / oppositePrice;
+          const toWin = shares * 1.0;
+          const profit = toWin - amount;
+          return { avgPrice: oppositePrice, shares, toWin, profit };
         }
       })()
     : null;
@@ -594,6 +608,12 @@ export default function TradingPanel({ question, user, onTradeComplete, votedCho
   }
 
   // BETTING status: Show full trading interface
+  // 포지션 체크 (Sell 탭 활성화 조건)
+  const hasAnyPosition = positions.length > 0 && positions.some(p => p.quantity > 0);
+
+  // SELL 임시 비활성화: 현재 YES BUY ↔ NO BUY 매칭 구조에서 SELL 정상 체결 불가
+  const sellTemporarilyDisabled = true;
+
   return (
     <div className={`p-6 rounded-[2.5rem] border sticky top-24 ${isDark ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-100 shadow-xl'}`}>
       <div className={`flex border-b mb-4 ${isDark ? 'border-slate-800' : 'border-slate-100'}`}>
@@ -604,34 +624,55 @@ export default function TradingPanel({ question, user, onTradeComplete, votedCho
           Buy
         </button>
         <button
-          onClick={() => setActiveTab('sell')}
-          className={`flex-1 pb-4 font-black text-sm transition-all ${activeTab === 'sell' ? 'border-b-4 border-rose-500 text-rose-500' : 'text-slate-400 hover:text-slate-300'}`}
+          onClick={() => {
+            if (!sellTemporarilyDisabled && hasAnyPosition) {
+              setActiveTab('sell');
+            }
+          }}
+          disabled={sellTemporarilyDisabled || !hasAnyPosition}
+          className={`flex-1 pb-4 font-black text-sm transition-all ${
+            activeTab === 'sell'
+              ? 'border-b-4 border-rose-500 text-rose-500'
+              : sellTemporarilyDisabled
+                ? 'text-slate-600 opacity-40 cursor-not-allowed'
+                : hasAnyPosition
+                  ? 'text-slate-400 hover:text-slate-300'
+                  : 'text-slate-600 opacity-40 cursor-not-allowed'
+          }`}
         >
-          Sell
+          Sell {sellTemporarilyDisabled ? '(준비 중)' : !hasAnyPosition ? '(No position)' : ''}
         </button>
       </div>
 
-      {/* Market / Limit 선택 */}
-      <div className="flex gap-2 mb-6">
+      {/* SELL 임시 비활성화 안내 */}
+      {sellTemporarilyDisabled && (
+        <div className={`mb-4 px-4 py-3 rounded-xl flex items-center gap-2 text-xs ${
+          isDark ? 'bg-amber-950/20 border border-amber-900/30 text-amber-400' : 'bg-amber-50 border border-amber-200 text-amber-700'
+        }`}>
+          <AlertTriangle size={14} />
+          <span>매도 기능은 현재 준비 중입니다. 포지션 청산은 리딤(Redeem) 기능을 이용해주세요.</span>
+        </div>
+      )}
+
+      {/* Advanced 토글 */}
+      <div className="mb-4">
         <button
-          onClick={() => setOrderType('market')}
-          className={`flex-1 py-2 rounded-xl text-xs font-bold transition-all ${
-            orderType === 'market'
+          onClick={() => {
+            setShowAdvanced(!showAdvanced);
+            if (!showAdvanced) {
+              setOrderType('limit');
+            } else {
+              setOrderType('market');
+              setLimitPrice('');
+            }
+          }}
+          className={`w-full py-2.5 rounded-xl text-xs font-bold transition-all ${
+            showAdvanced
               ? 'bg-indigo-600 text-white'
               : isDark ? 'bg-slate-800 text-slate-400 hover:bg-slate-700' : 'bg-slate-100 text-slate-500 hover:bg-slate-200'
           }`}
         >
-          Market
-        </button>
-        <button
-          onClick={() => setOrderType('limit')}
-          className={`flex-1 py-2 rounded-xl text-xs font-bold transition-all ${
-            orderType === 'limit'
-              ? 'bg-indigo-600 text-white'
-              : isDark ? 'bg-slate-800 text-slate-400 hover:bg-slate-700' : 'bg-slate-100 text-slate-500 hover:bg-slate-200'
-          }`}
-        >
-          Limit
+          {showAdvanced ? '✓ Advanced (Limit Orders)' : 'Advanced (Limit Orders)'}
         </button>
       </div>
 
@@ -721,8 +762,8 @@ export default function TradingPanel({ question, user, onTradeComplete, votedCho
         );
       })()}
 
-      {/* Limit Order 가격 입력 */}
-      {orderType === 'limit' && (
+      {/* Limit Order 가격 입력 (Advanced 모드일 때만) */}
+      {showAdvanced && (
         <div className="mb-4">
           <label className="text-xs font-bold text-slate-400 uppercase mb-2 block">Limit Price</label>
           <div className="relative">
@@ -785,16 +826,30 @@ export default function TradingPanel({ question, user, onTradeComplete, votedCho
         </div>
       </div>
 
-      {estimatedProfit && (
+      {tradeEstimates && (
         <div className={`rounded-2xl p-4 mb-6 ${isDark ? 'bg-indigo-950/20 border border-indigo-900/30' : 'bg-indigo-50'}`}>
-          <div className="flex justify-between text-sm mb-1">
-            <span className="text-slate-500">{activeTab === 'buy' ? '예상 수익' : '헤지 수익'}</span>
-            <span className="font-bold text-indigo-600">{'$'}{estimatedProfit}</span>
-          </div>
-          <div className="flex justify-between text-sm">
-            <span className="text-slate-500">예상 수익률</span>
+          <div className="flex justify-between text-sm mb-2">
+            <span className="text-slate-500">Avg price</span>
             <span className="font-bold text-indigo-600">
-              {parseFloat(tradeAmount) > 0 ? ((parseFloat(estimatedProfit) / parseFloat(tradeAmount)) * 100).toFixed(1) : '0.0'}%
+              {Math.round(tradeEstimates.avgPrice * 100)}¢
+            </span>
+          </div>
+          <div className="flex justify-between text-sm mb-2">
+            <span className="text-slate-500">Shares</span>
+            <span className="font-bold text-slate-700 dark:text-slate-300">
+              {tradeEstimates.shares.toFixed(2)}
+            </span>
+          </div>
+          <div className="flex justify-between text-sm mb-2">
+            <span className="text-slate-500">To win</span>
+            <span className="font-bold text-emerald-600">
+              ${tradeEstimates.toWin.toFixed(2)}
+            </span>
+          </div>
+          <div className="flex justify-between text-xs pt-2 border-t border-slate-200 dark:border-slate-700">
+            <span className="text-slate-400">Profit if correct</span>
+            <span className={`font-bold ${tradeEstimates.profit > 0 ? 'text-emerald-600' : 'text-slate-500'}`}>
+              {tradeEstimates.profit > 0 ? '+' : ''}${tradeEstimates.profit.toFixed(2)}
             </span>
           </div>
         </div>

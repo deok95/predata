@@ -29,6 +29,7 @@ function QuestionDetailContent() {
   const [refreshKey, setRefreshKey] = useState(0);
   const [isMockData, setIsMockData] = useState(false);
   const [loadError, setLoadError] = useState<{ status: number; message: string } | null>(null);
+  const [showTradingModal, setShowTradingModal] = useState(false);
 
   const fetchQuestion = useCallback(async () => {
     try {
@@ -107,6 +108,72 @@ function QuestionDetailContent() {
     refreshUser();
     setRefreshKey((k) => k + 1);
   };
+
+  // 스와이프 제스처로 뒤로가기/앞으로가기
+  useEffect(() => {
+    let touchStartX = 0;
+    let touchStartY = 0;
+    let touchStartTime = 0;
+    let touchEndX = 0;
+    let touchEndY = 0;
+    let touchEndTime = 0;
+
+    const handleTouchStart = (e: TouchEvent) => {
+      touchStartX = e.changedTouches[0].screenX;
+      touchStartY = e.changedTouches[0].screenY;
+      touchStartTime = Date.now();
+    };
+
+    const handleTouchEnd = (e: TouchEvent) => {
+      touchEndX = e.changedTouches[0].screenX;
+      touchEndY = e.changedTouches[0].screenY;
+      touchEndTime = Date.now();
+      handleSwipe();
+    };
+
+    const handleSwipe = () => {
+      const deltaX = touchEndX - touchStartX;
+      const deltaY = touchEndY - touchStartY;
+      const deltaTime = touchEndTime - touchStartTime;
+
+      const minSwipeDistance = 250; // 최소 스와이프 거리 (더욱 증가)
+      const maxSwipeTime = 400; // 최대 스와이프 시간 (ms) - 빠른 스와이프만
+      const minVelocity = 0.8; // 최소 스와이프 속도 (px/ms) - 더 빠르게
+      const maxVerticalDeviation = 50; // 최대 허용 수직 이탈 거리 (더 엄격)
+
+      // 수직으로 너무 많이 움직이면 스크롤로 간주
+      if (Math.abs(deltaY) > maxVerticalDeviation) {
+        return;
+      }
+
+      const velocity = Math.abs(deltaX) / deltaTime;
+      const isHorizontalSwipe = Math.abs(deltaX) > Math.abs(deltaY) * 3; // 수평:수직 비율 3:1 이상
+
+      // 조건: 충분한 거리 + 수평 스와이프 + 적절한 시간 + 충분한 속도
+      if (
+        Math.abs(deltaX) > minSwipeDistance &&
+        isHorizontalSwipe &&
+        deltaTime < maxSwipeTime &&
+        velocity > minVelocity
+      ) {
+        if (deltaX > 0) {
+          // 오른쪽 스와이프: 뒤로가기
+          window.history.back();
+        } else {
+          // 왼쪽 스와이프: 앞으로가기
+          window.history.forward();
+        }
+      }
+    };
+
+    document.addEventListener('touchstart', handleTouchStart, { passive: true });
+    document.addEventListener('touchend', handleTouchEnd, { passive: true });
+
+    return () => {
+      document.removeEventListener('touchstart', handleTouchStart);
+      document.removeEventListener('touchend', handleTouchEnd);
+    };
+  }, []);
 
   if (loading) {
     return (
@@ -377,43 +444,126 @@ function QuestionDetailContent() {
         </div>
       ) : (
         // 기존 베팅 레이아웃: 그리드
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-          <div className="lg:col-span-8 space-y-6">
-            <ProbabilityChart
-              yesPercent={yesPercent}
-              totalPool={question.totalBetPool}
-              yesPool={question.yesBetPool}
-              noPool={question.noBetPool}
-              questionId={question.id}
-              disableApi={isReadOnlyFallback}
-            />
-            {!isReadOnlyFallback && (
-              <OrderBook questionId={question.id} yesPercent={yesPercent} totalPool={question.totalBetPool} />
-            )}
-            {!isReadOnlyFallback && (
-              <ActivityFeed questionId={question.id} refreshKey={refreshKey} />
-            )}
-            {!isReadOnlyFallback && user && <MyBetsPanel questionId={question.id} />}
-          </div>
-          <div className="lg:col-span-4">
-            {user && !isReadOnlyFallback && (
-              <TradingPanel
-                question={question}
-                user={user}
-                onTradeComplete={handleTradeComplete}
-                votedChoice={getChoice(question.id)}
-                onVoted={(choice) => markVoted(question.id, choice)}
-              />
-            )}
-            {user && isReadOnlyFallback && (
-              <div className={`p-6 rounded-[2.5rem] border ${
-                isDark ? 'bg-slate-900 border-slate-800 text-slate-400' : 'bg-white border-slate-100 text-slate-600 shadow-xl'
-              }`}>
-                서버 마켓 데이터가 없어 거래 패널이 비활성화되었습니다.
+        <>
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+            {/* 모바일: 상단 / 데스크톱: 우측 패널 */}
+            <div className="order-1 lg:order-2 lg:col-span-4">
+              {/* 데스크톱: 우측 고정 패널 */}
+              <div className="hidden lg:block">
+                {user && !isReadOnlyFallback && (
+                  <TradingPanel
+                    question={question}
+                    user={user}
+                    onTradeComplete={handleTradeComplete}
+                    votedChoice={getChoice(question.id)}
+                    onVoted={(choice) => markVoted(question.id, choice)}
+                  />
+                )}
+                {user && isReadOnlyFallback && (
+                  <div className={`p-6 rounded-[2.5rem] border ${
+                    isDark ? 'bg-slate-900 border-slate-800 text-slate-400' : 'bg-white border-slate-100 text-slate-600 shadow-xl'
+                  }`}>
+                    서버 마켓 데이터가 없어 거래 패널이 비활성화되었습니다.
+                  </div>
+                )}
               </div>
-            )}
+
+              {/* 모바일: 상단 패널 */}
+              <div className="lg:hidden">
+                {user && !isReadOnlyFallback && (
+                  <TradingPanel
+                    question={question}
+                    user={user}
+                    onTradeComplete={handleTradeComplete}
+                    votedChoice={getChoice(question.id)}
+                    onVoted={(choice) => markVoted(question.id, choice)}
+                  />
+                )}
+              </div>
+            </div>
+
+            {/* 모바일: 하단 / 데스크톱: 좌측 메인 컨텐츠 */}
+            <div className="order-2 lg:order-1 lg:col-span-8 space-y-6 pb-20 lg:pb-0">
+              <ProbabilityChart
+                yesPercent={yesPercent}
+                totalPool={question.totalBetPool}
+                yesPool={question.yesBetPool}
+                noPool={question.noBetPool}
+                questionId={question.id}
+                disableApi={isReadOnlyFallback}
+              />
+              {!isReadOnlyFallback && (
+                <OrderBook questionId={question.id} yesPercent={yesPercent} totalPool={question.totalBetPool} />
+              )}
+              {!isReadOnlyFallback && (
+                <ActivityFeed questionId={question.id} refreshKey={refreshKey} />
+              )}
+              {!isReadOnlyFallback && user && <MyBetsPanel questionId={question.id} />}
+            </div>
           </div>
-        </div>
+
+          {/* 모바일: 하단 고정 버튼 */}
+          {user && !isReadOnlyFallback && (
+            <div className="lg:hidden fixed bottom-0 left-0 right-0 z-50">
+              <div className={`grid grid-cols-2 gap-2 p-4 border-t ${
+                isDark ? 'bg-slate-950/95 border-slate-800 backdrop-blur-xl' : 'bg-white/95 border-slate-200 backdrop-blur-xl'
+              }`}>
+                <button
+                  onClick={() => setShowTradingModal(true)}
+                  className="py-3 px-4 rounded-xl font-bold text-sm bg-emerald-500 hover:bg-emerald-600 text-white transition"
+                >
+                  Buy {yesPercent}%
+                </button>
+                <button
+                  onClick={() => setShowTradingModal(true)}
+                  className="py-3 px-4 rounded-xl font-bold text-sm bg-rose-500 hover:bg-rose-600 text-white transition"
+                >
+                  Sell {100 - yesPercent}%
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* 모바일: TradingPanel 모달 */}
+          {showTradingModal && user && (
+            <div className="lg:hidden fixed inset-0 z-[100] flex items-end animate-fade-in">
+              <div
+                className="absolute inset-0 bg-black/50 backdrop-blur-sm"
+                onClick={() => setShowTradingModal(false)}
+              />
+              <div
+                className={`relative w-full rounded-t-3xl overflow-hidden transform transition-transform duration-300 ease-out ${
+                  isDark ? 'bg-slate-900' : 'bg-white'
+                }`}
+                style={{ animation: 'slideUp 0.3s ease-out' }}
+              >
+                <div className="max-h-[85vh] overflow-y-auto">
+                  <TradingPanel
+                    question={question}
+                    user={user}
+                    onTradeComplete={() => {
+                      handleTradeComplete();
+                      setShowTradingModal(false);
+                    }}
+                    votedChoice={getChoice(question.id)}
+                    onVoted={(choice) => markVoted(question.id, choice)}
+                  />
+                </div>
+              </div>
+            </div>
+          )}
+
+          <style jsx>{`
+            @keyframes slideUp {
+              from {
+                transform: translateY(100%);
+              }
+              to {
+                transform: translateY(0);
+              }
+            }
+          `}</style>
+        </>
       )}
     </div>
   );
