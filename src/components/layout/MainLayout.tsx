@@ -48,9 +48,9 @@ export default function MainLayout({ children }: { children: React.ReactNode }) 
         ) : (
           <div className={`min-h-screen flex font-sans transition-colors duration-300 ${isDark ? 'bg-slate-950 text-slate-50' : 'bg-[#FDFDFD] text-slate-900'}`}>
             <Sidebar user={user} onLogout={logout} />
-            <main className="flex-1 flex flex-col min-w-0 h-screen overflow-hidden">
+            <main className="flex-1 flex flex-col min-w-0">
               <AppHeader />
-              <div className="flex-1 overflow-y-auto p-8 custom-scrollbar">
+              <div className="flex-1 overflow-y-auto p-4 lg:p-8 pb-20 lg:pb-8 custom-scrollbar">
                 {children}
               </div>
             </main>

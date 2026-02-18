@@ -106,7 +106,7 @@ export default function MarketCard({ question, votedChoice }: MarketCardProps) {
 
   return (
     <Link href={`/question/${question.id}`}>
-      <div className={`p-6 rounded-3xl border transition-all hover:shadow-xl hover:-translate-y-1 cursor-pointer group ${isDark ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-100'}`}>
+      <div className={`p-4 lg:p-6 rounded-3xl border transition-all hover:shadow-xl hover:-translate-y-1 cursor-pointer group ${isDark ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-100'}`}>
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center space-x-2">
             {isHot && <span className="bg-rose-500 text-white text-[10px] font-black px-2 py-1 rounded-full">HOT</span>}
@@ -130,7 +130,7 @@ export default function MarketCard({ question, votedChoice }: MarketCardProps) {
           </div>
         </div>
 
-        <h3 className={`text-lg font-black mb-4 leading-tight line-clamp-2 ${isDark ? 'text-white' : 'text-slate-900'}`}>
+        <h3 className={`text-base lg:text-lg font-black mb-4 leading-tight line-clamp-2 ${isDark ? 'text-white' : 'text-slate-900'}`}>
           {question.title}
         </h3>
 
@@ -151,7 +151,7 @@ export default function MarketCard({ question, votedChoice }: MarketCardProps) {
         )}
         {question.status === 'VOTING' && (
           <div className="mb-4">
-            <div className={`text-center py-4 rounded-xl ${isDark ? 'bg-blue-600/20 border border-blue-500/40' : 'bg-blue-100 border border-blue-300'}`}>
+            <div className={`text-center py-3 lg:py-4 rounded-xl ${isDark ? 'bg-blue-600/20 border border-blue-500/40' : 'bg-blue-100 border border-blue-300'}`}>
               <span className="text-blue-600 font-bold text-sm">참여하기 →</span>
             </div>
           </div>

@@ -20,6 +20,8 @@ export function mapQuestion(raw: Record<string, unknown>): Question {
     bettingEndAt: raw.bettingEndAt as string,
     expiredAt: (raw.expiredAt as string | undefined) || (raw.expiresAt as string | undefined) || '',
     createdAt: raw.createdAt as string,
+    viewCount: Number(raw.viewCount ?? 0),
+    matchId: raw.matchId ? Number(raw.matchId) : undefined,
   };
 }
 

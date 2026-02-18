@@ -21,7 +21,7 @@ interface TradeRepository : JpaRepository<Trade, Long> {
     /**
      * 특정 주문의 체결 기록 조회
      */
-    fun findByBuyOrderIdOrSellOrderId(buyOrderId: Long, sellOrderId: Long): List<Trade>
+    fun findByTakerOrderIdOrMakerOrderId(takerOrderId: Long, makerOrderId: Long): List<Trade>
 
     /**
      * 특정 기간 이후의 거래 건수 조회 (서킷 브레이커용)

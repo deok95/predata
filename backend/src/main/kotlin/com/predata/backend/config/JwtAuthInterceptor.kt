@@ -33,6 +33,11 @@ class JwtAuthInterceptor(
             return true
         }
 
+        // POST /api/questions/{id}/view 는 공개 엔드포인트 (조회수 집계) - 인증 제외
+        if (request.method == "POST" && request.requestURI.matches(Regex("^/api/questions/\\d+/view$"))) {
+            return true
+        }
+
         // GET /api/members/{숫자ID} 패턴만 인증 제외 (me, by-email 등은 인증 필요)
         if (request.method == "GET" && request.requestURI.matches(Regex("^/api/members/\\d+$"))) {
             return true

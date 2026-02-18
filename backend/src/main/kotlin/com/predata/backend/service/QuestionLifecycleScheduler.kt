@@ -24,6 +24,7 @@ class QuestionLifecycleScheduler(
     private val questionRepository: QuestionRepository,
     private val activityRepository: ActivityRepository,
     private val settlementService: SettlementService,
+    private val marketMakerService: MarketMakerService,
     @Value("\${anthropic.api.key:}") private val apiKey: String
 ) {
     private val logger = LoggerFactory.getLogger(QuestionLifecycleScheduler::class.java)
@@ -120,6 +121,14 @@ class QuestionLifecycleScheduler(
                         "[Lifecycle] 질문 #{} '{}' → BETTING (초기 풀: YES={}, NO={})",
                         locked.id, locked.title, locked.initialYesPool, locked.initialNoPool
                     )
+
+                    // 마켓메이커 오더북 시딩 (실패해도 전환은 성공해야 함)
+                    try {
+                        marketMakerService.seedOrderBookIfNeeded(locked.id!!)
+                        logger.info("[Lifecycle] 질문 #{} 마켓메이커 시딩 완료", locked.id)
+                    } catch (seedError: Exception) {
+                        logger.error("[Lifecycle] 질문 #{} 마켓메이커 시딩 실패 (계속 진행): {}", locked.id, seedError.message)
+                    }
                 }
             } catch (e: Exception) {
                 logger.error("[Lifecycle] 질문 #{} BETTING 전환 실패: {}", question.id, e.message)

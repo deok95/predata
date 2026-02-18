@@ -1,17 +1,19 @@
 'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
-import { Search, Sun, Moon, Bell, X, UserPlus } from 'lucide-react';
+import { Search, Bell, X, UserPlus, User } from 'lucide-react';
 import { useTheme } from '@/hooks/useTheme';
 import { useAuth } from '@/hooks/useAuth';
 import { useRegisterModal } from '@/components/RegisterModal';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import { mockQuestions } from '@/lib/mockData';
-import { questionApi } from '@/lib/api';
-import type { Question } from '@/types/api';
+import { questionApi, notificationApi } from '@/lib/api';
+import type { Question, Notification } from '@/types/api';
+import PredataLogo from '@/components/ui/PredataLogo';
 
 export default function AppHeader() {
-  const { isDark, toggleTheme } = useTheme();
+  const { isDark } = useTheme();
   const { user, isGuest } = useAuth();
   const { open: openRegister } = useRegisterModal();
   const router = useRouter();
@@ -19,7 +21,8 @@ export default function AppHeader() {
   const [searchResults, setSearchResults] = useState<Question[]>([]);
   const [showResults, setShowResults] = useState(false);
   const [allQuestions, setAllQuestions] = useState<Question[]>([]);
-  const [notifications, setNotifications] = useState<NotificationItem[]>(getDefaultNotifications());
+  const [notifications, setNotifications] = useState<Notification[]>([]);
+  const [notificationsLoading, setNotificationsLoading] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
   const searchRef = useRef<HTMLDivElement>(null);
   const notiRef = useRef<HTMLDivElement>(null);
@@ -31,6 +34,28 @@ export default function AppHeader() {
       else setAllQuestions(mockQuestions);
     }).catch(() => setAllQuestions(mockQuestions));
   }, []);
+
+  // 알림 목록 로드
+  useEffect(() => {
+    if (!user || isGuest) {
+      setNotifications([]);
+      return;
+    }
+
+    setNotificationsLoading(true);
+    notificationApi.getAll(user.id)
+      .then(res => {
+        if (res.success && res.data) {
+          setNotifications(res.data);
+        }
+      })
+      .catch(() => {
+        // Silently fail, keep empty notifications
+      })
+      .finally(() => {
+        setNotificationsLoading(false);
+      });
+  }, [user, isGuest]);
 
   // 검색 필터
   useEffect(() => {
@@ -66,20 +91,61 @@ export default function AppHeader() {
     setShowResults(false);
   };
 
-  const unreadCount = notifications.filter(n => !n.read).length;
+  const timeAgo = (dateStr: string): string => {
+    const now = new Date();
+    const date = new Date(dateStr);
+    const diff = Math.floor((now.getTime() - date.getTime()) / 1000);
 
-  const markAllRead = () => {
-    setNotifications(prev => prev.map(n => ({ ...n, read: true })));
+    if (diff < 60) return '방금 전';
+    if (diff < 3600) return `${Math.floor(diff / 60)}분 전`;
+    if (diff < 86400) return `${Math.floor(diff / 3600)}시간 전`;
+    return `${Math.floor(diff / 86400)}일 전`;
   };
 
-  const displayAddress = user?.walletAddress
-    ? `${user.walletAddress.slice(0, 6)}...${user.walletAddress.slice(-4)}`
-    : user?.email || '';
+  const unreadCount = notifications.filter(n => !n.isRead).length;
+
+  const markAllRead = async () => {
+    if (!user) return;
+    try {
+      await notificationApi.markAllAsRead(user.id);
+      setNotifications(prev => prev.map(n => ({ ...n, isRead: true })));
+    } catch (e) {
+      // Silently fail
+    }
+  };
+
+  const handleNotificationClick = async (notification: Notification) => {
+    // Mark as read if unread
+    if (!notification.isRead) {
+      try {
+        await notificationApi.markAsRead(notification.id);
+        setNotifications(prev => prev.map(n =>
+          n.id === notification.id ? { ...n, isRead: true } : n
+        ));
+      } catch (e) {
+        // Silently fail
+      }
+    }
+
+    // Navigate to related question if exists
+    if (notification.relatedQuestionId) {
+      router.push(`/question/${notification.relatedQuestionId}`);
+      setShowNotifications(false);
+    }
+  };
 
   return (
-    <header className={`h-20 border-b px-8 flex items-center justify-between sticky top-0 z-40 transition-all ${isDark ? 'bg-slate-950/80 border-slate-800 backdrop-blur-md' : 'bg-white/80 border-slate-100 backdrop-blur-md'}`}>
-      <div ref={searchRef} className="flex-1 max-w-xl relative hidden md:block">
-        <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
+    <header className={`h-16 lg:h-20 border-b px-4 lg:px-8 flex items-center justify-between sticky top-0 z-40 transition-all ${isDark ? 'bg-slate-950/80 border-slate-800 backdrop-blur-md' : 'bg-white/80 border-slate-100 backdrop-blur-md'}`}>
+      {/* Left: Logo */}
+      <div className="flex items-center flex-shrink-0">
+        <Link href="/">
+          <PredataLogo iconOnly className="w-8 h-8 lg:w-10 lg:h-10" />
+        </Link>
+      </div>
+
+      {/* Center: Search Bar */}
+      <div ref={searchRef} className="flex-1 mx-2 lg:mx-4 max-w-xl relative">
+        <Search className="absolute left-3 lg:left-4 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
         <input
           type="text"
           value={searchQuery}
@@ -89,11 +155,11 @@ export default function AppHeader() {
           }}
           onFocus={() => searchQuery.trim() && setShowResults(true)}
           placeholder="마켓 검색..."
-          className={`w-full border-none rounded-2xl py-3.5 pl-12 pr-10 text-sm focus:ring-2 focus:ring-indigo-500/20 transition-all ${isDark ? 'bg-slate-900 text-slate-200' : 'bg-slate-50 text-slate-900'}`}
+          className={`w-full border-none rounded-2xl py-2.5 lg:py-3.5 pl-9 lg:pl-12 pr-8 lg:pr-10 text-xs lg:text-sm focus:ring-2 focus:ring-indigo-500/20 transition-all ${isDark ? 'bg-slate-900 text-slate-200' : 'bg-slate-50 text-slate-900'}`}
         />
         {searchQuery && (
-          <button onClick={() => { setSearchQuery(''); setShowResults(false); }} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-300">
-            <X size={16} />
+          <button onClick={() => { setSearchQuery(''); setShowResults(false); }} className="absolute right-2 lg:right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-300">
+            <X size={14} />
           </button>
         )}
 
@@ -127,13 +193,8 @@ export default function AppHeader() {
         )}
       </div>
 
-      <div className="flex items-center space-x-4">
-        <button
-          onClick={toggleTheme}
-          className={`p-3 rounded-xl transition-all ${isDark ? 'bg-slate-800 text-amber-400 hover:bg-slate-700' : 'bg-slate-50 text-slate-400 hover:bg-slate-100'}`}
-        >
-          {isDark ? <Sun size={20} /> : <Moon size={20} />}
-        </button>
+      {/* Right: Notifications + User */}
+      <div className="flex items-center space-x-3 flex-shrink-0">
 
         <div ref={notiRef} className="relative">
           <button
@@ -149,7 +210,7 @@ export default function AppHeader() {
           </button>
 
           {showNotifications && (
-            <div className={`absolute right-0 top-full mt-2 w-80 rounded-2xl border shadow-2xl overflow-hidden z-50 ${isDark ? 'bg-slate-900 border-slate-700' : 'bg-white border-slate-200'}`}>
+            <div className={`fixed left-4 right-4 top-16 max-h-[70vh] overflow-y-auto lg:absolute lg:left-auto lg:right-0 lg:top-full lg:mt-2 lg:w-80 lg:max-h-none lg:overflow-visible rounded-2xl border shadow-2xl z-50 ${isDark ? 'bg-slate-900 border-slate-700' : 'bg-white border-slate-200'}`}>
               <div className={`flex items-center justify-between px-5 py-3 border-b ${isDark ? 'border-slate-800' : 'border-slate-100'}`}>
                 <h4 className={`font-black text-sm ${isDark ? 'text-white' : 'text-slate-900'}`}>알림</h4>
                 {unreadCount > 0 && (
@@ -159,21 +220,32 @@ export default function AppHeader() {
                 )}
               </div>
               <div className="max-h-72 overflow-y-auto">
-                {notifications.length > 0 ? notifications.map((noti) => (
-                  <div
-                    key={noti.id}
-                    className={`px-5 py-3 border-b last:border-b-0 transition-all ${
-                      isDark
-                        ? `border-slate-800 ${noti.read ? '' : 'bg-slate-800/50'}`
-                        : `border-slate-50 ${noti.read ? '' : 'bg-indigo-50/50'}`
-                    }`}
-                  >
-                    <p className={`text-xs font-bold ${isDark ? 'text-white' : 'text-slate-900'}`}>{noti.title}</p>
-                    <p className="text-[11px] text-slate-400 mt-0.5">{noti.message}</p>
-                    <p className="text-[10px] text-slate-500 mt-1">{noti.time}</p>
+                {notificationsLoading ? (
+                  <div className="px-5 py-8 text-center">
+                    <div className="w-8 h-8 border-2 border-indigo-600 border-t-transparent rounded-full animate-spin mx-auto" />
                   </div>
-                )) : (
-                  <div className="px-5 py-8 text-center text-sm text-slate-400">알림이 없습니다</div>
+                ) : notifications.length > 0 ? (
+                  notifications.map((noti) => (
+                    <button
+                      key={noti.id}
+                      onClick={() => handleNotificationClick(noti)}
+                      className={`w-full px-5 py-3 border-b last:border-b-0 transition-all text-left ${
+                        isDark
+                          ? `border-slate-800 ${noti.isRead ? '' : 'bg-slate-800/50'} hover:bg-slate-800`
+                          : `border-slate-50 ${noti.isRead ? '' : 'bg-indigo-50/50'} hover:bg-slate-50`
+                      } ${noti.relatedQuestionId ? 'cursor-pointer' : 'cursor-default'}`}
+                    >
+                      <p className={`text-xs font-bold ${isDark ? 'text-white' : 'text-slate-900'}`}>
+                        {noti.title}
+                      </p>
+                      <p className="text-[11px] text-slate-400 mt-0.5">{noti.message}</p>
+                      <p className="text-[10px] text-slate-500 mt-1">{timeAgo(noti.createdAt)}</p>
+                    </button>
+                  ))
+                ) : (
+                  <div className="px-5 py-8 text-center text-sm text-slate-400">
+                    알림이 없습니다
+                  </div>
                 )}
               </div>
             </div>
@@ -189,29 +261,15 @@ export default function AppHeader() {
             <span className="hidden lg:block">회원가입</span>
           </button>
         ) : (
-          <div className={`flex items-center space-x-3 border pl-2 pr-4 py-1.5 rounded-2xl transition-all ${isDark ? 'bg-slate-900 border-slate-700' : 'bg-white border-slate-200 shadow-sm'}`}>
-            <div className="w-8 h-8 bg-indigo-600 rounded-lg flex items-center justify-center text-[10px] text-white font-bold">P</div>
-            <p className="text-xs font-bold font-mono truncate max-w-[120px]">{displayAddress}</p>
-          </div>
+          <button
+            onClick={() => router.push('/my-page')}
+            className={`p-3 rounded-xl transition-all ${isDark ? 'bg-slate-800 text-indigo-400 hover:bg-slate-700' : 'bg-slate-100 text-indigo-600 hover:bg-slate-200'}`}
+            title="마이페이지"
+          >
+            <User size={20} />
+          </button>
         )}
       </div>
     </header>
   );
-}
-
-interface NotificationItem {
-  id: number;
-  title: string;
-  message: string;
-  time: string;
-  read: boolean;
-}
-
-function getDefaultNotifications(): NotificationItem[] {
-  return [
-    { id: 1, title: '정산 완료', message: '"비트코인 $100K 돌파" 마켓이 정산되었습니다. +$2,400', time: '2분 전', read: false },
-    { id: 2, title: '새 마켓 오픈', message: '"2025 챔피언스리그 우승팀은?" 마켓이 열렸습니다.', time: '15분 전', read: false },
-    { id: 3, title: '투표 보상', message: '일일 투표를 완료했습니다. 정확도 보너스: +$50', time: '1시간 전', read: true },
-    { id: 4, title: '티어 승급', message: 'BRONZE에서 SILVER로 승급했습니다!', time: '3시간 전', read: true },
-  ];
 }

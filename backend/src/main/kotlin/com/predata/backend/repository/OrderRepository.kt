@@ -1,6 +1,7 @@
 package com.predata.backend.repository
 
 import com.predata.backend.domain.Order
+import com.predata.backend.domain.OrderDirection
 import com.predata.backend.domain.OrderSide
 import com.predata.backend.domain.OrderStatus
 import org.springframework.data.jpa.repository.JpaRepository
@@ -20,7 +21,7 @@ interface OrderRepository : JpaRepository<Order, Long> {
     @Query("""
         SELECT o FROM Order o
         WHERE o.questionId = :questionId
-        AND o.side = 'YES' AND o.orderType = 'LIMIT'
+        AND o.side = 'YES' AND o.direction = 'BUY' AND o.orderType = 'LIMIT'
         AND o.status IN ('OPEN', 'PARTIAL')
         ORDER BY o.price DESC, o.createdAt ASC
     """)
@@ -33,9 +34,9 @@ interface OrderRepository : JpaRepository<Order, Long> {
     @Query("""
         SELECT o FROM Order o
         WHERE o.questionId = :questionId
-        AND o.side = 'NO' AND o.orderType = 'LIMIT'
+        AND o.side = 'NO' AND o.direction = 'BUY' AND o.orderType = 'LIMIT'
         AND o.status IN ('OPEN', 'PARTIAL')
-        ORDER BY o.price ASC, o.createdAt ASC
+        ORDER BY o.price DESC, o.createdAt ASC
     """)
     fun findNoAsks(questionId: Long): List<Order>
 
@@ -50,12 +51,16 @@ interface OrderRepository : JpaRepository<Order, Long> {
         WHERE o.questionId = :questionId
         AND o.side = :side AND o.orderType = 'LIMIT'
         AND o.status IN ('OPEN', 'PARTIAL')
+        AND o.direction = :direction
+        AND o.memberId <> :excludeMemberId
         AND o.price >= :price
         ORDER BY o.price DESC, o.createdAt ASC
     """)
     fun findMatchableOrdersWithLock(
         questionId: Long,
         side: OrderSide,
+        direction: OrderDirection,
+        excludeMemberId: Long,
         price: BigDecimal
     ): List<Order>
 
@@ -80,4 +85,34 @@ interface OrderRepository : JpaRepository<Order, Long> {
      * 회원의 특정 질문에 대한 주문 조회
      */
     fun findByMemberIdAndQuestionId(memberId: Long, questionId: Long): List<Order>
+
+    /**
+     * 특정 회원의 특정 질문/side/direction/status에 해당하는 주문의 remaining_amount 합계 조회
+     * SELL 초과판매 방지용: OPEN 상태 SELL 주문 합산
+     */
+    @Query("""
+        SELECT COALESCE(SUM(o.remainingAmount), 0)
+        FROM Order o
+        WHERE o.memberId = :memberId
+        AND o.questionId = :questionId
+        AND o.side = :side
+        AND o.direction = :direction
+        AND o.status IN :statuses
+    """)
+    fun sumRemainingAmountByMemberAndQuestionAndSideAndDirectionAndStatuses(
+        memberId: Long,
+        questionId: Long,
+        side: OrderSide,
+        direction: com.predata.backend.domain.OrderDirection,
+        statuses: List<OrderStatus>
+    ): Long
+
+    /**
+     * 마켓메이커 시딩 중복 방지: 특정 회원의 특정 질문에 OPEN 또는 PARTIAL 상태 주문이 있는지 확인
+     */
+    fun existsByQuestionIdAndMemberIdAndStatusIn(
+        questionId: Long,
+        memberId: Long,
+        statuses: List<OrderStatus>
+    ): Boolean
 }

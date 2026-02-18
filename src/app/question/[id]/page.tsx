@@ -16,6 +16,7 @@ import { mockQuestions } from '@/lib/mockData';
 import { useAuth } from '@/hooks/useAuth';
 import { useVotedQuestions } from '@/hooks/useVotedQuestions';
 import type { Question } from '@/types/api';
+import { ApiError } from '@/lib/api/core';
 
 function QuestionDetailContent() {
   const { isDark } = useTheme();
@@ -27,6 +28,8 @@ function QuestionDetailContent() {
   const [loading, setLoading] = useState(true);
   const [refreshKey, setRefreshKey] = useState(0);
   const [isMockData, setIsMockData] = useState(false);
+  const [loadError, setLoadError] = useState<{ status: number; message: string } | null>(null);
+  const [showTradingModal, setShowTradingModal] = useState(false);
 
   const fetchQuestion = useCallback(async () => {
     try {
@@ -34,15 +37,38 @@ function QuestionDetailContent() {
       if (response.success && response.data) {
         setQuestion(response.data);
         setIsMockData(false);
+        setLoadError(null); // 성공 시 에러 초기화
       } else {
         const mock = mockQuestions.find(q => q.id === questionId) || null;
         setQuestion(mock);
         setIsMockData(true);
+        setLoadError(null);
       }
-    } catch {
-      const mock = mockQuestions.find(q => q.id === questionId) || null;
-      setQuestion(mock);
-      setIsMockData(true);
+    } catch (error) {
+      // ApiError인 경우 status 코드로 분기
+      if (error instanceof ApiError) {
+        if (error.status === 404) {
+          // 404: 질문이 존재하지 않음 → mock 데이터로 전환
+          const mock = mockQuestions.find(q => q.id === questionId) || null;
+          setQuestion(mock);
+          setIsMockData(true);
+          setLoadError(null);
+        } else {
+          // 429, 5xx, 408(timeout) 등: 일시적 에러 → 기존 데이터 유지
+          setLoadError({
+            status: error.status,
+            message: error.message
+          });
+          // isMockData는 변경하지 않음
+          // question도 기존 값 유지 (최초 로딩이면 null 유지)
+        }
+      } else {
+        // 네트워크 에러 등 예상치 못한 에러
+        setLoadError({
+          status: 0,
+          message: error instanceof Error ? error.message : '알 수 없는 오류가 발생했습니다.'
+        });
+      }
     } finally {
       setLoading(false);
     }
@@ -52,6 +78,21 @@ function QuestionDetailContent() {
     if (questionId && !isNaN(questionId)) fetchQuestion();
     else setLoading(false);
   }, [questionId, fetchQuestion]);
+
+  // 조회수 증가 (탭(session) 기준 1회만: StrictMode 재마운트에도 중복 호출 방지)
+  useEffect(() => {
+    // 서버에 존재하는 질문일 때만 호출한다.
+    // (404로 mock fallback된 경우엔 조회수 API를 호출하면 404/에러 로그만 발생)
+    if (!question || isMockData) return;
+    if (!questionId || isNaN(questionId)) return;
+    if (typeof window === 'undefined') return;
+
+    const storageKey = `viewed_${questionId}`;
+    if (sessionStorage.getItem(storageKey)) return;
+
+    sessionStorage.setItem(storageKey, 'true');
+    questionApi.incrementViewCount(questionId).catch(() => {});
+  }, [questionId, question, isMockData]);
 
   useEffect(() => {
     if (!question || isMockData) return;
@@ -68,6 +109,72 @@ function QuestionDetailContent() {
     setRefreshKey((k) => k + 1);
   };
 
+  // 스와이프 제스처로 뒤로가기/앞으로가기
+  useEffect(() => {
+    let touchStartX = 0;
+    let touchStartY = 0;
+    let touchStartTime = 0;
+    let touchEndX = 0;
+    let touchEndY = 0;
+    let touchEndTime = 0;
+
+    const handleTouchStart = (e: TouchEvent) => {
+      touchStartX = e.changedTouches[0].screenX;
+      touchStartY = e.changedTouches[0].screenY;
+      touchStartTime = Date.now();
+    };
+
+    const handleTouchEnd = (e: TouchEvent) => {
+      touchEndX = e.changedTouches[0].screenX;
+      touchEndY = e.changedTouches[0].screenY;
+      touchEndTime = Date.now();
+      handleSwipe();
+    };
+
+    const handleSwipe = () => {
+      const deltaX = touchEndX - touchStartX;
+      const deltaY = touchEndY - touchStartY;
+      const deltaTime = touchEndTime - touchStartTime;
+
+      const minSwipeDistance = 250; // 최소 스와이프 거리 (더욱 증가)
+      const maxSwipeTime = 400; // 최대 스와이프 시간 (ms) - 빠른 스와이프만
+      const minVelocity = 0.8; // 최소 스와이프 속도 (px/ms) - 더 빠르게
+      const maxVerticalDeviation = 50; // 최대 허용 수직 이탈 거리 (더 엄격)
+
+      // 수직으로 너무 많이 움직이면 스크롤로 간주
+      if (Math.abs(deltaY) > maxVerticalDeviation) {
+        return;
+      }
+
+      const velocity = Math.abs(deltaX) / deltaTime;
+      const isHorizontalSwipe = Math.abs(deltaX) > Math.abs(deltaY) * 3; // 수평:수직 비율 3:1 이상
+
+      // 조건: 충분한 거리 + 수평 스와이프 + 적절한 시간 + 충분한 속도
+      if (
+        Math.abs(deltaX) > minSwipeDistance &&
+        isHorizontalSwipe &&
+        deltaTime < maxSwipeTime &&
+        velocity > minVelocity
+      ) {
+        if (deltaX > 0) {
+          // 오른쪽 스와이프: 뒤로가기
+          window.history.back();
+        } else {
+          // 왼쪽 스와이프: 앞으로가기
+          window.history.forward();
+        }
+      }
+    };
+
+    document.addEventListener('touchstart', handleTouchStart, { passive: true });
+    document.addEventListener('touchend', handleTouchEnd, { passive: true });
+
+    return () => {
+      document.removeEventListener('touchstart', handleTouchStart);
+      document.removeEventListener('touchend', handleTouchEnd);
+    };
+  }, []);
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -77,6 +184,31 @@ function QuestionDetailContent() {
   }
 
   if (!question) {
+    // 일시적 에러 (429, 5xx, timeout 등)로 최초 로딩이 실패한 경우
+    if (loadError) {
+      return (
+        <div className={`text-center py-20 ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>
+          <AlertTriangle className="mx-auto mb-4 text-amber-500" size={48} />
+          <p className="text-lg font-bold mb-2">질문을 불러올 수 없습니다</p>
+          <p className="text-sm text-slate-400 mb-1">
+            {loadError.status > 0 ? `HTTP ${loadError.status}` : '네트워크 오류'}
+          </p>
+          <p className="text-sm text-slate-400 mb-6">{loadError.message}</p>
+          <button
+            onClick={() => {
+              setLoading(true);
+              setLoadError(null);
+              fetchQuestion();
+            }}
+            className="px-6 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl transition"
+          >
+            다시 시도
+          </button>
+        </div>
+      );
+    }
+
+    // 질문이 존재하지 않는 경우 (404 등)
     return (
       <div className="text-center py-20">
         <p className="text-slate-400 text-lg">마켓을 찾을 수 없습니다.</p>
@@ -133,13 +265,47 @@ function QuestionDetailContent() {
             {question.status !== 'VOTING' && (
               <span className="font-bold">Vol. {question.totalBetPool.toLocaleString()} USDC</span>
             )}
-            {question.expiredAt && (
-              <span className="flex items-center gap-1">
-                <Clock size={14} />
-                {new Date(question.expiredAt).toLocaleDateString('ko-KR')}
-              </span>
+            {(question.matchId || (question.category === 'SPORTS' && question.type === 'VERIFIABLE')) ? (
+              question.bettingStartAt && (
+                <span className="flex items-center gap-1">
+                  <Clock size={14} />
+                  경기 일시: {new Date(question.bettingStartAt).toLocaleString('ko-KR')}
+                </span>
+              )
+            ) : (
+              question.expiredAt && (
+                <span className="flex items-center gap-1">
+                  <Clock size={14} />
+                  종료 일시: {new Date(question.expiredAt).toLocaleString('ko-KR')}
+                </span>
+              )
             )}
           </div>
+        </div>
+      )}
+
+      {loadError && (
+        <div className={`mb-6 p-4 rounded-2xl border ${
+          isDark ? 'bg-rose-950/20 border-rose-900/30 text-rose-400' : 'bg-rose-50 border-rose-200 text-rose-700'
+        }`}>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <AlertTriangle size={18} />
+              <span>
+                데이터 업데이트 실패 ({loadError.status > 0 ? `HTTP ${loadError.status}` : '네트워크 오류'})
+              </span>
+            </div>
+            <button
+              onClick={() => {
+                setLoadError(null);
+                fetchQuestion();
+              }}
+              className="px-3 py-1 text-xs font-bold rounded-lg bg-rose-600 hover:bg-rose-700 text-white transition"
+            >
+              재시도
+            </button>
+          </div>
+          <p className="text-xs mt-1 ml-6">{loadError.message}</p>
         </div>
       )}
 
@@ -226,23 +392,44 @@ function QuestionDetailContent() {
             <h1 className={`text-2xl font-bold mb-4 ${isDark ? 'text-white' : 'text-slate-900'}`}>
               {question.title}
             </h1>
-            {question.votingEndAt && (
-              <div className={`flex items-center gap-2 text-sm ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
-                <Clock size={16} />
-                <span>
-                  투표 종료까지{' '}
-                  {(() => {
-                    const now = new Date().getTime();
-                    const end = new Date(question.votingEndAt).getTime();
-                    const diff = end - now;
-                    if (diff <= 0) return '종료됨';
-                    const hours = Math.floor(diff / (1000 * 60 * 60));
-                    const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
-                    return hours > 0 ? `${hours}시간 ${minutes}분` : `${minutes}분`;
-                  })()}
-                </span>
-              </div>
-            )}
+            <div className="space-y-2">
+              {(question.matchId || (question.category === 'SPORTS' && question.type === 'VERIFIABLE')) ? (
+                question.bettingStartAt && (
+                  <div className={`flex items-center gap-2 text-sm ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
+                    <Clock size={16} />
+                    <span>
+                      경기 일시: {new Date(question.bettingStartAt).toLocaleString('ko-KR')}
+                    </span>
+                  </div>
+                )
+              ) : (
+                question.expiredAt && (
+                  <div className={`flex items-center gap-2 text-sm ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
+                    <Clock size={16} />
+                    <span>
+                      종료 일시: {new Date(question.expiredAt).toLocaleString('ko-KR')}
+                    </span>
+                  </div>
+                )
+              )}
+              {question.votingEndAt && (
+                <div className={`flex items-center gap-2 text-sm ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
+                  <Clock size={16} />
+                  <span>
+                    투표 종료까지{' '}
+                    {(() => {
+                      const now = new Date().getTime();
+                      const end = new Date(question.votingEndAt).getTime();
+                      const diff = end - now;
+                      if (diff <= 0) return '종료됨';
+                      const hours = Math.floor(diff / (1000 * 60 * 60));
+                      const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+                      return hours > 0 ? `${hours}시간 ${minutes}분` : `${minutes}분`;
+                    })()}
+                  </span>
+                </div>
+              )}
+            </div>
           </div>
           {/* 투표 패널 */}
           {user && !isReadOnlyFallback && (
@@ -257,43 +444,126 @@ function QuestionDetailContent() {
         </div>
       ) : (
         // 기존 베팅 레이아웃: 그리드
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-          <div className="lg:col-span-8 space-y-6">
-            <ProbabilityChart
-              yesPercent={yesPercent}
-              totalPool={question.totalBetPool}
-              yesPool={question.yesBetPool}
-              noPool={question.noBetPool}
-              questionId={question.id}
-              disableApi={isReadOnlyFallback}
-            />
-            {!isReadOnlyFallback && (
-              <OrderBook questionId={question.id} yesPercent={yesPercent} totalPool={question.totalBetPool} />
-            )}
-            {!isReadOnlyFallback && (
-              <ActivityFeed questionId={question.id} refreshKey={refreshKey} />
-            )}
-            {!isReadOnlyFallback && user && <MyBetsPanel questionId={question.id} />}
-          </div>
-          <div className="lg:col-span-4">
-            {user && !isReadOnlyFallback && (
-              <TradingPanel
-                question={question}
-                user={user}
-                onTradeComplete={handleTradeComplete}
-                votedChoice={getChoice(question.id)}
-                onVoted={(choice) => markVoted(question.id, choice)}
-              />
-            )}
-            {user && isReadOnlyFallback && (
-              <div className={`p-6 rounded-[2.5rem] border ${
-                isDark ? 'bg-slate-900 border-slate-800 text-slate-400' : 'bg-white border-slate-100 text-slate-600 shadow-xl'
-              }`}>
-                서버 마켓 데이터가 없어 거래 패널이 비활성화되었습니다.
+        <>
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+            {/* 모바일: 상단 / 데스크톱: 우측 패널 */}
+            <div className="order-1 lg:order-2 lg:col-span-4">
+              {/* 데스크톱: 우측 고정 패널 */}
+              <div className="hidden lg:block">
+                {user && !isReadOnlyFallback && (
+                  <TradingPanel
+                    question={question}
+                    user={user}
+                    onTradeComplete={handleTradeComplete}
+                    votedChoice={getChoice(question.id)}
+                    onVoted={(choice) => markVoted(question.id, choice)}
+                  />
+                )}
+                {user && isReadOnlyFallback && (
+                  <div className={`p-6 rounded-[2.5rem] border ${
+                    isDark ? 'bg-slate-900 border-slate-800 text-slate-400' : 'bg-white border-slate-100 text-slate-600 shadow-xl'
+                  }`}>
+                    서버 마켓 데이터가 없어 거래 패널이 비활성화되었습니다.
+                  </div>
+                )}
               </div>
-            )}
+
+              {/* 모바일: 상단 패널 */}
+              <div className="lg:hidden">
+                {user && !isReadOnlyFallback && (
+                  <TradingPanel
+                    question={question}
+                    user={user}
+                    onTradeComplete={handleTradeComplete}
+                    votedChoice={getChoice(question.id)}
+                    onVoted={(choice) => markVoted(question.id, choice)}
+                  />
+                )}
+              </div>
+            </div>
+
+            {/* 모바일: 하단 / 데스크톱: 좌측 메인 컨텐츠 */}
+            <div className="order-2 lg:order-1 lg:col-span-8 space-y-6 pb-20 lg:pb-0">
+              <ProbabilityChart
+                yesPercent={yesPercent}
+                totalPool={question.totalBetPool}
+                yesPool={question.yesBetPool}
+                noPool={question.noBetPool}
+                questionId={question.id}
+                disableApi={isReadOnlyFallback}
+              />
+              {!isReadOnlyFallback && (
+                <OrderBook questionId={question.id} yesPercent={yesPercent} totalPool={question.totalBetPool} />
+              )}
+              {!isReadOnlyFallback && (
+                <ActivityFeed questionId={question.id} refreshKey={refreshKey} />
+              )}
+              {!isReadOnlyFallback && user && <MyBetsPanel questionId={question.id} />}
+            </div>
           </div>
-        </div>
+
+          {/* 모바일: 하단 고정 버튼 */}
+          {user && !isReadOnlyFallback && (
+            <div className="lg:hidden fixed bottom-0 left-0 right-0 z-50">
+              <div className={`grid grid-cols-2 gap-2 p-4 border-t ${
+                isDark ? 'bg-slate-950/95 border-slate-800 backdrop-blur-xl' : 'bg-white/95 border-slate-200 backdrop-blur-xl'
+              }`}>
+                <button
+                  onClick={() => setShowTradingModal(true)}
+                  className="py-3 px-4 rounded-xl font-bold text-sm bg-emerald-500 hover:bg-emerald-600 text-white transition"
+                >
+                  Buy {yesPercent}%
+                </button>
+                <button
+                  onClick={() => setShowTradingModal(true)}
+                  className="py-3 px-4 rounded-xl font-bold text-sm bg-rose-500 hover:bg-rose-600 text-white transition"
+                >
+                  Sell {100 - yesPercent}%
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* 모바일: TradingPanel 모달 */}
+          {showTradingModal && user && (
+            <div className="lg:hidden fixed inset-0 z-[100] flex items-end animate-fade-in">
+              <div
+                className="absolute inset-0 bg-black/50 backdrop-blur-sm"
+                onClick={() => setShowTradingModal(false)}
+              />
+              <div
+                className={`relative w-full rounded-t-3xl overflow-hidden transform transition-transform duration-300 ease-out ${
+                  isDark ? 'bg-slate-900' : 'bg-white'
+                }`}
+                style={{ animation: 'slideUp 0.3s ease-out' }}
+              >
+                <div className="max-h-[85vh] overflow-y-auto">
+                  <TradingPanel
+                    question={question}
+                    user={user}
+                    onTradeComplete={() => {
+                      handleTradeComplete();
+                      setShowTradingModal(false);
+                    }}
+                    votedChoice={getChoice(question.id)}
+                    onVoted={(choice) => markVoted(question.id, choice)}
+                  />
+                </div>
+              </div>
+            </div>
+          )}
+
+          <style jsx>{`
+            @keyframes slideUp {
+              from {
+                transform: translateY(100%);
+              }
+              to {
+                transform: translateY(0);
+              }
+            }
+          `}</style>
+        </>
       )}
     </div>
   );

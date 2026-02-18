@@ -26,6 +26,10 @@ data class Order(
     @Column(nullable = false)
     val side: OrderSide,
 
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
+    val direction: OrderDirection = OrderDirection.BUY,
+
     @Column(precision = 4, scale = 2, nullable = false)
     val price: BigDecimal,
 
@@ -53,6 +57,11 @@ enum class OrderType {
 
 enum class OrderSide {
     YES, NO
+}
+
+enum class OrderDirection {
+    BUY,   // 매수: USDC 예치, 포지션 증가
+    SELL   // 매도: 포지션 담보, USDC 수령
 }
 
 enum class OrderStatus {

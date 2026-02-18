@@ -5,7 +5,6 @@ import com.predata.backend.domain.AuditLog
 import com.predata.backend.repository.AuditLogRepository
 import org.springframework.data.domain.Page
 import org.springframework.data.domain.Pageable
-import org.springframework.scheduling.annotation.Async
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Propagation
 import org.springframework.transaction.annotation.Transactional
@@ -25,11 +24,12 @@ class AuditService(
 
     /**
      * 감사 로그 기록
-     * - 비동기로 실행되어 메인 로직에 영향을 주지 않음
-     * - 별도 트랜잭션으로 실행 (REQUIRES_NEW)
+     * - 주문/정산 로직은 member row lock을 잡고 진행하는 경우가 많습니다.
+     * - 여기서 REQUIRES_NEW(별도 트랜잭션)로 분리하면 FK 체크를 위해 members row에 접근하면서
+     *   outer tx의 row lock과 충돌해 lock wait timeout이 발생할 수 있습니다.
+     * - 따라서 "현재 트랜잭션에 참여"하도록 두어 lock wait을 피합니다.
      */
-    @Async
-    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    @Transactional(propagation = Propagation.REQUIRED)
     fun log(
         memberId: Long?,
         action: AuditAction,

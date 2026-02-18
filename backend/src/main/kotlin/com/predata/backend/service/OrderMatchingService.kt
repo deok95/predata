@@ -60,6 +60,14 @@ class OrderMatchingService(
     }
 
     private fun createOrderInternal(memberId: Long, request: CreateOrderRequest): CreateOrderResponse {
+        // 0. SELL 주문 임시 비활성화 (현재 YES BUY ↔ NO BUY 매칭 구조에서 SELL 정상 체결 불가)
+        if (request.direction == OrderDirection.SELL) {
+            return CreateOrderResponse(
+                success = false,
+                message = "매도 기능은 준비 중입니다. 현재는 매수(BUY)만 가능합니다."
+            )
+        }
+
         // 1. 베팅 일시 중지 체크 (쿨다운)
         val suspensionStatus = bettingSuspensionService.isBettingSuspendedByQuestionId(request.questionId)
         if (suspensionStatus.suspended) {
@@ -69,9 +77,8 @@ class OrderMatchingService(
             )
         }
 
-        // 2. 회원 및 잔액 확인
-        val member = memberRepository.findById(memberId)
-            .orElse(null) ?: return CreateOrderResponse(
+        // 2. 회원 및 잔액 확인 (row lock으로 잔고 변경 정합성 확보)
+        val member = memberRepository.findByIdForUpdate(memberId) ?: return CreateOrderResponse(
                 success = false,
                 message = "회원을 찾을 수 없습니다."
             )
@@ -85,6 +92,14 @@ class OrderMatchingService(
 
         // 3. 주문 타입 결정
         val orderType = request.orderType ?: OrderType.LIMIT  // 기본값: LIMIT
+
+        // 4. LIMIT 주문일 경우 price 필수 검증
+        if (orderType == OrderType.LIMIT && request.price == null) {
+            return CreateOrderResponse(
+                success = false,
+                message = "지정가 주문은 가격을 입력해야 합니다."
+            )
+        }
 
         // 2. 질문 상태 확인
         val question = questionRepository.findByIdWithLock(request.questionId)
@@ -143,13 +158,15 @@ class OrderMatchingService(
             )
         }
 
-        // 4. MARKET 주문일 경우 상대 오더북의 최우선 가격으로 체결
+        // 5. MARKET 주문일 경우 상대 오더북의 최우선 가격으로 체결
         val orderPrice = if (orderType == OrderType.MARKET) {
             // 상대 오더북에서 최우선 가격 가져오기
             val oppositeSide = if (request.side == OrderSide.YES) OrderSide.NO else OrderSide.YES
             val oppositeOrders = orderRepository.findMatchableOrdersWithLock(
                 questionId = request.questionId,
                 side = oppositeSide,
+                direction = OrderDirection.BUY,
+                excludeMemberId = memberId,
                 price = BigDecimal.ZERO  // 모든 가격 조회
             )
 
@@ -165,46 +182,70 @@ class OrderMatchingService(
             val oppositePrice = oppositeOrders.first().price
             BigDecimal.ONE.subtract(oppositePrice)  // 역가격 계산
         } else {
-            request.price
+            // LIMIT 주문: price는 이미 검증됨 (null이 아님)
+            request.price!!
         }
 
-        // 주문 비용 = 수량 × 실제 주문가 (MARKET은 체결가 기준)
-        val totalCost = BigDecimal(request.amount).multiply(orderPrice)
-        if (member.usdcBalance < totalCost) {
-            return CreateOrderResponse(
-                success = false,
-                message = "잔액이 부족합니다. (보유: ${member.usdcBalance}, 필요: $totalCost)"
-            )
-        }
+        // === BUY/SELL 분기 처리 ===
+        if (request.direction == OrderDirection.BUY) {
+            // BUY 주문: USDC 예치
+            val totalCost = BigDecimal(request.amount).multiply(orderPrice)
+            if (member.usdcBalance < totalCost) {
+                return CreateOrderResponse(
+                    success = false,
+                    message = "잔액이 부족합니다. (보유: ${member.usdcBalance}, 필요: $totalCost)"
+                )
+            }
 
-        // 리스크 가드: 주문 금액 한도 체크
-        val orderValueCheck = riskGuardService.checkOrderValueLimit(totalCost.toDouble())
-        if (!orderValueCheck.passed) {
-            auditService.log(
+            // 리스크 가드: 주문 금액 한도 체크
+            val orderValueCheck = riskGuardService.checkOrderValueLimit(totalCost.toDouble())
+            if (!orderValueCheck.passed) {
+                auditService.log(
+                    memberId = memberId,
+                    action = com.predata.backend.domain.AuditAction.RISK_LIMIT_EXCEEDED,
+                    entityType = "ORDER",
+                    entityId = null,
+                    detail = orderValueCheck.message
+                )
+                return CreateOrderResponse(
+                    success = false,
+                    message = orderValueCheck.message!!
+                )
+            }
+
+            // USDC 차감 (예치)
+            member.usdcBalance = member.usdcBalance.subtract(totalCost)
+            memberRepository.save(member)
+
+            transactionHistoryService.record(
                 memberId = memberId,
-                action = com.predata.backend.domain.AuditAction.RISK_LIMIT_EXCEEDED,
-                entityType = "ORDER",
-                entityId = null,
-                detail = orderValueCheck.message
+                type = "BET",
+                amount = totalCost.negate(),
+                balanceAfter = member.usdcBalance,
+                description = "주문 생성 (BUY) - Question #${request.questionId} ${request.side} (${orderType})",
+                questionId = request.questionId
             )
-            return CreateOrderResponse(
-                success = false,
-                message = orderValueCheck.message!!
-            )
+        } else {
+            // SELL 주문: reserved 기반으로 초과판매 방지 (quantity - reserved >= amount)
+            try {
+                positionService.reserveForSellOrder(
+                    memberId = memberId,
+                    questionId = request.questionId,
+                    side = request.side,
+                    reserveAmount = BigDecimal(request.amount)
+                )
+            } catch (e: IllegalStateException) {
+                val msg = e.message ?: "보유 포지션이 부족합니다."
+                if (msg.startsWith("INSUFFICIENT_AVAILABLE_TO_SELL:")) {
+                    val available = msg.substringAfter(":")
+                    return CreateOrderResponse(
+                        success = false,
+                        message = "판매 가능 수량을 초과합니다. (현재 판매 가능: ${available}개)"
+                    )
+                }
+                return CreateOrderResponse(success = false, message = msg)
+            }
         }
-
-        // 5. USDC 차감 (예치) - MARKET 주문 검증 후 차감
-        member.usdcBalance = member.usdcBalance.subtract(totalCost)
-        memberRepository.save(member)
-
-        transactionHistoryService.record(
-            memberId = memberId,
-            type = "BET",
-            amount = totalCost.negate(),
-            balanceAfter = member.usdcBalance,
-            description = "주문 생성 - Question #${request.questionId} ${request.side} (${orderType})",
-            questionId = request.questionId
-        )
 
         // 6. 주문 생성
         val order = Order(
@@ -212,6 +253,7 @@ class OrderMatchingService(
             questionId = request.questionId,
             orderType = orderType,
             side = request.side,
+            direction = request.direction,
             price = orderPrice,
             amount = request.amount,
             remainingAmount = request.amount
@@ -225,7 +267,7 @@ class OrderMatchingService(
             action = com.predata.backend.domain.AuditAction.ORDER_CREATE,
             entityType = "ORDER",
             entityId = savedOrder.id,
-            detail = "${request.side} ${request.amount} @ ${orderPrice} (${orderType})"
+            detail = "${request.direction} ${request.side} ${request.amount} @ ${orderPrice} (${orderType})"
         )
 
         // 7. 매칭 실행
@@ -238,20 +280,35 @@ class OrderMatchingService(
             savedOrder.updatedAt = LocalDateTime.now()
             orderRepository.save(savedOrder)
 
-            // 미체결분 환불 = 미체결 수량 × 가격
-            val unfilledQty = request.amount - matchResult.filledAmount
-            val refundAmount = BigDecimal(unfilledQty).multiply(orderPrice)
-            member.usdcBalance = member.usdcBalance.add(refundAmount)
-            memberRepository.save(member)
+            // BUY 주문만 환불 (SELL은 USDC 예치 없었으므로 환불 불필요)
+            if (request.direction == OrderDirection.BUY) {
+                // 미체결분 환불 = 미체결 수량 × 가격
+                val unfilledQty = request.amount - matchResult.filledAmount
+                val refundAmount = BigDecimal(unfilledQty).multiply(orderPrice)
+                member.usdcBalance = member.usdcBalance.add(refundAmount)
+                memberRepository.save(member)
 
-            transactionHistoryService.record(
-                memberId = memberId,
-                type = "SETTLEMENT",
-                amount = refundAmount,
-                balanceAfter = member.usdcBalance,
-                description = "시장가 IOC 주문 미체결분 환불 - Question #${request.questionId}",
-                questionId = request.questionId
-            )
+                transactionHistoryService.record(
+                    memberId = memberId,
+                    type = "SETTLEMENT",
+                    amount = refundAmount,
+                    balanceAfter = member.usdcBalance,
+                    description = "시장가 IOC 주문 미체결분 환불 (BUY) - Question #${request.questionId}",
+                    questionId = request.questionId
+                )
+            }
+            // SELL MARKET: 미체결분은 예약만 해제
+            if (request.direction == OrderDirection.SELL) {
+                val unfilledQty = request.amount - matchResult.filledAmount
+                if (unfilledQty > 0) {
+                    positionService.releaseSellReservation(
+                        memberId = memberId,
+                        questionId = request.questionId,
+                        side = request.side,
+                        releaseAmount = BigDecimal(unfilledQty)
+                    )
+                }
+            }
         }
 
         return CreateOrderResponse(
@@ -286,6 +343,8 @@ class OrderMatchingService(
         val matchableOrders = orderRepository.findMatchableOrdersWithLock(
             questionId = order.questionId,
             side = oppositeSide,
+            direction = OrderDirection.BUY,
+            excludeMemberId = order.memberId,
             price = oppositePrice
         )
 
@@ -297,11 +356,13 @@ class OrderMatchingService(
             val fillAmount = minOf(order.remainingAmount, counterOrder.remainingAmount)
             val tradePrice = order.price  // Taker 가격 사용
 
-            // 체결 기록
+            // 체결 기록 - Taker/Maker 모델
+            // Taker = 주문을 넣어서 체결을 일으킨 쪽 (order)
+            // Maker = 오더북에 대기 중이던 쪽 (counterOrder)
             val trade = Trade(
                 questionId = order.questionId,
-                buyOrderId = order.id!!,
-                sellOrderId = counterOrder.id!!,
+                takerOrderId = order.id!!,
+                makerOrderId = counterOrder.id!!,
                 price = tradePrice,
                 amount = fillAmount,
                 side = order.side
@@ -327,24 +388,81 @@ class OrderMatchingService(
                 amount = fillAmount
             ))
 
-            // 포지션 업데이트 (양쪽 모두)
-            // Taker 포지션 업데이트
-            positionService.createOrUpdatePosition(
-                memberId = order.memberId,
-                questionId = order.questionId,
-                side = order.side,
-                qty = BigDecimal(fillAmount),
-                price = tradePrice
-            )
+            // 포지션 및 USDC 정산 (BUY/SELL 모델)
+            // BUY: 포지션 증가 (USDC 이미 예치됨)
+            // SELL: 포지션 감소, USDC 수령
 
-            // Maker 포지션 업데이트
-            positionService.createOrUpdatePosition(
-                memberId = counterOrder.memberId,
-                questionId = counterOrder.questionId,
-                side = counterOrder.side,
-                qty = BigDecimal(fillAmount),
-                price = oppositePrice  // 상대방은 역가격으로 체결
-            )
+            // Taker 처리
+            if (order.direction == OrderDirection.BUY) {
+                // BUY 주문: 포지션 증가 (netPosition으로 양쪽 포지션 불허 정책 적용)
+                positionService.netPosition(
+                    memberId = order.memberId,
+                    questionId = order.questionId,
+                    newSide = order.side,
+                    newQty = BigDecimal(fillAmount),
+                    newPrice = tradePrice
+                )
+            } else {
+                // SELL 주문: 포지션 감소 (락 + 영속성 + 0 삭제)
+                positionService.decreasePosition(
+                    memberId = order.memberId,
+                    questionId = order.questionId,
+                    side = order.side,
+                    decreaseAmount = BigDecimal(fillAmount)
+                )
+
+                // USDC 지급 (체결가 * 수량)
+                val sellerProceeds = BigDecimal(fillAmount).multiply(tradePrice)
+                val sellerMember = memberRepository.findByIdForUpdate(order.memberId)
+                    ?: throw IllegalArgumentException("Member not found: ${order.memberId}")
+                sellerMember.usdcBalance = sellerMember.usdcBalance.add(sellerProceeds)
+                memberRepository.save(sellerMember)
+
+                transactionHistoryService.record(
+                    memberId = order.memberId,
+                    type = "SELL_SETTLEMENT",
+                    amount = sellerProceeds,
+                    balanceAfter = sellerMember.usdcBalance,
+                    description = "포지션 판매 체결 - Question #${order.questionId} ${order.side}",
+                    questionId = order.questionId
+                )
+            }
+
+            // Maker 처리
+            if (counterOrder.direction == OrderDirection.BUY) {
+                // BUY 주문: 포지션 증가
+                positionService.netPosition(
+                    memberId = counterOrder.memberId,
+                    questionId = counterOrder.questionId,
+                    newSide = counterOrder.side,
+                    newQty = BigDecimal(fillAmount),
+                    newPrice = oppositePrice
+                )
+            } else {
+                // SELL 주문: 포지션 감소 (락 + 영속성 + 0 삭제)
+                positionService.decreasePosition(
+                    memberId = counterOrder.memberId,
+                    questionId = counterOrder.questionId,
+                    side = counterOrder.side,
+                    decreaseAmount = BigDecimal(fillAmount)
+                )
+
+                // USDC 지급
+                val sellerProceeds = BigDecimal(fillAmount).multiply(oppositePrice)
+                val sellerMember = memberRepository.findByIdForUpdate(counterOrder.memberId)
+                    ?: throw IllegalArgumentException("Member not found: ${counterOrder.memberId}")
+                sellerMember.usdcBalance = sellerMember.usdcBalance.add(sellerProceeds)
+                memberRepository.save(sellerMember)
+
+                transactionHistoryService.record(
+                    memberId = counterOrder.memberId,
+                    type = "SELL_SETTLEMENT",
+                    amount = sellerProceeds,
+                    balanceAfter = sellerMember.usdcBalance,
+                    description = "포지션 판매 체결 - Question #${counterOrder.questionId} ${counterOrder.side}",
+                    questionId = counterOrder.questionId
+                )
+            }
 
             // 주문 수량 업데이트
             order.remainingAmount -= fillAmount
@@ -437,21 +555,36 @@ class OrderMatchingService(
             )
         }
 
-        // 남은 수량 환불 = 미체결 수량 × 가격
-        val refundAmount = BigDecimal(order.remainingAmount).multiply(order.price)
-        val member = memberRepository.findById(memberId).orElse(null)
-        if (member != null) {
-            member.usdcBalance = member.usdcBalance.add(refundAmount)
-            memberRepository.save(member)
+        // BUY/SELL에 따른 취소 처리
+        val refundAmount = if (order.direction == OrderDirection.BUY) {
+            // BUY 주문: USDC 환불 = 미체결 수량 × 가격
+            val amount = BigDecimal(order.remainingAmount).multiply(order.price)
+            val member = memberRepository.findByIdForUpdate(memberId)
+            if (member != null) {
+                member.usdcBalance = member.usdcBalance.add(amount)
+                memberRepository.save(member)
 
-            transactionHistoryService.record(
-                memberId = memberId,
-                type = "SETTLEMENT",
-                amount = refundAmount,
-                balanceAfter = member.usdcBalance,
-                description = "주문 취소 환불 - Order #$orderId",
-                questionId = order.questionId
-            )
+                transactionHistoryService.record(
+                    memberId = memberId,
+                    type = "SETTLEMENT",
+                    amount = amount,
+                    balanceAfter = member.usdcBalance,
+                    description = "주문 취소 환불 (BUY) - Order #$orderId",
+                    questionId = order.questionId
+                )
+            }
+            amount
+        } else {
+            // SELL 주문: 미체결 수량만큼 예약 해제
+            if (order.remainingAmount > 0) {
+                positionService.releaseSellReservation(
+                    memberId = memberId,
+                    questionId = order.questionId,
+                    side = order.side,
+                    releaseAmount = BigDecimal(order.remainingAmount)
+                )
+            }
+            BigDecimal.ZERO
         }
 
         order.status = OrderStatus.CANCELLED
@@ -497,6 +630,7 @@ class OrderMatchingService(
         memberId = this.memberId,
         questionId = this.questionId,
         side = this.side,
+        direction = this.direction,
         price = this.price,
         amount = this.amount,
         remainingAmount = this.remainingAmount,

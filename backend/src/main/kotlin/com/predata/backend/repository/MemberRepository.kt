@@ -1,7 +1,9 @@
 package com.predata.backend.repository
 
 import com.predata.backend.domain.Member
+import jakarta.persistence.LockModeType
 import org.springframework.data.jpa.repository.JpaRepository
+import org.springframework.data.jpa.repository.Lock
 import org.springframework.data.jpa.repository.Query
 import org.springframework.stereotype.Repository
 import java.util.*
@@ -46,4 +48,13 @@ interface MemberRepository : JpaRepository<Member, Long> {
     // 연령대별 회원 수 조회
     @Query("SELECT COUNT(m) FROM Member m WHERE m.ageGroup >= :minAge AND m.ageGroup < :maxAge")
     fun countByAgeGroupBetween(minAge: Int, maxAge: Int): Int
+
+    /**
+     * 회원 row 락 (USDC 잔고 변경 경로 정합성 확보)
+     * - OrderMatchingService에서 BUY 예치/환불, SELL proceeds 지급 시 사용
+     * - lock order: Order(row locks) -> Position(row lock) -> Member(row lock)
+     */
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("SELECT m FROM Member m WHERE m.id = :memberId")
+    fun findByIdForUpdate(memberId: Long): Member?
 }

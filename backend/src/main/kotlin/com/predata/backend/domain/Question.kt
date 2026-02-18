@@ -93,6 +93,9 @@ data class Question(
     @Column(name = "created_at", nullable = false, updatable = false)
     val createdAt: LocalDateTime = LocalDateTime.now(),
 
+    @Column(name = "view_count", nullable = false, columnDefinition = "BIGINT DEFAULT 0")
+    var viewCount: Long = 0,
+
     @Enumerated(EnumType.STRING)
     @Column(name = "phase", length = 20)
     var phase: QuestionPhase? = null,
