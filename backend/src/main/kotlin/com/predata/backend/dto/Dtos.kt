@@ -6,6 +6,7 @@ import jakarta.validation.constraints.Max
 import jakarta.validation.constraints.Min
 import jakarta.validation.constraints.NotNull
 import jakarta.validation.constraints.NotBlank
+import jakarta.validation.constraints.Size
 
 // 투표 요청
 data class VoteRequest(
@@ -71,6 +72,7 @@ data class QuestionResponse(
     val category: String?,
     val status: String,
     val type: String,
+    val executionModel: String,
     val finalResult: String?,
     val totalBetPool: Long,
     val yesBetPool: Long,
@@ -112,7 +114,22 @@ data class CompleteSignupRequest(
     val email: String,
     val code: String,
     val password: String,
-    val passwordConfirm: String
+    val passwordConfirm: String,
+
+    // 추가 정보 (필수)
+    @field:NotBlank(message = "국가 코드는 필수입니다.")
+    @field:Size(min = 2, max = 2, message = "국가 코드는 2자리여야 합니다.")
+    val countryCode: String,
+
+    @field:NotNull(message = "성별은 필수입니다.")
+    val gender: com.predata.backend.domain.Gender,
+
+    @field:NotBlank(message = "생년월일은 필수입니다.")
+    val birthDate: String, // ISO 8601 형식 (YYYY-MM-DD)
+
+    // 추가 정보 (선택)
+    val jobCategory: String? = null,
+    val ageGroup: Int? = null
 )
 
 // 로그인 요청
@@ -123,6 +140,7 @@ data class LoginRequest(
 
 // === 어드민 질문 생성 DTO ===
 
+@com.fasterxml.jackson.annotation.JsonIgnoreProperties(ignoreUnknown = true)
 data class AdminCreateQuestionRequest(
     @field:NotNull(message = "질문 제목은 필수입니다.")
     val title: String,
@@ -151,7 +169,15 @@ data class AdminCreateQuestionRequest(
     val votingDuration: Long = 3600, // 기본 1시간 (초 단위)
 
     @field:Min(value = 60, message = "베팅 기간은 최소 60초입니다.")
-    val bettingDuration: Long = 3600 // 기본 1시간 (초 단위)
+    val bettingDuration: Long = 3600, // 기본 1시간 (초 단위)
+
+    // AMM 실행 모델 설정
+    val executionModel: com.predata.backend.domain.ExecutionModel = com.predata.backend.domain.ExecutionModel.AMM_FPMM,
+
+    // AMM 시드 설정 (executionModel이 AMM_FPMM일 때 사용)
+    val seedUsdc: java.math.BigDecimal = java.math.BigDecimal("1000"),
+
+    val feeRate: java.math.BigDecimal = java.math.BigDecimal("0.01") // 1% 기본값
 )
 
 // 관리자 결과 입력 요청
@@ -197,5 +223,12 @@ data class CompleteGoogleRegistrationRequest(
     @field:NotBlank(message = "Country code is required")
     val countryCode: String,
     val jobCategory: String? = null,
-    val ageGroup: Int? = null
+    val ageGroup: Int? = null,
+
+    // 추가 필드
+    @field:NotNull(message = "Gender is required")
+    val gender: com.predata.backend.domain.Gender,
+
+    @field:NotBlank(message = "Birth date is required")
+    val birthDate: String // ISO 8601 형식 (YYYY-MM-DD)
 )

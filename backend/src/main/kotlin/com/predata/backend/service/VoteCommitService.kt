@@ -67,7 +67,15 @@ class VoteCommitService(
             )
         }
 
-        // 2-1. 티켓 차감 (5개 제한)
+        // 2-1. 투표 패스 확인 (미구매 계정은 투표 불가)
+        if (!member.hasVotingPass) {
+            return VoteCommitResponse(
+                success = false,
+                message = "투표 패스가 필요합니다. 마이페이지에서 구매해주세요."
+            )
+        }
+
+        // 2-2. 티켓 차감 (5개 제한)
         val ticketConsumed = ticketService.consumeTicket(memberId)
         if (!ticketConsumed) {
             throw IllegalStateException("오늘 투표 가능 횟수를 모두 사용했습니다")
@@ -167,6 +175,21 @@ class VoteCommitService(
         // 0. 투표 중지 상태 체크
         if (pauseService.isPaused(request.questionId) || circuitBreaker.isOpen()) {
             throw ServiceUnavailableException("시스템 점검 중입니다.")
+        }
+
+        // 0-1. 투표 패스 확인 (미구매 계정은 투표 불가)
+        val member = memberRepository.findById(memberId).orElse(null)
+            ?: run {
+                return VoteRevealResponse(
+                    success = false,
+                    message = "회원을 찾을 수 없습니다."
+                )
+            }
+        if (!member.hasVotingPass) {
+            return VoteRevealResponse(
+                success = false,
+                message = "투표 패스가 필요합니다. 마이페이지에서 구매해주세요."
+            )
         }
 
         // 1. VoteCommit 조회

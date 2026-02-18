@@ -90,7 +90,18 @@ function VoteContent() {
         </div>
         <p className="text-slate-400">VOTING 상태의 질문에 투표하세요 (하루 5개 제한)</p>
 
-        {user && ticketStatus && (
+        {user && !user.hasVotingPass ? (
+          <div className={`mt-4 p-4 rounded-xl flex items-center gap-3 ${
+            isDark ? 'bg-amber-950 border border-amber-800' : 'bg-amber-50 border border-amber-200'
+          }`}>
+            <AlertCircle className="w-5 h-5 text-amber-500" />
+            <div className="flex-1">
+              <p className={`font-bold ${isDark ? 'text-amber-300' : 'text-amber-700'}`}>
+                투표 패스가 필요합니다. 마이페이지에서 구매해주세요.
+              </p>
+            </div>
+          </div>
+        ) : user && ticketStatus && (
           <div className={`mt-4 p-4 rounded-xl flex items-center gap-3 ${
             ticketStatus.remainingTickets === 0
               ? isDark ? 'bg-red-950 border border-red-800' : 'bg-red-50 border border-red-200'

@@ -75,7 +75,16 @@ class AuthController(
                 mapOf("success" to false, "message" to "비밀번호가 일치하지 않습니다.")
             )
         }
-        val result = authService.completeSignup(request.email, request.code, request.password)
+        val result = authService.completeSignup(
+            request.email,
+            request.code,
+            request.password,
+            request.countryCode,
+            request.gender,
+            request.birthDate,
+            request.jobCategory,
+            request.ageGroup
+        )
         return if (result["success"] == true) {
             ResponseEntity.ok(result)
         } else {
