@@ -28,7 +28,7 @@ export default function QualityScoreCards({
 
   const cards = [
     {
-      label: '품질 점수',
+      label: 'Quality Score',
       value: `${overallQualityScore.toFixed(1)}`,
       suffix: grade,
       color: scoreColor,
@@ -38,7 +38,7 @@ export default function QualityScoreCards({
       progressColor: scoreBarColor,
     },
     {
-      label: '총 투표 수',
+      label: 'Total Votes',
       value: totalVotes.toLocaleString(),
       suffix: '',
       color: 'text-emerald-500',
@@ -46,7 +46,7 @@ export default function QualityScoreCards({
       iconColor: 'text-emerald-500',
     },
     {
-      label: '괴리율',
+      label: 'Gap Rate',
       value: `${gapPercentage.toFixed(1)}%`,
       suffix: '',
       color: gapPercentage < 10 ? 'text-emerald-500' : 'text-rose-500',
@@ -54,7 +54,7 @@ export default function QualityScoreCards({
       iconColor: 'text-purple-500',
     },
     {
-      label: '필터링율',
+      label: 'Filter Rate',
       value: `${filteredPercentage.toFixed(1)}%`,
       suffix: '',
       color: 'text-amber-500',

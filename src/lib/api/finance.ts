@@ -5,7 +5,7 @@ import type {
   VotingPassPurchaseResponse,
   WithdrawResponse,
 } from '@/types/api';
-import { apiRequest } from './core';
+import { apiRequest, unwrapApiEnvelope } from './core';
 
 export const votingPassApi = {
   purchase: async (memberId: number): Promise<ApiResponse<VotingPassPurchaseResponse>> => {
@@ -48,6 +48,9 @@ export const transactionApi = {
       params.set('type', type);
     }
 
-    return apiRequest<TransactionHistoryPage>(`/api/transactions/my?${params.toString()}`);
+    const raw = await apiRequest<TransactionHistoryPage | { success: boolean; data?: TransactionHistoryPage }>(
+      `/api/transactions/my?${params.toString()}`
+    );
+    return unwrapApiEnvelope(raw);
   },
 };

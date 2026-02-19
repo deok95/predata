@@ -3,7 +3,7 @@ package com.predata.backend.dto
 import java.time.LocalDateTime
 
 /**
- * 온체인 베팅 데이터
+ * On-chain betting data
  */
 data class BetOnChainData(
     val questionId: Long,
@@ -13,7 +13,7 @@ data class BetOnChainData(
 )
 
 /**
- * 온체인 질문 데이터 (조회용)
+ * On-chain question data (for queries)
  */
 data class QuestionOnChain(
     val questionId: Long,
@@ -24,7 +24,7 @@ data class QuestionOnChain(
 )
 
 /**
- * 블록체인 상태 응답
+ * Blockchain status response
  */
 data class BlockchainStatusResponse(
     val enabled: Boolean,

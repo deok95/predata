@@ -3,7 +3,7 @@ package com.predata.backend.dto
 import java.math.BigDecimal
 
 /**
- * 보상 계산 결과 DTO
+ * Reward calculation result DTO
  */
 data class RewardCalculation(
     val memberId: Long,
@@ -14,7 +14,7 @@ data class RewardCalculation(
 )
 
 /**
- * 보상 계산 요약
+ * Reward calculation summary
  */
 data class RewardCalculationSummary(
     val questionId: Long,
@@ -22,6 +22,6 @@ data class RewardCalculationSummary(
     val totalWeightSum: BigDecimal,
     val individualRewards: List<RewardCalculation>,
     val totalDistributed: BigDecimal,
-    val truncatedAmount: BigDecimal, // 0.01 미만 절사된 총액
+    val truncatedAmount: BigDecimal, // Total amount truncated below 0.01
     val participantCount: Int
 )

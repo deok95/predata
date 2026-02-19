@@ -7,26 +7,26 @@ open class BusinessException(
 ) : RuntimeException(message)
 
 class UnauthorizedException(
-    message: String = "인증이 필요합니다.",
+    message: String = "Authentication is required.",
     code: String = "UNAUTHORIZED"
 ) : BusinessException(code, message, 401)
 
 class ForbiddenException(
-    message: String = "권한이 없습니다.",
+    message: String = "Access denied.",
     code: String = "FORBIDDEN"
 ) : BusinessException(code, message, 403)
 
 class NotFoundException(
-    message: String = "리소스를 찾을 수 없습니다.",
+    message: String = "Resource not found.",
     code: String = "NOT_FOUND"
 ) : BusinessException(code, message, 404)
 
 class ConflictException(
-    message: String = "요청을 처리할 수 없는 상태입니다.",
+    message: String = "Cannot process the request in current state.",
     code: String = "CONFLICT"
 ) : BusinessException(code, message, 409)
 
 class ServiceUnavailableException(
-    message: String = "서비스를 일시적으로 사용할 수 없습니다.",
+    message: String = "Service is temporarily unavailable.",
     code: String = "SERVICE_UNAVAILABLE"
 ) : BusinessException(code, message, 503)

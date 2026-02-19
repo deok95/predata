@@ -41,8 +41,8 @@ class EmailService(
             mailSender.send(message)
             logger.info("[Email] 인증 코드 발송 완료: to={}", to)
         } catch (e: Exception) {
-            logger.error("[Email] 인증 코드 발송 실패: to={}, error={}", to, e.message)
-            throw RuntimeException("이메일 발송에 실패했습니다. 잠시 후 다시 시도해주세요.")
+            logger.error("[Email] Verification code sending failed: to={}, error={}", to, e.message)
+            throw RuntimeException("Email sending failed. Please try again later.")
         }
     }
 }

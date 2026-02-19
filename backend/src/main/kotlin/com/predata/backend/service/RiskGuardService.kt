@@ -41,7 +41,7 @@ class RiskGuardService(
         return if (newTotal > BigDecimal(config.maxPositionPerMarket)) {
             RiskCheckResult(
                 passed = false,
-                message = "포지션 한도 초과"
+                message = "Position limit exceeded"
             )
         } else {
             RiskCheckResult(passed = true)
@@ -55,7 +55,7 @@ class RiskGuardService(
         return if (orderValue > config.maxOrderValue) {
             RiskCheckResult(
                 passed = false,
-                message = "주문 금액 한도 초과"
+                message = "Order value limit exceeded"
             )
         } else {
             RiskCheckResult(passed = true)
@@ -77,7 +77,7 @@ class RiskGuardService(
         return if (recentTradeCount >= config.circuitBreaker.tradeCountThreshold) {
             RiskCheckResult(
                 passed = false,
-                message = "거래량 급증으로 일시 중지 (${config.circuitBreaker.cooldownSeconds}초 후 재개)"
+                message = "Temporarily suspended due to high trading volume (will resume in ${config.circuitBreaker.cooldownSeconds} seconds)"
             )
         } else {
             RiskCheckResult(passed = true)

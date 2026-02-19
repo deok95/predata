@@ -45,7 +45,7 @@ class VoteController(
             ?: return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(
                 VoteCommitResponse(
                     success = false,
-                    message = "인증이 필요합니다."
+                    message = "Authentication required."
                 )
             )
 
@@ -95,7 +95,7 @@ class VoteController(
             ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE).body(
                 VoteCommitResponse(
                     success = false,
-                    message = e.message ?: "시스템 점검 중입니다."
+                    message = e.message ?: "System is under maintenance."
                 )
             )
         } catch (e: IllegalStateException) {
@@ -103,7 +103,7 @@ class VoteController(
             ResponseEntity.status(HttpStatus.CONFLICT).body(
                 VoteCommitResponse(
                     success = false,
-                    message = e.message ?: "현재 상태에서는 이 작업을 수행할 수 없습니다."
+                    message = e.message ?: "This action cannot be performed in the current state."
                 )
             )
         }
@@ -124,7 +124,7 @@ class VoteController(
             ?: return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(
                 VoteRevealResponse(
                     success = false,
-                    message = "인증이 필요합니다."
+                    message = "Authentication required."
                 )
             )
 
@@ -174,7 +174,7 @@ class VoteController(
             ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE).body(
                 VoteRevealResponse(
                     success = false,
-                    message = e.message ?: "시스템 점검 중입니다."
+                    message = e.message ?: "System is under maintenance."
                 )
             )
         } catch (e: IllegalStateException) {
@@ -182,7 +182,7 @@ class VoteController(
             ResponseEntity.status(HttpStatus.CONFLICT).body(
                 VoteRevealResponse(
                     success = false,
-                    message = e.message ?: "현재 상태에서는 이 작업을 수행할 수 없습니다."
+                    message = e.message ?: "This action cannot be performed in the current state."
                 )
             )
         }
@@ -198,7 +198,7 @@ class VoteController(
             ResponseEntity.ok(result)
         } catch (e: IllegalStateException) {
             ResponseEntity.status(HttpStatus.FORBIDDEN).body(
-                mapOf("success" to false, "message" to (e.message ?: "투표 결과는 공개 전입니다."))
+                mapOf("success" to false, "message" to (e.message ?: "Vote results not yet revealed."))
             )
         }
     }

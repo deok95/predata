@@ -42,13 +42,13 @@ class BetService(
         val member = memberRepository.findById(memberId)
             .orElse(null) ?: return ActivityResponse(
                 success = false,
-                message = "회원을 찾을 수 없습니다."
+                message = "Member not found."
             )
 
         if (member.isBanned) {
             return ActivityResponse(
                 success = false,
-                message = "계정이 정지되었습니다. 사유: ${member.banReason ?: "이용약관 위반"}"
+                message = "Account has been suspended. Reason: ${member.banReason ?: "Terms of Service violation"}"
             )
         }
 
@@ -57,14 +57,14 @@ class BetService(
         if (betAmount < BET_MIN_USDC || betAmount > BET_MAX_USDC) {
             return ActivityResponse(
                 success = false,
-                message = "베팅 금액은 ${BET_MIN_USDC}~${BET_MAX_USDC} USDC 범위여야 합니다."
+                message = "Bet amount must be between ${BET_MIN_USDC} and ${BET_MAX_USDC} USDC."
             )
         }
 
         if (member.usdcBalance < betAmount) {
             return ActivityResponse(
                 success = false,
-                message = "USDC 잔액이 부족합니다. (보유: ${member.usdcBalance}, 필요: $betAmount)"
+                message = "Insufficient USDC balance. (Current: ${member.usdcBalance}, Required: $betAmount)"
             )
         }
 
@@ -72,20 +72,20 @@ class BetService(
         val question = questionRepository.findByIdWithLock(request.questionId)
             ?: return ActivityResponse(
                 success = false,
-                message = "질문을 찾을 수 없습니다."
+                message = "Question not found."
             )
 
         if (question.status != QuestionStatus.BETTING) {
             return ActivityResponse(
                 success = false,
-                message = "베팅이 종료되었습니다."
+                message = "Betting has ended."
             )
         }
 
         if (question.expiredAt.isBefore(LocalDateTime.now())) {
             return ActivityResponse(
                 success = false,
-                message = "베팅 기간이 만료되었습니다."
+                message = "Betting period has expired."
             )
         }
 
@@ -144,7 +144,7 @@ class BetService(
 
         return ActivityResponse(
             success = true,
-            message = "베팅이 완료되었습니다.",
+            message = "Bet placed successfully.",
             activityId = savedActivity.id
         )
     }

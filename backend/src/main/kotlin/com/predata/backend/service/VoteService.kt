@@ -34,7 +34,7 @@ class VoteService(
         if (member != null && member.isBanned) {
             return ActivityResponse(
                 success = false,
-                message = "계정이 정지되었습니다. 사유: ${member.banReason ?: "이용약관 위반"}"
+                message = "Account has been suspended. Reason: ${member.banReason ?: "Terms of Service violation"}"
             )
         }
 
@@ -42,7 +42,7 @@ class VoteService(
         if (member == null || !member.hasVotingPass) {
             return ActivityResponse(
                 success = false,
-                message = "투표 패스가 필요합니다. 마이페이지에서 구매해주세요."
+                message = "Voting pass required. Please purchase one from your My Page."
             )
         }
 
@@ -50,13 +50,13 @@ class VoteService(
         val question = questionRepository.findById(request.questionId)
             .orElse(null) ?: return ActivityResponse(
                 success = false,
-                message = "질문을 찾을 수 없습니다."
+                message = "Question not found."
             )
 
         if (question.status != QuestionStatus.VOTING) {
             return ActivityResponse(
                 success = false,
-                message = "투표가 종료되었습니다."
+                message = "Voting has ended."
             )
         }
 
@@ -64,7 +64,7 @@ class VoteService(
         if (question.votingEndAt.isBefore(LocalDateTime.now())) {
             return ActivityResponse(
                 success = false,
-                message = "투표 기간이 종료되었습니다."
+                message = "Voting period has ended."
             )
         }
 
@@ -78,7 +78,7 @@ class VoteService(
         if (alreadyVoted) {
             return ActivityResponse(
                 success = false,
-                message = "이미 투표하셨습니다."
+                message = "You have already voted."
             )
         }
 
@@ -100,7 +100,7 @@ class VoteService(
 
         return ActivityResponse(
             success = true,
-            message = "투표가 완료되었습니다.",
+            message = "Vote completed successfully.",
             activityId = savedActivity.id
         )
     }

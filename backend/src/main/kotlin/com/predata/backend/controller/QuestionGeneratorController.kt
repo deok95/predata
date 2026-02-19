@@ -46,10 +46,8 @@ class QuestionGeneratorController(
      * POST /api/admin/questions/generate
      */
     @PostMapping("/questions/generate")
-    fun generateQuestion(
-        @RequestBody(required = false) request: ManualGenerateQuestionRequest?
-    ): ResponseEntity<QuestionGenerationResponse> {
-        val result = questionGeneratorService.generateQuestion(request?.category)
+    fun generateQuestion(): ResponseEntity<QuestionGenerationResponse> {
+        val result = autoQuestionGenerationService.generateDailyTrendQuestion()
 
         return if (result.success) {
             ResponseEntity.status(HttpStatus.CREATED).body(result)

@@ -26,7 +26,8 @@ class QuestionGeneratorService(
     private val systemSettingsRepository: SystemSettingsRepository,
     private val questionRepository: QuestionRepository,
     private val blockchainService: BlockchainService,
-    @Value("\${anthropic.api.key:}") private val apiKey: String
+    @Value("\${anthropic.api.key:}") private val apiKey: String,
+    @Value("\${gemini.api.key:}") private val geminiApiKey: String
 ) {
     private val logger = LoggerFactory.getLogger(QuestionGeneratorService::class.java)
     private val restTemplate = RestTemplate()
@@ -134,11 +135,11 @@ class QuestionGeneratorService(
         val newOpinionCount = request.opinionCount ?: currentOpinionCount
 
         if (newDailyCount < 1) {
-            throw IllegalArgumentException("dailyCount는 1 이상이어야 합니다")
+            throw IllegalArgumentException("dailyCount must be at least 1")
         }
 
         if (newOpinionCount > newDailyCount) {
-            throw IllegalArgumentException("opinionCount는 dailyCount 이하여야 합니다 (opinionCount: $newOpinionCount, dailyCount: $newDailyCount)")
+            throw IllegalArgumentException("opinionCount must not exceed dailyCount (opinionCount: $newOpinionCount, dailyCount: $newDailyCount)")
         }
 
         request.enabled?.let {
@@ -151,7 +152,7 @@ class QuestionGeneratorService(
         request.categories?.let { categories ->
             val validCategories = categories.filter { it.uppercase() in VALID_CATEGORIES }
             if (validCategories.isEmpty()) {
-                throw IllegalArgumentException("유효한 카테고리가 없습니다. 허용: $VALID_CATEGORIES")
+                throw IllegalArgumentException("No valid categories. Allowed: $VALID_CATEGORIES")
             }
             saveSetting(SETTING_CATEGORIES, validCategories.joinToString(",") { it.uppercase() })
         }
@@ -195,7 +196,7 @@ class QuestionGeneratorService(
             .filter { it.isNotEmpty() }
     }
 
-    fun isDemoMode(): Boolean = apiKey.isBlank()
+    fun isDemoMode(): Boolean = apiKey.isBlank() && geminiApiKey.isBlank()
 
     private fun getRandomDemoQuestion(category: String): String {
         val questions = DEMO_QUESTIONS[category] ?: DEMO_QUESTIONS["ECONOMY"]!!
@@ -227,62 +228,11 @@ class QuestionGeneratorService(
 
     @Transactional
     fun generateQuestion(category: String? = null): QuestionGenerationResponse {
-        val targetCategory = category?.uppercase()
-            ?: getCategories().randomOrNull()
-            ?: "ECONOMY"
-
-        if (targetCategory !in VALID_CATEGORIES) {
-            return QuestionGenerationResponse(
-                success = false,
-                message = "유효하지 않은 카테고리입니다: $targetCategory"
-            )
-        }
-
-        val demoMode = isDemoMode()
-
-        try {
-            val generatedTitle: String
-
-            if (demoMode) {
-                // 데모 모드: 샘플 질문 사용
-                logger.info("[DEMO MODE] API 키가 설정되지 않아 샘플 질문을 사용합니다.")
-                generatedTitle = getRandomDemoQuestion(targetCategory)
-                logger.info("[DEMO MODE] 샘플 질문 사용: $generatedTitle")
-            } else {
-                // 프로덕션 모드: Claude API 호출
-                val apiResult = callClaudeApi(targetCategory)
-                if (apiResult.isNullOrBlank()) {
-                    return QuestionGenerationResponse(
-                        success = false,
-                        message = "질문 생성에 실패했습니다."
-                    )
-                }
-                generatedTitle = apiResult
-            }
-
-            val question = createQuestion(generatedTitle, targetCategory)
-
-            saveSetting(SETTING_LAST_GENERATED, LocalDateTime.now().toString())
-
-            val logPrefix = if (demoMode) "[DEMO MODE]" else "[QuestionGenerator]"
-            logger.info("$logPrefix 질문 생성 완료: ${question.title} (카테고리: $targetCategory)")
-
-            return QuestionGenerationResponse(
-                success = true,
-                questionId = question.id,
-                title = question.title,
-                category = question.category,
-                message = if (demoMode) "데모 모드로 질문이 생성되었습니다." else "질문이 성공적으로 생성되었습니다.",
-                isDemoMode = demoMode
-            )
-
-        } catch (e: Exception) {
-            logger.error("[QuestionGenerator] 질문 생성 실패: ${e.message}", e)
-            return QuestionGenerationResponse(
-                success = false,
-                message = "질문 생성 중 오류가 발생했습니다: ${e.message}"
-            )
-        }
+        logger.warn("[QuestionGenerator] Legacy generator is disabled. Use AutoQuestionGenerationService.generateDailyTrendQuestion().")
+        return QuestionGenerationResponse(
+            success = false,
+            message = "Legacy generator is disabled. Use the daily trend generator."
+        )
     }
 
     private fun callClaudeApi(category: String): String? {
@@ -316,7 +266,7 @@ class QuestionGeneratorService(
             return content?.trim()?.removeSurrounding("\"")
 
         } catch (e: Exception) {
-            logger.error("[QuestionGenerator] Claude API 호출 실패: ${e.message}")
+            logger.error("[QuestionGenerator] Claude API call failed: ${e.message}")
             throw e
         }
     }

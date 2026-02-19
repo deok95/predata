@@ -64,7 +64,7 @@ class OrderMatchingService(
         if (request.direction == OrderDirection.SELL) {
             return CreateOrderResponse(
                 success = false,
-                message = "매도 기능은 준비 중입니다. 현재는 매수(BUY)만 가능합니다."
+                message = "Sell feature is under development. Currently only BUY orders are available."
             )
         }
 
@@ -73,20 +73,20 @@ class OrderMatchingService(
         if (suspensionStatus.suspended) {
             return CreateOrderResponse(
                 success = false,
-                message = "⚠️ 골 직후 베팅이 일시 중지되었습니다. ${suspensionStatus.remainingSeconds}초 후 재개됩니다."
+                message = "⚠️ Betting is temporarily suspended after a goal. It will resume in ${suspensionStatus.remainingSeconds} seconds."
             )
         }
 
         // 2. 회원 및 잔액 확인 (row lock으로 잔고 변경 정합성 확보)
         val member = memberRepository.findByIdForUpdate(memberId) ?: return CreateOrderResponse(
                 success = false,
-                message = "회원을 찾을 수 없습니다."
+                message = "Member not found."
             )
 
         if (member.isBanned) {
             return CreateOrderResponse(
                 success = false,
-                message = "계정이 정지되었습니다."
+                message = "Account has been suspended."
             )
         }
 
@@ -97,7 +97,7 @@ class OrderMatchingService(
         if (orderType == OrderType.LIMIT && request.price == null) {
             return CreateOrderResponse(
                 success = false,
-                message = "지정가 주문은 가격을 입력해야 합니다."
+                message = "Price is required for limit orders."
             )
         }
 
@@ -105,20 +105,20 @@ class OrderMatchingService(
         val question = questionRepository.findByIdWithLock(request.questionId)
             ?: return CreateOrderResponse(
                 success = false,
-                message = "질문을 찾을 수 없습니다."
+                message = "Question not found."
             )
 
         if (question.status != QuestionStatus.BETTING) {
             return CreateOrderResponse(
                 success = false,
-                message = "베팅 기간이 아닙니다. (현재: ${question.status})"
+                message = "Not in betting period. (Current: ${question.status})"
             )
         }
 
         if (question.expiredAt.isBefore(LocalDateTime.now())) {
             return CreateOrderResponse(
                 success = false,
-                message = "베팅 기간이 만료되었습니다."
+                message = "Betting period has expired."
             )
         }
 
@@ -174,7 +174,7 @@ class OrderMatchingService(
                 // 호가가 없으면 체결 실패 (차감하지 않고 바로 반환)
                 return CreateOrderResponse(
                     success = false,
-                    message = "시장가 주문 실패: 체결 가능한 호가가 없습니다."
+                    message = "Market order failed: No executable quotes available."
                 )
             }
 
@@ -193,7 +193,7 @@ class OrderMatchingService(
             if (member.usdcBalance < totalCost) {
                 return CreateOrderResponse(
                     success = false,
-                    message = "잔액이 부족합니다. (보유: ${member.usdcBalance}, 필요: $totalCost)"
+                    message = "Insufficient balance. (Current: ${member.usdcBalance}, Required: $totalCost)"
                 )
             }
 
@@ -235,12 +235,12 @@ class OrderMatchingService(
                     reserveAmount = BigDecimal(request.amount)
                 )
             } catch (e: IllegalStateException) {
-                val msg = e.message ?: "보유 포지션이 부족합니다."
+                val msg = e.message ?: "Insufficient position."
                 if (msg.startsWith("INSUFFICIENT_AVAILABLE_TO_SELL:")) {
                     val available = msg.substringAfter(":")
                     return CreateOrderResponse(
                         success = false,
-                        message = "판매 가능 수량을 초과합니다. (현재 판매 가능: ${available}개)"
+                        message = "Exceeds available quantity for sale. (Currently available: ${available})"
                     )
                 }
                 return CreateOrderResponse(success = false, message = msg)
@@ -315,12 +315,12 @@ class OrderMatchingService(
             success = true,
             message = when {
                 orderType == OrderType.MARKET && matchResult.filledAmount == 0L ->
-                    "시장가 주문이 체결되지 않았습니다. (즉시 취소됨)"
+                    "Market order was not filled. (Cancelled immediately)"
                 orderType == OrderType.MARKET && matchResult.filledAmount < request.amount ->
-                    "시장가 주문이 부분 체결되었습니다. (${matchResult.filledAmount}/${request.amount}, 미체결분 자동 취소)"
-                matchResult.filledAmount == request.amount -> "주문이 완전 체결되었습니다."
-                matchResult.filledAmount > 0 -> "부분 체결되었습니다. (${matchResult.filledAmount}/${request.amount})"
-                else -> "주문이 오더북에 등록되었습니다."
+                    "Market order partially filled. (${matchResult.filledAmount}/${request.amount}, unfilled portion auto-cancelled)"
+                matchResult.filledAmount == request.amount -> "Order completely filled."
+                matchResult.filledAmount > 0 -> "Partially filled. (${matchResult.filledAmount}/${request.amount})"
+                else -> "Order added to order book."
             },
             orderId = savedOrder.id,
             filledAmount = matchResult.filledAmount,
@@ -516,8 +516,8 @@ class OrderMatchingService(
             )
             priceHistoryRepository.save(priceHistory)
         } catch (e: Exception) {
-            // 가격 이력 기록 실패는 치명적이지 않으므로 로그만 남김
-            logger.warn("[PriceHistory] 가격 이력 기록 실패: {}", e.message)
+            // Price history recording failure is not critical, just log
+            logger.warn("[PriceHistory] Price history recording failed: {}", e.message)
         }
     }
 
@@ -538,20 +538,20 @@ class OrderMatchingService(
         val order = orderRepository.findByIdWithLock(orderId)
             ?: return CancelOrderResponse(
                 success = false,
-                message = "주문을 찾을 수 없습니다."
+                message = "Order not found."
             )
 
         if (order.memberId != memberId) {
             return CancelOrderResponse(
                 success = false,
-                message = "본인의 주문만 취소할 수 있습니다."
+                message = "You can only cancel your own orders."
             )
         }
 
         if (order.status !in listOf(OrderStatus.OPEN, OrderStatus.PARTIAL)) {
             return CancelOrderResponse(
                 success = false,
-                message = "취소할 수 없는 주문입니다. (상태: ${order.status})"
+                message = "Order cannot be cancelled. (Status: ${order.status})"
             )
         }
 
@@ -603,7 +603,7 @@ class OrderMatchingService(
 
         return CancelOrderResponse(
             success = true,
-            message = "주문이 취소되었습니다.",
+            message = "Order cancelled successfully.",
             refundedAmount = refundAmount.setScale(0, java.math.RoundingMode.DOWN).toLong()
         )
     }

@@ -39,10 +39,10 @@ interface PremiumDataResponse {
 }
 
 export default function PremiumDataExport() {
-  const [questionId] = useState(1); // 일단 질문 1번 고정
+  const [questionId] = useState(1); // Fixed to question 1 for now
   const [filters, setFilters] = useState<PremiumDataRequest>({
     questionId: 1,
-    minLatencyMs: 5000 // 기본값: 5초 이상 (고품질)
+    minLatencyMs: 5000 // Default: 5 seconds or more (high quality)
   });
 
   const [previewData, setPreviewData] = useState<PremiumDataResponse | null>(null);
@@ -62,7 +62,7 @@ export default function PremiumDataExport() {
       if (process.env.NODE_ENV === 'development') {
         console.error('Failed to preview:', error);
       }
-      alert('미리보기에 실패했습니다.');
+      alert('Preview failed.');
     } finally {
       setLoading(false);
     }
@@ -87,7 +87,7 @@ export default function PremiumDataExport() {
       if (process.env.NODE_ENV === 'development') {
         console.error('Failed to export:', error);
       }
-      alert('다운로드에 실패했습니다.');
+      alert('Download failed.');
     } finally {
       setLoading(false);
     }
@@ -133,49 +133,49 @@ export default function PremiumDataExport() {
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-purple-50 py-8 px-4">
       <div className="max-w-6xl mx-auto">
         
-        {/* 헤더 */}
+        {/* Header */}
         <div className="mb-8">
           <div className="flex items-center gap-3 mb-2">
             <Database className="h-8 w-8 text-purple-600" />
-            <h1 className="text-4xl font-black text-slate-800">프리미엄 데이터 추출</h1>
+            <h1 className="text-4xl font-black text-slate-800">Premium Data Export</h1>
           </div>
-          <p className="text-slate-600 text-lg">고품질 예측 데이터를 필터링하여 다운로드하세요</p>
+          <p className="text-slate-600 text-lg">Filter and download high-quality prediction data</p>
         </div>
 
-        {/* 필터 섹션 */}
+        {/* Filter Section */}
         <div className="bg-white rounded-xl shadow-lg p-6 mb-6">
           <div className="flex items-center gap-2 mb-4">
             <Filter className="h-6 w-6 text-purple-600" />
-            <h2 className="text-2xl font-bold">필터 설정</h2>
+            <h2 className="text-2xl font-bold">Filter Settings</h2>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            {/* 국가 */}
+            {/* Country */}
             <div>
-              <label className="block text-sm font-semibold text-slate-700 mb-2">국가</label>
+              <label className="block text-sm font-semibold text-slate-700 mb-2">Country</label>
               <select
                 value={filters.countryCode || ''}
                 onChange={(e) => setFilters({ ...filters, countryCode: e.target.value || undefined })}
                 className="w-full p-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-purple-500"
               >
-                <option value="">전체</option>
-                <option value="KR">한국</option>
-                <option value="US">미국</option>
-                <option value="JP">일본</option>
-                <option value="SG">싱가포르</option>
-                <option value="VN">베트남</option>
+                <option value="">All</option>
+                <option value="KR">Korea</option>
+                <option value="US">USA</option>
+                <option value="JP">Japan</option>
+                <option value="SG">Singapore</option>
+                <option value="VN">Vietnam</option>
               </select>
             </div>
 
-            {/* 직업 */}
+            {/* Job */}
             <div>
-              <label className="block text-sm font-semibold text-slate-700 mb-2">직업</label>
+              <label className="block text-sm font-semibold text-slate-700 mb-2">Job</label>
               <select
                 value={filters.jobCategory || ''}
                 onChange={(e) => setFilters({ ...filters, jobCategory: e.target.value || undefined })}
                 className="w-full p-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-purple-500"
               >
-                <option value="">전체</option>
+                <option value="">All</option>
                 <option value="IT">IT</option>
                 <option value="Finance">Finance</option>
                 <option value="Medical">Medical</option>
@@ -184,18 +184,18 @@ export default function PremiumDataExport() {
               </select>
             </div>
 
-            {/* 최소 응답시간 (품질 필터) */}
+            {/* Min Response Time (Quality Filter) */}
             <div>
-              <label className="block text-sm font-semibold text-slate-700 mb-2">최소 응답시간 (어뷰징 제거)</label>
+              <label className="block text-sm font-semibold text-slate-700 mb-2">Min Response Time (Anti-Abuse)</label>
               <select
                 value={filters.minLatencyMs || ''}
                 onChange={(e) => setFilters({ ...filters, minLatencyMs: e.target.value ? Number(e.target.value) : undefined })}
                 className="w-full p-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-purple-500"
               >
-                <option value="">전체</option>
-                <option value="2000">2초 이상 (일반)</option>
-                <option value="5000">5초 이상 (고품질)</option>
-                <option value="10000">10초 이상 (최고품질)</option>
+                <option value="">All</option>
+                <option value="2000">2 seconds or more (Normal)</option>
+                <option value="5000">5 seconds or more (High Quality)</option>
+                <option value="10000">10 seconds or more (Best Quality)</option>
               </select>
             </div>
           </div>
@@ -207,7 +207,7 @@ export default function PremiumDataExport() {
               className="flex items-center gap-2 px-6 py-3 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition font-semibold disabled:opacity-50"
             >
               <Eye size={20} />
-              미리보기
+              Preview
             </button>
             <button
               onClick={() => handleExport('json')}
@@ -215,7 +215,7 @@ export default function PremiumDataExport() {
               className="flex items-center gap-2 px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition font-semibold disabled:opacity-50"
             >
               <Download size={20} />
-              JSON 다운로드
+              Download JSON
             </button>
             <button
               onClick={() => handleExport('csv')}
@@ -223,20 +223,20 @@ export default function PremiumDataExport() {
               className="flex items-center gap-2 px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition font-semibold disabled:opacity-50"
             >
               <Download size={20} />
-              CSV 다운로드
+              Download CSV
             </button>
           </div>
         </div>
 
-        {/* 미리보기 결과 */}
+        {/* Preview Results */}
         {previewData && (
           <div className="bg-white rounded-xl shadow-lg p-6">
-            <h2 className="text-2xl font-bold mb-4">데이터 미리보기</h2>
-            
-            {/* 통계 */}
+            <h2 className="text-2xl font-bold mb-4">Data Preview</h2>
+
+            {/* Statistics */}
             <div className="grid grid-cols-4 gap-4 mb-6">
               <div className="p-4 bg-purple-50 rounded-lg">
-                <p className="text-sm text-slate-600">총 데이터</p>
+                <p className="text-sm text-slate-600">Total Data</p>
                 <p className="text-2xl font-bold text-purple-600">{previewData.totalCount.toLocaleString()}</p>
               </div>
               <div className="p-4 bg-green-50 rounded-lg">
@@ -248,24 +248,24 @@ export default function PremiumDataExport() {
                 <p className="text-2xl font-bold text-red-600">{previewData.noPercentage.toFixed(1)}%</p>
               </div>
               <div className="p-4 bg-blue-50 rounded-lg">
-                <p className="text-sm text-slate-600">품질</p>
+                <p className="text-sm text-slate-600">Quality</p>
                 <p className="text-2xl font-bold text-blue-600">
-                  {previewData.filters.minLatencyMs ? `${previewData.filters.minLatencyMs / 1000}초+` : '전체'}
+                  {previewData.filters.minLatencyMs ? `${previewData.filters.minLatencyMs / 1000}s+` : 'All'}
                 </p>
               </div>
             </div>
 
-            {/* 데이터 테이블 */}
+            {/* Data Table */}
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead className="bg-slate-100">
                   <tr>
-                    <th className="p-3 text-left font-semibold">선택</th>
-                    <th className="p-3 text-left font-semibold">응답시간</th>
-                    <th className="p-3 text-left font-semibold">국가</th>
-                    <th className="p-3 text-left font-semibold">직업</th>
-                    <th className="p-3 text-left font-semibold">연령</th>
-                    <th className="p-3 text-left font-semibold">티어</th>
+                    <th className="p-3 text-left font-semibold">Choice</th>
+                    <th className="p-3 text-left font-semibold">Response Time</th>
+                    <th className="p-3 text-left font-semibold">Country</th>
+                    <th className="p-3 text-left font-semibold">Job</th>
+                    <th className="p-3 text-left font-semibold">Age</th>
+                    <th className="p-3 text-left font-semibold">Tier</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -276,10 +276,10 @@ export default function PremiumDataExport() {
                           {item.choice}
                         </span>
                       </td>
-                      <td className="p-3 text-slate-600">{(item.latencyMs / 1000).toFixed(1)}초</td>
+                      <td className="p-3 text-slate-600">{(item.latencyMs / 1000).toFixed(1)}s</td>
                       <td className="p-3 text-slate-600">{item.countryCode}</td>
                       <td className="p-3 text-slate-600">{item.jobCategory || '-'}</td>
-                      <td className="p-3 text-slate-600">{item.ageGroup ? `${item.ageGroup}세` : '-'}</td>
+                      <td className="p-3 text-slate-600">{item.ageGroup ? `${item.ageGroup}` : '-'}</td>
                       <td className="p-3">
                         <span className={`px-2 py-1 rounded text-xs font-bold ${
                           item.tier === 'PLATINUM' ? 'bg-purple-100 text-purple-700' :
@@ -297,7 +297,7 @@ export default function PremiumDataExport() {
             </div>
 
             <p className="text-sm text-slate-500 mt-4">
-              * 미리보기는 최대 10개만 표시됩니다. 전체 데이터를 받으려면 다운로드 버튼을 클릭하세요.
+              * Preview shows up to 10 items. Click download button to get full data.
             </p>
           </div>
         )}

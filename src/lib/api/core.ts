@@ -40,11 +40,11 @@ function isApiEnvelope<T>(raw: unknown): raw is ApiEnvelope<T> {
 export function unwrapApiEnvelope<T>(raw: T | ApiEnvelope<T>): T {
   if (isApiEnvelope<T>(raw)) {
     if (!raw.success) {
-      throw new Error(raw.message || '요청이 실패했습니다.');
+      throw new Error(raw.message || 'Request failed.');
     }
 
     if (raw.data === undefined) {
-      throw new Error(raw.message || '응답 데이터가 없습니다.');
+      throw new Error(raw.message || 'No response data.');
     }
 
     return raw.data;
@@ -77,36 +77,36 @@ export async function apiRequest<T>(endpoint: string, options?: RequestInit): Pr
 
     let response = await fetchOnce();
 
-    // 429 Rate Limit 대응: 안전한 메서드(GET, HEAD)만 1회 재시도
+    // 429 Rate Limit handling: Retry only safe methods (GET, HEAD) once
     if (response.status === 429) {
       const method = (options?.method || 'GET').toUpperCase();
       const isSafeMethod = method === 'GET' || method === 'HEAD';
 
       if (!isSafeMethod) {
-        // POST, PUT, DELETE, PATCH 등은 재시도하지 않고 즉시 에러 throw
+        // POST, PUT, DELETE, PATCH are not retried and throw error immediately
         let data;
         try {
           data = await response.json();
         } catch {
-          throw new ApiError(429, 'Rate limit exceeded (안전하지 않은 메서드는 재시도하지 않습니다)');
+          throw new ApiError(429, 'Rate limit exceeded (unsafe methods are not retried)');
         }
         throw new ApiError(429, data.message || 'Rate limit exceeded', data);
       }
 
-      // Retry-After 헤더 값 사용, 없으면 기본 2초, 최대 5초로 제한
+      // Use Retry-After header value, default 2 seconds, max 5 seconds
       const retryAfterRaw = response.headers.get('Retry-After');
-      let retryAfterSeconds = 2; // 기본값 2초
+      let retryAfterSeconds = 2; // Default 2 seconds
 
       if (retryAfterRaw) {
         const parsed = parseInt(retryAfterRaw, 10);
         if (Number.isFinite(parsed) && parsed > 0) {
-          retryAfterSeconds = Math.min(parsed, 5); // 최대 5초로 cap
+          retryAfterSeconds = Math.min(parsed, 5); // Cap at max 5 seconds
         }
       }
 
       await new Promise(r => setTimeout(r, retryAfterSeconds * 1000));
 
-      // NOTE: body는 string(JSON) 기반을 전제로 1회 재요청합니다. (Stream body는 재사용 불가)
+      // NOTE: Assumes body is string (JSON) based for single retry. (Stream body cannot be reused)
       response = await fetchOnce();
     }
 
@@ -114,12 +114,12 @@ export async function apiRequest<T>(endpoint: string, options?: RequestInit): Pr
     try {
       data = await response.json();
     } catch {
-      throw new ApiError(response.status, '서버 응답을 처리할 수 없습니다.');
+      throw new ApiError(response.status, 'Unable to process server response.');
     }
 
     if (!response.ok) {
       if (response.status === 401 && typeof window !== 'undefined') {
-        // 게스트 체크: 게스트는 401이 발생해도 로그아웃하지 않음
+        // Guest check: Guests are not logged out on 401
         const savedUser = localStorage.getItem('predataUser');
         let isGuest = false;
 
@@ -128,11 +128,11 @@ export async function apiRequest<T>(endpoint: string, options?: RequestInit): Pr
             const user = JSON.parse(savedUser);
             isGuest = user.id < 0 || (user.email?.endsWith('@predata.demo') ?? false);
           } catch {
-            // JSON 파싱 실패 시 게스트 아님
+            // Not a guest if JSON parsing fails
           }
         }
 
-        // 게스트가 아닌 경우에만 로그아웃 처리
+        // Logout only if not a guest
         if (!isGuest) {
           const { clearAllAuthCookies } = await import('@/lib/cookieUtils');
           localStorage.removeItem('predataUser');
@@ -159,12 +159,12 @@ export async function apiRequest<T>(endpoint: string, options?: RequestInit): Pr
     }
 
     if (error instanceof DOMException && error.name === 'AbortError') {
-      throw new ApiError(408, '서버 응답 시간이 초과되었습니다.');
+      throw new ApiError(408, 'Server response timeout.');
     }
 
     throw new ApiError(
       500,
-      error instanceof Error ? error.message : '네트워크 오류가 발생했습니다.',
+      error instanceof Error ? error.message : 'Network error occurred.',
       error
     );
   }

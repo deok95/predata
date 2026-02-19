@@ -85,7 +85,7 @@ class WithdrawalService(
                 retries--
                 if (retries == 0) {
                     log.error("낙관적 락 재시도 실패: memberId=$memberId", e)
-                    throw IllegalArgumentException("잔액 업데이트에 실패했습니다. 다시 시도해주세요.")
+                    throw IllegalArgumentException("Failed to update balance. Please try again.")
                 }
                 log.warn("낙관적 락 충돌 발생, 재시도 중... (남은 시도: $retries)")
                 Thread.sleep(100)
@@ -93,13 +93,13 @@ class WithdrawalService(
                 retries--
                 if (retries == 0) {
                     log.error("낙관적 락 재시도 실패: memberId=$memberId", e)
-                    throw IllegalArgumentException("잔액 업데이트에 실패했습니다. 다시 시도해주세요.")
+                    throw IllegalArgumentException("Failed to update balance. Please try again.")
                 }
                 log.warn("낙관적 락 충돌 발생, 재시도 중... (남은 시도: $retries)")
                 Thread.sleep(100)
             }
         }
-        throw IllegalArgumentException("출금 처리에 실패했습니다.")
+        throw IllegalArgumentException("Withdrawal processing failed.")
     }
 
     /**
@@ -112,36 +112,36 @@ class WithdrawalService(
             .orElseThrow { IllegalArgumentException("회원을 찾을 수 없습니다.") }
 
         if (member.isBanned) {
-            throw IllegalArgumentException("계정이 정지되었습니다.")
+            throw IllegalArgumentException("Account has been suspended.")
         }
 
         // 2. 금액 검증
         if (amount < MIN_WITHDRAW || amount > MAX_WITHDRAW) {
-            throw IllegalArgumentException("출금 가능 금액은 \$${MIN_WITHDRAW}~\$${MAX_WITHDRAW}입니다.")
+            throw IllegalArgumentException("Withdrawal amount must be between \$${MIN_WITHDRAW} and \$${MAX_WITHDRAW}.")
         }
 
         // 3. 지갑 주소 검증
         if (!walletAddress.matches(Regex("^0x[a-fA-F0-9]{40}$"))) {
-            throw IllegalArgumentException("유효하지 않은 지갑 주소입니다.")
+            throw IllegalArgumentException("Invalid wallet address.")
         }
 
         // 4. DB에 등록된 지갑 주소와 일치하는지 확인
         if (member.walletAddress != null) {
             if (!walletAddress.equals(member.walletAddress, ignoreCase = true)) {
-                throw IllegalArgumentException("등록된 지갑 주소와 일치하지 않습니다. 마이페이지에서 지갑을 연결해주세요.")
+                throw IllegalArgumentException("Wallet address does not match registered address. Please connect your wallet in My Page.")
             }
         } else {
-            throw IllegalArgumentException("지갑 주소가 등록되지 않았습니다. 마이페이지에서 지갑을 먼저 연결해주세요.")
+            throw IllegalArgumentException("No wallet address registered. Please connect your wallet in My Page first.")
         }
 
         // 5. 잔액 확인
         if (member.usdcBalance < amount) {
-            throw IllegalArgumentException("잔액이 부족합니다. (보유: \$${member.usdcBalance}, 요청: \$${amount})")
+            throw IllegalArgumentException("Insufficient balance. (balance: \$${member.usdcBalance}, requested: \$${amount})")
         }
 
         // 6. 프라이빗 키 확인
         if (senderPrivateKey.isBlank()) {
-            throw IllegalStateException("출금 기능이 설정되지 않았습니다. 관리자에게 문의하세요.")
+            throw IllegalStateException("Withdrawal feature not configured. Please contact administrator.")
         }
 
         // 7. 잔액 차감
@@ -158,7 +158,7 @@ class WithdrawalService(
             member.usdcBalance = member.usdcBalance.add(amount)
             memberRepository.save(member)
             log.error("USDC 전송 실패, 잔액 복구: memberId=$memberId, amount=$amount", e)
-            throw IllegalArgumentException("USDC 전송에 실패했습니다: ${e.message}")
+            throw IllegalArgumentException("USDC transfer failed: ${e.message}")
         }
 
         // 9. PENDING 상태로 결제 기록 저장
@@ -230,7 +230,7 @@ class WithdrawalService(
                 txHash = txHash,
                 amount = amount.toDouble(),
                 newBalance = member.usdcBalance.toDouble(),
-                message = "\$${amount} 출금이 완료되었습니다."
+                message = "Withdrawal of \$${amount} completed."
             )
         } else {
             // FAILED: 잔액 복구
@@ -243,7 +243,7 @@ class WithdrawalService(
 
             log.error("출금 트랜잭션 실패, 잔액 복구: memberId=$memberId, amount=$amount, txHash=$txHash")
 
-            throw IllegalArgumentException("블록체인 트랜잭션이 실패했습니다. 잔액이 복구되었습니다.")
+            throw IllegalArgumentException("Blockchain transaction failed. Balance has been restored.")
         }
     }
 
@@ -298,7 +298,7 @@ class WithdrawalService(
         )
 
         if (transaction.hasError()) {
-            throw RuntimeException("트랜잭션 전송 실패: ${transaction.error.message}")
+            throw RuntimeException("Transaction submission failed: ${transaction.error.message}")
         }
 
         return transaction.transactionHash

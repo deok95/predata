@@ -30,7 +30,7 @@ class DataAnalysisController(
         }
 
         if (question.votingPhase.ordinal < VotingPhase.BETTING_OPEN.ordinal) {
-            throw IllegalStateException("투표 결과는 공개 전입니다.")
+            throw IllegalStateException("Vote results not yet revealed.")
         }
     }
 
@@ -46,7 +46,7 @@ class DataAnalysisController(
             ResponseEntity.ok(report)
         } catch (e: IllegalStateException) {
             ResponseEntity.status(HttpStatus.FORBIDDEN)
-                .body(mapOf("success" to false, "message" to (e.message ?: "투표 결과는 공개 전입니다.")))
+                .body(mapOf("success" to false, "message" to (e.message ?: "Vote results not yet revealed.")))
         }
     }
 
@@ -74,7 +74,7 @@ class DataAnalysisController(
             )
         } catch (e: IllegalStateException) {
             ResponseEntity.status(HttpStatus.FORBIDDEN)
-                .body(mapOf("success" to false, "message" to (e.message ?: "투표 결과는 공개 전입니다.")))
+                .body(mapOf("success" to false, "message" to (e.message ?: "Vote results not yet revealed.")))
         }
     }
 
@@ -93,7 +93,7 @@ class DataAnalysisController(
             ResponseEntity.ok(result)
         } catch (e: IllegalStateException) {
             ResponseEntity.status(HttpStatus.FORBIDDEN)
-                .body(mapOf("success" to false, "message" to (e.message ?: "투표 결과는 공개 전입니다.")))
+                .body(mapOf("success" to false, "message" to (e.message ?: "Vote results not yet revealed.")))
         }
     }
 
@@ -109,7 +109,7 @@ class DataAnalysisController(
             ResponseEntity.ok(result)
         } catch (e: IllegalStateException) {
             ResponseEntity.status(HttpStatus.FORBIDDEN)
-                .body(mapOf("success" to false, "message" to (e.message ?: "투표 결과는 공개 전입니다.")))
+                .body(mapOf("success" to false, "message" to (e.message ?: "Vote results not yet revealed.")))
         }
     }
 
@@ -169,7 +169,7 @@ class DataAnalysisController(
             )
         } catch (e: IllegalStateException) {
             ResponseEntity.status(HttpStatus.FORBIDDEN)
-                .body(mapOf("success" to false, "message" to (e.message ?: "투표 결과는 공개 전입니다.")))
+                .body(mapOf("success" to false, "message" to (e.message ?: "Vote results not yet revealed.")))
         }
     }
 
@@ -202,7 +202,7 @@ class DataAnalysisController(
             )
         } catch (e: IllegalStateException) {
             ResponseEntity.status(HttpStatus.FORBIDDEN)
-                .body(mapOf("success" to false, "message" to (e.message ?: "투표 결과는 공개 전입니다.")))
+                .body(mapOf("success" to false, "message" to (e.message ?: "Vote results not yet revealed.")))
         }
     }
 
@@ -246,7 +246,7 @@ class DataAnalysisController(
             )
         } catch (e: IllegalStateException) {
             ResponseEntity.status(HttpStatus.FORBIDDEN)
-                .body(mapOf("success" to false, "message" to (e.message ?: "투표 결과는 공개 전입니다.")))
+                .body(mapOf("success" to false, "message" to (e.message ?: "Vote results not yet revealed.")))
         }
     }
 }

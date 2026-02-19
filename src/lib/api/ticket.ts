@@ -8,7 +8,7 @@ export interface TicketStatus {
 
 export const ticketApi = {
   /**
-   * 티켓 상태 조회
+   * Fetch ticket status
    * GET /api/tickets/status
    */
   getStatus: async (): Promise<TicketStatus> => {

@@ -7,7 +7,7 @@ import { useTheme } from '@/hooks/useTheme';
 import { useAuth } from '@/hooks/useAuth';
 import { authApi } from '@/lib/api';
 
-// --- Context: 어디서든 모달을 열 수 있음 ---
+// --- Context: Modal can be opened from anywhere ---
 const RegisterModalContext = createContext<{ open: () => void } | null>(null);
 
 export function useRegisterModal() {
@@ -44,14 +44,19 @@ function RegisterModalInner({ onClose }: { onClose: () => void }) {
   const [verificationCode, setVerificationCode] = useState('');
   const [password, setPassword] = useState('');
   const [passwordConfirm, setPasswordConfirm] = useState('');
+  const [countryCode, setCountryCode] = useState('KR');
+  const [gender, setGender] = useState<'MALE' | 'FEMALE' | 'OTHER'>('OTHER');
+  const [birthDate, setBirthDate] = useState('');
+  const [jobCategory, setJobCategory] = useState('');
+  const [ageGroup, setAgeGroup] = useState<number | undefined>(undefined);
 
   const codeInputRef = useRef<HTMLInputElement>(null);
   const passwordInputRef = useRef<HTMLInputElement>(null);
 
-  // Step 1: 이메일 입력 → 인증 코드 발송
+  // Step 1: Enter email → Send verification code
   const handleSendCode = async () => {
     if (!email.trim() || !email.includes('@')) {
-      setError('유효한 이메일을 입력해주세요.');
+      setError('Please enter a valid email.');
       return;
     }
     setError('');
@@ -63,17 +68,17 @@ function RegisterModalInner({ onClose }: { onClose: () => void }) {
         setVerificationCode('');
         setTimeout(() => codeInputRef.current?.focus(), 100);
       } else {
-        // 이미 가입된 이메일인 경우 특별 처리
-        if (result.message?.includes('이미 가입된')) {
-          setError('이미 가입된 회원입니다. 화면을 닫고 "로그인" 버튼을 눌러주세요.');
+        // Special handling for already registered email
+        if (result.message?.includes('already registered')) {
+          setError('This email is already registered. Please close this window and click "Sign In".');
         } else {
-          setError(result.message || '코드 발송에 실패했습니다.');
+          setError(result.message || 'Failed to send code.');
         }
       }
     } catch (err: any) {
-      const errorMsg = err?.data?.message || err?.message || '코드 발송에 실패했습니다.';
-      if (errorMsg.includes('이미 가입된')) {
-        setError('이미 가입된 회원입니다. 화면을 닫고 "로그인" 버튼을 눌러주세요.');
+      const errorMsg = err?.data?.message || err?.message || 'Failed to send code.';
+      if (errorMsg.includes('already registered')) {
+        setError('This email is already registered. Please close this window and click "Sign In".');
       } else {
         setError(errorMsg);
       }
@@ -82,10 +87,10 @@ function RegisterModalInner({ onClose }: { onClose: () => void }) {
     }
   };
 
-  // Step 2: 인증 코드 검증
+  // Step 2: Verify code
   const handleVerifyCode = async () => {
     if (verificationCode.length !== 6) {
-      setError('6자리 인증 코드를 입력해주세요.');
+      setError('Please enter the 6-digit verification code.');
       return;
     }
     setError('');
@@ -97,36 +102,52 @@ function RegisterModalInner({ onClose }: { onClose: () => void }) {
       setPasswordConfirm('');
       setTimeout(() => passwordInputRef.current?.focus(), 100);
     } catch (err: any) {
-      setError(err?.data?.message || err?.message || '인증에 실패했습니다.');
+      setError(err?.data?.message || err?.message || 'Verification failed.');
     } finally {
       setLoading(false);
     }
   };
 
-  // Step 3: 비밀번호 설정 → 회원 생성 + 자동 로그인
+  // Step 3: Set password → Create account + auto login
   const handleCompleteSignup = async () => {
+    if (!birthDate) {
+      setError('Please enter your birth date.');
+      return;
+    }
     if (!password || password.length < 6) {
-      setError('비밀번호는 6자 이상이어야 합니다.');
+      setError('Password must be at least 6 characters.');
       return;
     }
     if (password !== passwordConfirm) {
-      setError('비밀번호가 일치하지 않습니다.');
+      setError('Passwords do not match.');
       return;
     }
     setError('');
     setLoading(true);
     try {
-      const result = await authApi.completeSignup(email.trim(), verificationCode, password, passwordConfirm);
+      const result = await authApi.completeSignup(
+        email.trim(),
+        verificationCode,
+        password,
+        passwordConfirm,
+        {
+          countryCode,
+          gender,
+          birthDate,
+          jobCategory: jobCategory || undefined,
+          ageGroup,
+        }
+      );
       if (result.token && result.memberId) {
         localStorage.setItem('token', result.token);
         localStorage.setItem('memberId', result.memberId.toString());
         await loginById(result.memberId);
         onClose();
       } else {
-        setError('회원가입에 실패했습니다.');
+        setError('Sign up failed.');
       }
     } catch (err: any) {
-      setError(err?.data?.message || err?.message || '회원가입에 실패했습니다.');
+      setError(err?.data?.message || err?.message || 'Sign up failed.');
     } finally {
       setLoading(false);
     }
@@ -152,7 +173,7 @@ function RegisterModalInner({ onClose }: { onClose: () => void }) {
           <X size={20} />
         </button>
 
-        {/* Step 1: 이메일 입력 */}
+        {/* Step 1: Enter Email */}
         {step === 'email' && (
           <div>
             <div className="flex justify-center mb-4">
@@ -162,10 +183,10 @@ function RegisterModalInner({ onClose }: { onClose: () => void }) {
             </div>
 
             <h2 className={`text-2xl font-black mb-2 text-center ${isDark ? 'text-white' : 'text-slate-900'}`}>
-              이메일 입력
+              Enter Email
             </h2>
             <p className="text-slate-500 text-sm mb-6 text-center">
-              이메일을 입력하면 인증 코드가 발송됩니다.
+              Enter your email to receive a verification code.
             </p>
 
             <input
@@ -186,16 +207,16 @@ function RegisterModalInner({ onClose }: { onClose: () => void }) {
               className="w-full py-4 rounded-2xl font-bold text-lg bg-indigo-600 text-white hover:bg-indigo-700 transition-all active:scale-95 disabled:opacity-50 flex items-center justify-center gap-2"
             >
               {loading ? <Loader2 size={20} className="animate-spin" /> : <Mail size={20} />}
-              <span>{loading ? '발송 중...' : '인증 코드 받기'}</span>
+              <span>{loading ? 'Sending...' : 'Get Verification Code'}</span>
             </button>
           </div>
         )}
 
-        {/* Step 2: 인증 코드 입력 */}
+        {/* Step 2: Enter Verification Code */}
         {step === 'verify' && (
           <div>
             <button onClick={goBack} className="flex items-center gap-1 text-sm text-slate-400 hover:text-indigo-500 transition mb-4">
-              <ArrowLeft size={16} /> 뒤로
+              <ArrowLeft size={16} /> Back
             </button>
 
             <div className="flex justify-center mb-4">
@@ -205,11 +226,11 @@ function RegisterModalInner({ onClose }: { onClose: () => void }) {
             </div>
 
             <h2 className={`text-2xl font-black mb-2 text-center ${isDark ? 'text-white' : 'text-slate-900'}`}>
-              인증 코드 입력
+              Enter Verification Code
             </h2>
             <p className="text-slate-500 text-sm mb-6 text-center">
-              <span className="text-indigo-500 font-medium">{email}</span>으로<br />
-              발송된 6자리 코드를 입력해주세요.
+              Enter the 6-digit code sent to<br />
+              <span className="text-indigo-500 font-medium">{email}</span>
             </p>
 
             <input
@@ -233,7 +254,7 @@ function RegisterModalInner({ onClose }: { onClose: () => void }) {
               className="w-full py-4 rounded-2xl font-bold text-lg bg-indigo-600 text-white hover:bg-indigo-700 transition-all active:scale-95 disabled:opacity-50 flex items-center justify-center gap-2"
             >
               {loading ? <Loader2 size={20} className="animate-spin" /> : <ShieldCheck size={20} />}
-              <span>{loading ? '확인 중...' : '인증 확인'}</span>
+              <span>{loading ? 'Verifying...' : 'Verify Code'}</span>
             </button>
 
             <button
@@ -241,16 +262,16 @@ function RegisterModalInner({ onClose }: { onClose: () => void }) {
               disabled={loading}
               className="w-full mt-3 text-sm text-slate-400 hover:text-indigo-500 transition-colors text-center"
             >
-              인증 코드 재발송
+              Resend Code
             </button>
           </div>
         )}
 
-        {/* Step 3: 비밀번호 설정 */}
+        {/* Step 3: Set Password */}
         {step === 'password' && (
           <div>
             <button onClick={goBack} className="flex items-center gap-1 text-sm text-slate-400 hover:text-indigo-500 transition mb-4">
-              <ArrowLeft size={16} /> 뒤로
+              <ArrowLeft size={16} /> Back
             </button>
 
             <div className="flex justify-center mb-4">
@@ -260,10 +281,10 @@ function RegisterModalInner({ onClose }: { onClose: () => void }) {
             </div>
 
             <h2 className={`text-2xl font-black mb-2 text-center ${isDark ? 'text-white' : 'text-slate-900'}`}>
-              비밀번호 설정
+              Set Password
             </h2>
             <p className="text-slate-500 text-sm mb-6 text-center">
-              로그인에 사용할 비밀번호를 설정해주세요.
+              Set a password for your account.
             </p>
 
             <div className={`flex items-center gap-2 py-2 px-4 rounded-xl mb-6 text-sm ${isDark ? 'bg-slate-800 text-indigo-400' : 'bg-indigo-50 text-indigo-600'}`}>
@@ -273,26 +294,108 @@ function RegisterModalInner({ onClose }: { onClose: () => void }) {
 
             <div className="space-y-4">
               <div>
-                <label className="text-xs font-bold text-slate-400 uppercase mb-1.5 block">비밀번호</label>
+                <label className="text-xs font-bold text-slate-400 uppercase mb-1.5 block">Country</label>
+                <select
+                  value={countryCode}
+                  onChange={(e) => setCountryCode(e.target.value)}
+                  className={`w-full p-4 rounded-2xl border text-sm font-medium transition ${isDark ? 'bg-slate-800 border-slate-700 text-white focus:border-indigo-500' : 'bg-slate-50 border-slate-200 text-slate-900 focus:border-indigo-500'}`}
+                >
+                  <option value="KR">South Korea</option>
+                  <option value="US">United States</option>
+                  <option value="JP">Japan</option>
+                  <option value="CN">China</option>
+                  <option value="OT">Other</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="text-xs font-bold text-slate-400 uppercase mb-1.5 block">Gender</label>
+                <div className="grid grid-cols-3 gap-2">
+                  {([
+                    ['MALE', 'Male'],
+                    ['FEMALE', 'Female'],
+                    ['OTHER', 'Other'],
+                  ] as const).map(([value, label]) => (
+                    <button
+                      key={value}
+                      type="button"
+                      onClick={() => setGender(value)}
+                      className={`py-2.5 rounded-xl text-sm font-bold border transition ${
+                        gender === value
+                          ? 'bg-indigo-600 text-white border-indigo-600'
+                          : isDark
+                            ? 'bg-slate-800 border-slate-700 text-slate-300'
+                            : 'bg-slate-50 border-slate-200 text-slate-600'
+                      }`}
+                    >
+                      {label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div>
+                <label className="text-xs font-bold text-slate-400 uppercase mb-1.5 block">Birth Date</label>
+                <input
+                  type="date"
+                  value={birthDate}
+                  onChange={(e) => setBirthDate(e.target.value)}
+                  className={`w-full p-4 rounded-2xl border text-sm font-medium transition ${isDark ? 'bg-slate-800 border-slate-700 text-white focus:border-indigo-500' : 'bg-slate-50 border-slate-200 text-slate-900 focus:border-indigo-500'}`}
+                />
+              </div>
+
+              <div>
+                <label className="text-xs font-bold text-slate-400 uppercase mb-1.5 block">Occupation (Optional)</label>
+                <select
+                  value={jobCategory}
+                  onChange={(e) => setJobCategory(e.target.value)}
+                  className={`w-full p-4 rounded-2xl border text-sm font-medium transition ${isDark ? 'bg-slate-800 border-slate-700 text-white focus:border-indigo-500' : 'bg-slate-50 border-slate-200 text-slate-900 focus:border-indigo-500'}`}
+                >
+                  <option value="">Not Selected</option>
+                  <option value="Student">Student</option>
+                  <option value="Office Worker">Office Worker</option>
+                  <option value="Self-employed">Self-employed</option>
+                  <option value="Freelancer">Freelancer</option>
+                  <option value="Other">Other</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="text-xs font-bold text-slate-400 uppercase mb-1.5 block">Age Group (Optional)</label>
+                <select
+                  value={ageGroup ?? ''}
+                  onChange={(e) => setAgeGroup(e.target.value ? parseInt(e.target.value, 10) : undefined)}
+                  className={`w-full p-4 rounded-2xl border text-sm font-medium transition ${isDark ? 'bg-slate-800 border-slate-700 text-white focus:border-indigo-500' : 'bg-slate-50 border-slate-200 text-slate-900 focus:border-indigo-500'}`}
+                >
+                  <option value="">Not Selected</option>
+                  <option value="20">20s</option>
+                  <option value="30">30s</option>
+                  <option value="40">40s</option>
+                  <option value="50">50+</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="text-xs font-bold text-slate-400 uppercase mb-1.5 block">Password</label>
                 <input
                   ref={passwordInputRef}
                   type="password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  placeholder="6자 이상 입력"
+                  placeholder="At least 6 characters"
                   className={`w-full p-4 rounded-2xl border text-sm font-medium transition ${isDark ? 'bg-slate-800 border-slate-700 text-white placeholder:text-slate-500 focus:border-indigo-500' : 'bg-slate-50 border-slate-200 text-slate-900 placeholder:text-slate-400 focus:border-indigo-500'}`}
                   autoFocus
                 />
               </div>
 
               <div>
-                <label className="text-xs font-bold text-slate-400 uppercase mb-1.5 block">비밀번호 확인</label>
+                <label className="text-xs font-bold text-slate-400 uppercase mb-1.5 block">Confirm Password</label>
                 <input
                   type="password"
                   value={passwordConfirm}
                   onChange={(e) => setPasswordConfirm(e.target.value)}
                   onKeyDown={(e) => e.key === 'Enter' && handleCompleteSignup()}
-                  placeholder="비밀번호 재입력"
+                  placeholder="Re-enter password"
                   className={`w-full p-4 rounded-2xl border text-sm font-medium transition ${isDark ? 'bg-slate-800 border-slate-700 text-white placeholder:text-slate-500 focus:border-indigo-500' : 'bg-slate-50 border-slate-200 text-slate-900 placeholder:text-slate-400 focus:border-indigo-500'}`}
                 />
               </div>
@@ -306,7 +409,7 @@ function RegisterModalInner({ onClose }: { onClose: () => void }) {
               className="w-full mt-6 py-4 rounded-2xl font-bold text-lg bg-indigo-600 text-white hover:bg-indigo-700 transition-all active:scale-95 disabled:opacity-50 flex items-center justify-center gap-2"
             >
               {loading ? <Loader2 size={20} className="animate-spin" /> : <Lock size={20} />}
-              <span>{loading ? '가입 중...' : '가입 완료'}</span>
+              <span>{loading ? 'Signing up...' : 'Complete Sign Up'}</span>
             </button>
           </div>
         )}

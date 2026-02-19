@@ -52,7 +52,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const isGuest = useMemo(() => checkIsGuest(user), [user]);
 
-  // 초기 로드: localStorage에서 세션 복원 + 토큰 유효성 검증
+  // Initial load: Restore session from localStorage + validate token
   useEffect(() => {
     const saved = safeLocalStorage.getItem(STORAGE_KEY);
     if (saved) {
@@ -67,7 +67,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             setAuthCookies(parsed.role === 'ADMIN');
           }
         } else {
-          // 토큰 없는 실유저 = stale 데이터 → 삭제
+          // Real user without token = stale data → delete
           safeLocalStorage.removeItem(STORAGE_KEY);
           safeLocalStorage.removeItem('memberId');
         }
@@ -83,7 +83,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     safeLocalStorage.setItem(STORAGE_KEY, JSON.stringify(member));
   }, []);
 
-  // logout을 먼저 선언하여 TDZ 방지 (loginById, refreshUser에서 참조)
+  // Declare logout first to prevent TDZ (referenced by loginById, refreshUser)
   const logout = useCallback(() => {
     setUser(null);
     safeLocalStorage.removeItem(STORAGE_KEY);
@@ -91,7 +91,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     safeLocalStorage.removeItem('memberId');
     clearAllAuthCookies();
 
-    // 지갑 연결 해제
+    // Disconnect wallet
     if (disconnect) {
       disconnect();
     }
@@ -99,7 +99,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     window.location.href = '/';
   }, [disconnect]);
 
-  // 게스트: 로컬 전용 (백엔드 등록 없음, 조회만 가능)
+  // Guest: Local only (no backend registration, read-only access)
   const loginAsGuest = useCallback(() => {
     const guestMember: Member = {
       id: -1,
@@ -129,7 +129,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
     } catch (error: unknown) {
       const status = error instanceof ApiError ? error.status : undefined;
-      // 401/404: 토큰 만료 또는 사용자 삭제됨 → 로그아웃
+      // 401/404: Token expired or user deleted → logout
       if (status === 404 || status === 401) {
         logout();
       }
@@ -154,17 +154,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       if (response.success) {
         if (response.needsAdditionalInfo) {
-          // 추가 정보 입력 필요
+          // Additional info required
           return { success: true, needsAdditionalInfo: true };
         }
 
         if (response.token && response.memberId) {
-          // JWT 토큰 저장 및 사용자 정보 조회
+          // Save JWT token and load user info
           const member = await loginById(response.memberId);
           if (!member) {
-            // getMe() 실패 → 로그아웃 및 에러 반환
+            // getMe() failed → logout and return error
             logout();
-            return { success: false, error: "사용자 정보를 불러올 수 없습니다" };
+            return { success: false, error: "Unable to load user information" };
           }
           return { success: true };
         }
@@ -212,7 +212,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
     } catch (error: unknown) {
       const status = error instanceof ApiError ? error.status : undefined;
-      // 401/404: 토큰 만료 또는 사용자 삭제됨 → 로그아웃
+      // 401/404: Token expired or user deleted → logout
       if (status === 404 || status === 401) {
         logout();
       }
@@ -220,7 +220,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, [user, persistUser, logout]);
 
-  // 자동 잔액 갱신: 10초마다 백엔드에서 최신 사용자 데이터 가져오기
+  // Auto-refresh balance: Fetch latest user data from backend every 30 seconds
   useEffect(() => {
     if (!user || checkIsGuest(user)) return;
 
@@ -229,7 +229,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         return;
       }
       refreshUser();
-    }, USER_REFRESH_INTERVAL_MS); // 30초마다 갱신
+    }, USER_REFRESH_INTERVAL_MS); // Refresh every 30 seconds
 
     return () => clearInterval(interval);
   }, [user, refreshUser]);

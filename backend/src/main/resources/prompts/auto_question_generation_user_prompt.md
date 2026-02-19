@@ -4,10 +4,13 @@ Input:
 - subcategory: {{subcategory}}
 - region: {{region}}
 - targetDate: {{targetDate}}
+- todayUtcDate: {{todayUtcDate}}
+- nowUtc: {{nowUtc}}
 - trendSignals: {{trendSignalsJson}}
 - breakMinutes: {{breakMinutes}}
 - votingHours: {{votingHours}}
 - bettingHours: {{bettingHours}}
+- previousValidationFeedback: {{validationFeedback}}
 
 Output format:
 - Must follow the JSON schema exactly.
@@ -21,4 +24,5 @@ Additional generation rules:
 - OPINION questions settle from vote result.
 - VERIFIABLE questions settle from external sources.
 - resolveAt must be realistically settle-able for the question.
+- Do not use outdated years or already-resolved obvious thresholds.
 - confidence is between 0 and 1.

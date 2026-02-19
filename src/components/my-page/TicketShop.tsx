@@ -29,13 +29,13 @@ export default function TicketShop({ user }: VotingPassShopProps) {
     try {
       const res = await votingPassApi.purchase(user.id);
       if (res.success && res.data?.success) {
-        setMessage('투표 패스를 구매했습니다!');
+        setMessage('Voting pass purchased successfully!');
         await refreshUser();
       } else {
-        setMessage(res.data?.message || '구매에 실패했습니다.');
+        setMessage(res.data?.message || 'Purchase failed.');
       }
     } catch (e: any) {
-      setMessage(e?.message || '구매에 실패했습니다.');
+      setMessage(e?.message || 'Purchase failed.');
     } finally {
       setIsLoading(false);
     }
@@ -48,26 +48,26 @@ export default function TicketShop({ user }: VotingPassShopProps) {
           <ShieldCheck size={20} className="text-white" />
         </div>
         <div>
-          <h3 className={`font-black text-lg ${isDark ? 'text-white' : 'text-slate-900'}`}>투표 패스</h3>
+          <h3 className={`font-black text-lg ${isDark ? 'text-white' : 'text-slate-900'}`}>Voting Pass</h3>
           <p className="text-xs text-slate-400">
-            {user.hasVotingPass ? '무제한 투표 가능' : `$${VOTING_PASS_PRICE} 일회성 구매`}
+            {user.hasVotingPass ? 'Unlimited voting available' : `$${VOTING_PASS_PRICE} one-time purchase`}
           </p>
         </div>
       </div>
 
       {user.hasVotingPass ? (
         <div className={`p-4 rounded-xl text-center ${isDark ? 'bg-emerald-900/30 border border-emerald-800' : 'bg-emerald-50 border border-emerald-200'}`}>
-          <p className="text-emerald-500 font-bold text-sm">투표 패스 보유 중</p>
-          <p className="text-xs text-slate-400 mt-1">모든 투표에서 무제한 투표 가능</p>
+          <p className="text-emerald-500 font-bold text-sm">Voting Pass Active</p>
+          <p className="text-xs text-slate-400 mt-1">Unlimited voting on all questions</p>
         </div>
       ) : (
         <>
           <div className={`rounded-xl p-4 mb-4 ${isDark ? 'bg-slate-800' : 'bg-slate-50'}`}>
             <div className="flex justify-between items-center">
-              <span className="text-sm text-slate-400">투표 패스 가격</span>
+              <span className="text-sm text-slate-400">Voting Pass Price</span>
               <span className="text-xl font-black text-indigo-600">${VOTING_PASS_PRICE}</span>
             </div>
-            <p className="text-xs text-slate-400 mt-2">구매 시 모든 투표에서 무제한 투표 가능</p>
+            <p className="text-xs text-slate-400 mt-2">Unlimited voting on all questions after purchase</p>
           </div>
 
           {user.usdcBalance < VOTING_PASS_PRICE ? (
@@ -76,7 +76,7 @@ export default function TicketShop({ user }: VotingPassShopProps) {
                 onClick={() => setShowDeposit(true)}
                 className="w-full py-3.5 rounded-xl font-bold text-sm bg-amber-600 text-white hover:bg-amber-700 transition-all flex items-center justify-center gap-2 active:scale-[0.98]"
               >
-                잔액이 부족합니다. 충전해주세요
+                Insufficient balance. Please deposit
               </button>
               <DepositModal isOpen={showDeposit} onClose={() => setShowDeposit(false)} />
             </>
@@ -87,9 +87,9 @@ export default function TicketShop({ user }: VotingPassShopProps) {
               className="w-full py-3.5 rounded-xl font-bold text-sm bg-indigo-600 text-white hover:bg-indigo-700 transition-all flex items-center justify-center gap-2 active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {isLoading ? (
-                <><Loader2 size={16} className="animate-spin" /> 구매 중...</>
+                <><Loader2 size={16} className="animate-spin" /> Purchasing...</>
               ) : (
-                `$${VOTING_PASS_PRICE} 투표 패스 구매`
+                `Purchase Voting Pass for $${VOTING_PASS_PRICE}`
               )}
             </button>
           )}
@@ -97,12 +97,12 @@ export default function TicketShop({ user }: VotingPassShopProps) {
       )}
 
       {message && (
-        <p className={`text-xs mt-3 text-center ${message.includes('실패') ? 'text-rose-400' : 'text-emerald-400'}`}>
+        <p className={`text-xs mt-3 text-center ${message.includes('failed') || message.includes('Failed') ? 'text-rose-400' : 'text-emerald-400'}`}>
           {message}
         </p>
       )}
 
-      {/* 구매 확인 모달 */}
+      {/* Purchase Confirmation Modal */}
       {showConfirm && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={() => setShowConfirm(false)}>
           <div
@@ -113,12 +113,12 @@ export default function TicketShop({ user }: VotingPassShopProps) {
               <div className={`w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4 ${isDark ? 'bg-indigo-500/10' : 'bg-indigo-50'}`}>
                 <ShieldCheck size={32} className="text-indigo-600" />
               </div>
-              <h3 className={`text-xl font-black mb-2 ${isDark ? 'text-white' : 'text-slate-900'}`}>투표 패스 구매</h3>
+              <h3 className={`text-xl font-black mb-2 ${isDark ? 'text-white' : 'text-slate-900'}`}>Purchase Voting Pass</h3>
               <p className={`text-sm ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
-                ${VOTING_PASS_PRICE}를 사용하여 투표 패스를 구매하시겠습니까?
+                Do you want to purchase a voting pass for ${VOTING_PASS_PRICE}?
               </p>
               <p className="text-xs text-slate-400 mt-2">
-                구매 후 모든 투표에서 무제한으로 투표할 수 있습니다.
+                After purchase, you can vote unlimited times on all questions.
               </p>
             </div>
 
@@ -129,14 +129,14 @@ export default function TicketShop({ user }: VotingPassShopProps) {
                   isDark ? 'bg-slate-800 text-slate-300 hover:bg-slate-700' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
                 }`}
               >
-                취소
+                Cancel
               </button>
               <button
                 onClick={handlePurchase}
                 disabled={isLoading}
                 className="flex-1 py-3 rounded-xl font-bold text-sm bg-indigo-600 text-white hover:bg-indigo-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                {isLoading ? '구매 중...' : '구매하기'}
+                {isLoading ? 'Purchasing...' : 'Purchase'}
               </button>
             </div>
           </div>

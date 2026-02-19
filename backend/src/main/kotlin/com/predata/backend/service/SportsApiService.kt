@@ -97,9 +97,9 @@ class SportsApiService(
                 }
             }
         } catch (e: HttpClientErrorException) {
-            println("[SportsAPI] API 호출 실패: ${e.message}")
+            println("[SportsAPI] API call failed: ${e.message}")
         } catch (e: Exception) {
-            println("[SportsAPI] 오류 발생: ${e.message}")
+            println("[SportsAPI] Error occurred: ${e.message}")
         }
 
         println("[SportsAPI] 총 ${matches.size}건의 경기를 가져왔습니다.")
@@ -136,7 +136,7 @@ class SportsApiService(
                 return parseMatchResult(fixture)
             }
         } catch (e: Exception) {
-            println("[SportsAPI] 경기 결과 조회 실패: ${e.message}")
+            println("[SportsAPI] Match result fetch failed: ${e.message}")
         }
 
         return null

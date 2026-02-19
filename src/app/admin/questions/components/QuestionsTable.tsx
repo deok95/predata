@@ -23,10 +23,10 @@ function SortIcon({ column, sortBy, sortOrder }: { column: SortBy; sortBy: SortB
 }
 
 function renderStatus(status: string) {
-  if (status === 'VOTING') return '투표중';
-  if (status === 'BREAK') return '휴식';
-  if (status === 'BETTING') return '베팅중';
-  if (status === 'SETTLED') return '정산완료';
+  if (status === 'VOTING') return 'Voting';
+  if (status === 'BREAK') return 'Break';
+  if (status === 'BETTING') return 'Betting';
+  if (status === 'SETTLED') return 'Settled';
   return status;
 }
 
@@ -62,30 +62,30 @@ export default function QuestionsTable({
             </th>
             <th className={`p-4 text-left font-bold text-sm ${isDark ? 'text-white' : 'text-slate-800'}`}>
               <button onClick={() => onSort('title')} className="flex items-center gap-1 hover:text-indigo-400 transition">
-                제목 <SortIcon column="title" sortBy={sortBy} sortOrder={sortOrder} />
+                Title <SortIcon column="title" sortBy={sortBy} sortOrder={sortOrder} />
               </button>
             </th>
             <th className={`p-4 text-left font-bold text-sm ${isDark ? 'text-white' : 'text-slate-800'}`}>
               <button onClick={() => onSort('category')} className="flex items-center gap-1 hover:text-indigo-400 transition">
-                카테고리 <SortIcon column="category" sortBy={sortBy} sortOrder={sortOrder} />
+                Category <SortIcon column="category" sortBy={sortBy} sortOrder={sortOrder} />
               </button>
             </th>
             <th className={`p-4 text-left font-bold text-sm ${isDark ? 'text-white' : 'text-slate-800'}`}>
               <button onClick={() => onSort('status')} className="flex items-center gap-1 hover:text-indigo-400 transition">
-                상태 <SortIcon column="status" sortBy={sortBy} sortOrder={sortOrder} />
+                Status <SortIcon column="status" sortBy={sortBy} sortOrder={sortOrder} />
               </button>
             </th>
             <th className={`p-4 text-left font-bold text-sm ${isDark ? 'text-white' : 'text-slate-800'}`}>
               <button onClick={() => onSort('totalBetPool')} className="flex items-center gap-1 hover:text-indigo-400 transition">
-                거래량 <SortIcon column="totalBetPool" sortBy={sortBy} sortOrder={sortOrder} />
+                Volume <SortIcon column="totalBetPool" sortBy={sortBy} sortOrder={sortOrder} />
               </button>
             </th>
             <th className={`p-4 text-left font-bold text-sm ${isDark ? 'text-white' : 'text-slate-800'}`}>
               <button onClick={() => onSort('expiredAt')} className="flex items-center gap-1 hover:text-indigo-400 transition">
-                마감일 <SortIcon column="expiredAt" sortBy={sortBy} sortOrder={sortOrder} />
+                Deadline <SortIcon column="expiredAt" sortBy={sortBy} sortOrder={sortOrder} />
               </button>
             </th>
-            <th className={`p-4 text-left font-bold text-sm ${isDark ? 'text-white' : 'text-slate-800'}`}>작업</th>
+            <th className={`p-4 text-left font-bold text-sm ${isDark ? 'text-white' : 'text-slate-800'}`}>Actions</th>
           </tr>
         </thead>
         <tbody>
@@ -113,7 +113,7 @@ export default function QuestionsTable({
                   <button
                     onClick={() => onOpenQuestion(question.id)}
                     className={`p-2 rounded transition ${isDark ? 'text-blue-400 hover:bg-blue-500/20' : 'text-blue-600 hover:bg-blue-50'}`}
-                    title="보기"
+                    title="View"
                   >
                     <TrendingUp size={16} />
                   </button>
@@ -121,7 +121,7 @@ export default function QuestionsTable({
                     <button
                       onClick={() => onOpenSettle(question)}
                       className={`p-2 rounded transition ${isDark ? 'text-amber-400 hover:bg-amber-500/20' : 'text-amber-600 hover:bg-amber-50'}`}
-                      title="정산 시작"
+                      title="Start Settlement"
                     >
                       <Gavel size={16} />
                     </button>
@@ -132,13 +132,13 @@ export default function QuestionsTable({
                         onClick={() => onFinalize(question.id)}
                         className="px-2 py-1 text-xs font-bold text-emerald-400 bg-emerald-500/20 hover:bg-emerald-500/30 rounded transition"
                       >
-                        확정
+                        Finalize
                       </button>
                       <button
                         onClick={() => onCancelSettle(question.id)}
                         className="px-2 py-1 text-xs font-bold text-red-400 bg-red-500/20 hover:bg-red-500/30 rounded transition"
                       >
-                        취소
+                        Cancel
                       </button>
                     </>
                   )}
@@ -146,7 +146,7 @@ export default function QuestionsTable({
                     <button
                       onClick={() => onDelete(question.id)}
                       className={`p-2 rounded transition ${isDark ? 'text-red-400 hover:bg-red-500/20' : 'text-red-600 hover:bg-red-50'}`}
-                      title="삭제"
+                      title="Delete"
                     >
                       <Trash2 size={16} />
                     </button>

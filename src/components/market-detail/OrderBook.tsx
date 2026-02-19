@@ -7,8 +7,8 @@ import { orderApi, ApiError, type OrderBookData, type OrderBookLevel } from '@/l
 
 interface OrderBookProps {
   questionId: number;
-  yesPercent: number;  // fallback용
-  totalPool: number;   // fallback용
+  yesPercent: number;  // for fallback
+  totalPool: number;   // for fallback
 }
 
 export default function OrderBook({ questionId, yesPercent, totalPool }: OrderBookProps) {
@@ -25,13 +25,13 @@ export default function OrderBook({ questionId, yesPercent, totalPool }: OrderBo
       const data = await orderApi.getOrderBook(questionId);
       setOrderBook(data);
     } catch (error) {
-      // 429 에러는 일시적 제한이므로 API를 끄지 않고 다음 폴링에서 재시도
+      // 429 error is temporary, so retry in next poll without disabling API
       if (error instanceof ApiError && error.status === 429) {
-        // 429는 무시하고 다음 폴링 주기에 자동으로 재시도
+        // Ignore 429 and auto-retry in next polling cycle
         return;
       }
 
-      // 5xx, 네트워크 에러 등 다른 에러는 fallback 모드로 전환
+      // Other errors (5xx, network error, etc.) switch to fallback mode
       setUseApi(false);
       setOrderBook(null);
     } finally {
@@ -48,12 +48,12 @@ export default function OrderBook({ questionId, yesPercent, totalPool }: OrderBo
         return;
       }
       fetchOrderBook();
-    }, 5000); // 5초마다 갱신 (hidden 탭에서는 중지)
+    }, 5000); // Refresh every 5 seconds (pause on hidden tab)
 
     return () => clearInterval(interval);
   }, [fetchOrderBook, useApi]);
 
-  // Fallback 데이터 (API 실패 시 또는 빈 오더북)
+  // Fallback data (when API fails or orderbook is empty)
   const fallbackData = useMemo(() => {
     const yesPrice = yesPercent / 100;
     const noPrice = 1 - yesPrice;
@@ -91,7 +91,7 @@ export default function OrderBook({ questionId, yesPercent, totalPool }: OrderBo
     return { bids, asks, spread };
   }, [yesPercent, totalPool]);
 
-  // API 데이터 또는 fallback 사용
+  // Use API data or fallback
   const hasApiData = orderBook && (orderBook.bids.length > 0 || orderBook.asks.length > 0);
   const bids = hasApiData ? orderBook.bids : fallbackData.bids;
   const asks = hasApiData ? orderBook.asks : fallbackData.asks;
@@ -133,7 +133,7 @@ export default function OrderBook({ questionId, yesPercent, totalPool }: OrderBo
         </div>
       </div>
 
-      {/* 헤더 */}
+      {/* Header */}
       <div className="grid grid-cols-2 gap-10 mb-3">
         <div className="flex justify-between text-[10px] font-black text-slate-400 uppercase">
           <span>Price</span>
@@ -145,9 +145,9 @@ export default function OrderBook({ questionId, yesPercent, totalPool }: OrderBo
         </div>
       </div>
 
-      {/* 오더북 데이터 */}
+      {/* Orderbook data */}
       <div className="grid grid-cols-2 gap-10">
-        {/* Bids (YES 매수) */}
+        {/* Bids (YES buy) */}
         <div className="space-y-1.5">
           <p className="text-[10px] font-black text-emerald-500 uppercase mb-2">Yes Bids</p>
           {bids.slice(0, 5).map((order, i) => (
@@ -170,7 +170,7 @@ export default function OrderBook({ questionId, yesPercent, totalPool }: OrderBo
           )}
         </div>
 
-        {/* Asks (YES 매도 = NO 매수 역산) */}
+        {/* Asks (YES sell = NO buy inverted) */}
         <div className="space-y-1.5 text-right">
           <p className="text-[10px] font-black text-rose-500 uppercase mb-2">Yes Asks</p>
           {asks.slice(0, 5).map((order, i) => (
@@ -194,7 +194,7 @@ export default function OrderBook({ questionId, yesPercent, totalPool }: OrderBo
         </div>
       </div>
 
-      {/* 총 유동성 */}
+      {/* Total liquidity */}
       <div className={`flex justify-between mt-4 pt-4 border-t text-xs ${isDark ? 'border-slate-800' : 'border-slate-100'}`}>
         <span className="text-slate-400">Total Liquidity</span>
         <span className={`font-bold ${isDark ? 'text-white' : 'text-slate-900'}`}>

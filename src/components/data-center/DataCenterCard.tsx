@@ -10,10 +10,10 @@ interface DataCenterCardProps {
 }
 
 const STATUS_MAP: Record<string, { text: string; color: string }> = {
-  VOTING: { text: '투표중', color: 'bg-blue-500' },
-  BREAK: { text: '대기', color: 'bg-amber-500' },
-  BETTING: { text: '베팅중', color: 'bg-emerald-500' },
-  SETTLED: { text: '정산완료', color: 'bg-slate-500' },
+  VOTING: { text: 'Voting', color: 'bg-blue-500' },
+  BREAK: { text: 'Break', color: 'bg-amber-500' },
+  BETTING: { text: 'Betting', color: 'bg-emerald-500' },
+  SETTLED: { text: 'Settled', color: 'bg-slate-500' },
 };
 
 export default function DataCenterCard({ question }: DataCenterCardProps) {
@@ -69,7 +69,7 @@ export default function DataCenterCard({ question }: DataCenterCardProps) {
           </div>
           <div className="flex items-center gap-1 text-slate-400">
             <Users size={12} />
-            <span className="font-bold">데이터 분석</span>
+            <span className="font-bold">Data Analysis</span>
           </div>
         </div>
       </div>

@@ -23,7 +23,7 @@ interface BettingSuspension {
   remainingSeconds: number;
 }
 
-// 리그별 색상 매핑
+// League color mapping
 const leagueColors: Record<string, { text: string; bg: string; border: string }> = {
   'EPL': { text: 'text-purple-500', bg: 'bg-purple-500', border: 'border-purple-500/30' },
   'La Liga': { text: 'text-orange-500', bg: 'bg-orange-500', border: 'border-orange-500/30' },
@@ -46,7 +46,7 @@ export default function LiveMatchesDashboard() {
   useEffect(() => {
     fetchLiveMatches();
 
-    // 5초마다 실시간 업데이트
+    // Real-time updates every 5 seconds
     const interval = setInterval(() => {
       fetchLiveMatches();
     }, 5000);
@@ -61,7 +61,7 @@ export default function LiveMatchesDashboard() {
       const matches = Array.isArray(data) ? data : [];
       setLiveMatches(matches);
 
-      // 각 경기의 베팅 중지 상태 확인
+      // Check betting suspension status for each match
       for (const match of matches) {
         if (match.questionId) {
           checkSuspensionStatus(match.questionId);
@@ -98,9 +98,9 @@ export default function LiveMatchesDashboard() {
       }`}>
         <div className="flex items-center gap-2 mb-4">
           <Activity className="text-red-500 animate-pulse" size={24} />
-          <h2 className={`text-xl font-bold ${isDark ? 'text-white' : 'text-slate-800'}`}>LIVE 경기</h2>
+          <h2 className={`text-xl font-bold ${isDark ? 'text-white' : 'text-slate-800'}`}>LIVE Matches</h2>
         </div>
-        <p className={isDark ? 'text-slate-400' : 'text-slate-500'}>로딩 중...</p>
+        <p className={isDark ? 'text-slate-400' : 'text-slate-500'}>Loading...</p>
       </div>
     );
   }
@@ -114,9 +114,9 @@ export default function LiveMatchesDashboard() {
       }`}>
         <div className="flex items-center gap-2 mb-4">
           <Activity className={isDark ? 'text-slate-500' : 'text-slate-400'} size={24} />
-          <h2 className={`text-xl font-bold ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>LIVE 경기</h2>
+          <h2 className={`text-xl font-bold ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>LIVE Matches</h2>
         </div>
-        <p className={isDark ? 'text-slate-500' : 'text-slate-500'}>현재 진행 중인 경기가 없습니다.</p>
+        <p className={isDark ? 'text-slate-500' : 'text-slate-500'}>No live matches at the moment.</p>
       </div>
     );
   }
@@ -131,11 +131,11 @@ export default function LiveMatchesDashboard() {
         <div className="flex items-center gap-2">
           <Activity className="text-red-500 animate-pulse" size={24} />
           <h2 className={`text-xl font-bold ${isDark ? 'text-white' : 'text-slate-800'}`}>
-            LIVE 경기
+            LIVE Matches
           </h2>
         </div>
         <span className={`text-xs ${isDark ? 'text-slate-500' : 'text-slate-500'}`}>
-          5초마다 자동 업데이트
+          Auto-updates every 5s
         </span>
       </div>
 
@@ -157,7 +157,7 @@ export default function LiveMatchesDashboard() {
                     : 'bg-gradient-to-r from-red-50 to-orange-50 border-red-200'
               }`}
             >
-              {/* 리그 정보 */}
+              {/* League info */}
               <div className="flex items-center gap-2 mb-3">
                 <Trophy size={16} className={getLeagueColor(match.leagueName).text} />
                 <span className={`text-xs font-bold uppercase tracking-wide ${getLeagueColor(match.leagueName).text}`}>{match.leagueName}</span>
@@ -166,7 +166,7 @@ export default function LiveMatchesDashboard() {
                 </span>
               </div>
 
-              {/* 베팅 일시 중지 알림 */}
+              {/* Betting suspension notice */}
               {isSuspended && suspension && (
                 <div className={`mb-3 p-3 rounded-lg border ${
                   isDark
@@ -177,10 +177,10 @@ export default function LiveMatchesDashboard() {
                     <AlertTriangle size={18} className={isDark ? 'text-yellow-400' : 'text-yellow-700'} />
                     <div className="flex-1">
                       <p className={`text-sm font-bold ${isDark ? 'text-yellow-300' : 'text-yellow-800'}`}>
-                        베팅 일시 중지
+                        Betting Suspended
                       </p>
                       <p className={`text-xs ${isDark ? 'text-yellow-400' : 'text-yellow-700'}`}>
-                        골 직후 30초간 베팅이 중지됩니다. {suspension.remainingSeconds}초 후 재개
+                        Betting suspended for 30s after goal. Resuming in {suspension.remainingSeconds}s
                       </p>
                     </div>
                     <div className={`text-2xl font-black ${isDark ? 'text-yellow-400' : 'text-yellow-700'}`}>
@@ -190,14 +190,14 @@ export default function LiveMatchesDashboard() {
                 </div>
               )}
 
-              {/* 스코어보드 */}
+              {/* Scoreboard */}
               <div className="grid grid-cols-3 gap-2 items-center">
-                {/* 홈팀 */}
+                {/* Home team */}
                 <div className="text-right">
                   <p className={`text-sm font-bold ${isDark ? 'text-white' : 'text-slate-800'}`}>{match.homeTeam}</p>
                 </div>
 
-                {/* 스코어 */}
+                {/* Score */}
                 <div className="flex items-center justify-center gap-3">
                   <span className={`text-3xl font-black ${
                     match.homeScore > match.awayScore
@@ -216,13 +216,13 @@ export default function LiveMatchesDashboard() {
                   </span>
                 </div>
 
-                {/* 원정팀 */}
+                {/* Away team */}
                 <div className="text-left">
                   <p className={`text-sm font-bold ${isDark ? 'text-white' : 'text-slate-800'}`}>{match.awayTeam}</p>
                 </div>
               </div>
 
-              {/* 베팅 링크 */}
+              {/* Betting link */}
               {match.questionId && (
                 <div className={`mt-3 pt-3 border-t ${isDark ? 'border-red-500/30' : 'border-red-200'}`}>
                   <a
@@ -235,11 +235,11 @@ export default function LiveMatchesDashboard() {
                     onClick={(e) => {
                       if (isSuspended) {
                         e.preventDefault();
-                        alert(`베팅이 일시 중지되었습니다. ${suspension?.remainingSeconds}초 후 재개됩니다.`);
+                        alert(`Betting is suspended. Resuming in ${suspension?.remainingSeconds}s.`);
                       }
                     }}
                   >
-                    {isSuspended ? '베팅 중지 중...' : '실시간 베팅하기'}
+                    {isSuspended ? 'Betting Suspended...' : 'Place Live Bet'}
                   </a>
                 </div>
               )}

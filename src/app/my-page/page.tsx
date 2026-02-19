@@ -17,9 +17,9 @@ function GuestMyPage() {
   const { open: openRegister } = useRegisterModal();
 
   const features = [
-    { icon: TrendingUp, title: '예측 기록', desc: '나의 베팅/투표 히스토리를 한눈에' },
-    { icon: Award, title: '티어 & 보상', desc: '정확도에 따른 등급과 보상 확인' },
-    { icon: History, title: '수익 분석', desc: '수익률과 상세 정산 내역 추적' },
+    { icon: TrendingUp, title: 'Prediction History', desc: 'View all your betting/voting history' },
+    { icon: Award, title: 'Tier & Rewards', desc: 'Check your tier and rewards by accuracy' },
+    { icon: History, title: 'Profit Analysis', desc: 'Track profit rate and settlement details' },
   ];
 
   return (
@@ -28,10 +28,10 @@ function GuestMyPage() {
         <UserPlus size={36} className="text-indigo-500" />
       </div>
       <h1 className={`text-3xl font-black mb-3 ${isDark ? 'text-white' : 'text-slate-900'}`}>
-        회원가입하고 시작하세요
+        Sign up to get started
       </h1>
       <p className={`text-lg mb-10 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
-        회원가입하면 나의 예측 기록과 보상을 확인할 수 있어요
+        View your prediction history and rewards after signing up
       </p>
 
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-10">
@@ -49,7 +49,7 @@ function GuestMyPage() {
         className="px-8 py-4 rounded-2xl font-black text-lg bg-indigo-600 text-white hover:bg-indigo-700 transition-all active:scale-95 shadow-xl shadow-indigo-500/20 inline-flex items-center gap-2"
       >
         <UserPlus size={20} />
-        회원가입하기
+        Sign Up
       </button>
     </div>
   );
@@ -63,7 +63,7 @@ function MyPageContent() {
   if (!user) {
     return (
       <div className="text-center py-20">
-        <p className="text-slate-400 text-lg">로그인이 필요합니다.</p>
+        <p className="text-slate-400 text-lg">Login required.</p>
       </div>
     );
   }
@@ -75,8 +75,8 @@ function MyPageContent() {
   return (
     <div className="max-w-7xl mx-auto animate-fade-in">
       <div className="mb-8">
-        <h1 className={`text-3xl font-black mb-2 ${isDark ? 'text-white' : 'text-slate-900'}`}>마이페이지</h1>
-        <p className="text-slate-400">내 프로필과 베팅 내역을 확인하세요</p>
+        <h1 className={`text-3xl font-black mb-2 ${isDark ? 'text-white' : 'text-slate-900'}`}>My Page</h1>
+        <p className="text-slate-400">View your profile and betting history</p>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
@@ -95,7 +95,7 @@ function MyPageContent() {
                   : isDark ? 'bg-slate-800 text-slate-400' : 'bg-slate-100 text-slate-500'
               }`}
             >
-              베팅 내역
+              Bet History
             </button>
             <button
               onClick={() => setRightTab('transactions')}
@@ -105,7 +105,7 @@ function MyPageContent() {
                   : isDark ? 'bg-slate-800 text-slate-400' : 'bg-slate-100 text-slate-500'
               }`}
             >
-              거래 내역
+              Transaction History
             </button>
           </div>
 

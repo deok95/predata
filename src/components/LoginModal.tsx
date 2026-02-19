@@ -23,20 +23,20 @@ export default function LoginModal() {
   const [password, setPassword] = useState('');
   const [showEmailAccordion, setShowEmailAccordion] = useState(false);
 
-  // Google 로그인 핸들러 (OAuth2 Redirect)
+  // Google login handler (OAuth2 Redirect)
   const handleGoogleLogin = () => {
-    // Spring Security OAuth2 authorization endpoint로 redirect
+    // Redirect to Spring Security OAuth2 authorization endpoint
     window.location.href = `${BACKEND_URL}/oauth2/authorization/google`;
   };
 
-  // 이메일 + 비밀번호 로그인
+  // Email + password login
   const handleEmailLogin = async () => {
     if (!email.trim() || !email.includes('@')) {
-      setError('유효한 이메일을 입력해주세요.');
+      setError('Please enter a valid email.');
       return;
     }
     if (!password || password.length < 6) {
-      setError('비밀번호를 입력해주세요.');
+      setError('Please enter your password.');
       return;
     }
     setError('');
@@ -48,10 +48,10 @@ export default function LoginModal() {
         localStorage.setItem('memberId', result.memberId.toString());
         await loginById(result.memberId);
       } else {
-        setError(result.message || '로그인에 실패했습니다.');
+        setError(result.message || 'Login failed.');
       }
     } catch (err: any) {
-      setError(err?.data?.message || err?.message || '로그인에 실패했습니다.');
+      setError(err?.data?.message || err?.message || 'Login failed.');
     } finally {
       setLoading(false);
     }
@@ -78,11 +78,11 @@ export default function LoginModal() {
               Welcome to Predata
             </h1>
             <p className="text-slate-500 mb-8 text-sm leading-relaxed">
-              로그인하고 예측에 참여하세요
+              Sign in to participate in predictions
             </p>
 
             <div className="space-y-4">
-              {/* Google 로그인 버튼 */}
+              {/* Google login button */}
               <button
                 onClick={handleGoogleLogin}
                 className={`w-full py-3.5 px-4 rounded-xl font-medium border-2 transition-all flex items-center justify-center gap-3 ${
@@ -98,17 +98,17 @@ export default function LoginModal() {
                   <path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/>
                   <path fill="none" d="M0 0h48v48H0z"/>
                 </svg>
-                <span>Google 계정으로 계속하기</span>
+                <span>Continue with Google</span>
               </button>
 
-              {/* OR 구분선 */}
+              {/* OR divider */}
               <div className="flex items-center gap-3 my-6">
                 <div className={`flex-1 h-px ${isDark ? 'bg-slate-700' : 'bg-slate-200'}`} />
                 <span className="text-slate-400 text-sm">OR</span>
                 <div className={`flex-1 h-px ${isDark ? 'bg-slate-700' : 'bg-slate-200'}`} />
               </div>
 
-              {/* 이메일 로그인 아코디언 */}
+              {/* Email login accordion */}
               <div className={`border-2 rounded-2xl overflow-hidden ${isDark ? 'border-slate-700' : 'border-slate-200'}`}>
                 <button
                   onClick={() => setShowEmailAccordion(!showEmailAccordion)}
@@ -136,7 +136,7 @@ export default function LoginModal() {
                           : 'bg-slate-700 text-white hover:bg-slate-800'
                       }`}
                     >
-                      로그인
+                      Sign In
                     </button>
                     <button
                       onClick={openRegisterModal}
@@ -146,19 +146,19 @@ export default function LoginModal() {
                           : 'border-slate-200 hover:bg-slate-50'
                       }`}
                     >
-                      회원가입
+                      Sign Up
                     </button>
                   </div>
                 )}
               </div>
 
-              {/* 게스트 로그인 */}
+              {/* Guest login */}
               <button
                 onClick={loginAsGuest}
                 className="w-full py-3 rounded-xl font-medium text-slate-500 hover:text-indigo-500 hover:bg-slate-50 dark:hover:bg-slate-800 transition flex items-center justify-center gap-2"
               >
                 <MousePointer2 size={14} />
-                <span>게스트로 둘러보기</span>
+                <span>Browse as Guest</span>
               </button>
             </div>
 
@@ -171,7 +171,7 @@ export default function LoginModal() {
         {step === 'email-login' && (
           <>
             <button onClick={goBack} className="flex items-center gap-1 text-sm text-slate-400 hover:text-indigo-500 transition mb-6">
-              <ArrowLeft size={16} /> 뒤로
+              <ArrowLeft size={16} /> Back
             </button>
 
             <div className="flex justify-center mb-4">
@@ -181,10 +181,10 @@ export default function LoginModal() {
             </div>
 
             <h2 className={`text-2xl font-black mb-2 ${isDark ? 'text-white' : 'text-slate-900'}`}>
-              로그인
+              Sign In
             </h2>
             <p className="text-slate-500 text-sm mb-6">
-              이메일과 비밀번호를 입력해주세요.
+              Enter your email and password.
             </p>
 
             <div className="space-y-4 mb-4">
@@ -192,7 +192,7 @@ export default function LoginModal() {
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                placeholder="이메일"
+                placeholder="Email"
                 className={`w-full p-4 rounded-2xl border text-sm font-medium transition ${isDark ? 'bg-slate-800 border-slate-700 text-white placeholder:text-slate-500 focus:border-indigo-500' : 'bg-slate-50 border-slate-200 text-slate-900 placeholder:text-slate-400 focus:border-indigo-500'}`}
                 autoFocus
               />
@@ -201,7 +201,7 @@ export default function LoginModal() {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 onKeyDown={(e) => e.key === 'Enter' && handleEmailLogin()}
-                placeholder="비밀번호"
+                placeholder="Password"
                 className={`w-full p-4 rounded-2xl border text-sm font-medium transition ${isDark ? 'bg-slate-800 border-slate-700 text-white placeholder:text-slate-500 focus:border-indigo-500' : 'bg-slate-50 border-slate-200 text-slate-900 placeholder:text-slate-400 focus:border-indigo-500'}`}
               />
             </div>
@@ -216,7 +216,7 @@ export default function LoginModal() {
               className="w-full py-4 rounded-2xl font-bold text-lg bg-indigo-600 text-white hover:bg-indigo-700 transition-all active:scale-95 disabled:opacity-50 flex items-center justify-center space-x-2"
             >
               {loading ? <Loader2 size={20} className="animate-spin" /> : <Lock size={20} />}
-              <span>{loading ? '로그인 중...' : '로그인'}</span>
+              <span>{loading ? 'Signing in...' : 'Sign In'}</span>
             </button>
           </>
         )}

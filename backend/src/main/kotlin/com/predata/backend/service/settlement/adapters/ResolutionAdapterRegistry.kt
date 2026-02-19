@@ -16,7 +16,7 @@ class ResolutionAdapterRegistry(
      */
     fun resolve(question: Question): ResolutionResult {
         val adapter = getAdapter(question.marketType, question.resolutionSource)
-            ?: throw IllegalStateException("${question.marketType} 타입에 대한 정산 어댑터를 찾을 수 없습니다.")
+            ?: throw IllegalStateException("${question.marketType} type has no resolution adapter.")
 
         return adapter.resolve(question)
     }

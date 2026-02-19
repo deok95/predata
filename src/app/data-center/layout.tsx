@@ -1,8 +1,8 @@
 import type { Metadata } from 'next';
 
 export const metadata: Metadata = {
-  title: 'Predata - 데이터센터',
-  description: '관리자 전용: 데이터 품질 분석 및 프리미엄 데이터 다운로드',
+  title: 'Predata - Data Center',
+  description: 'Admin only: Data quality analysis and premium data download',
 };
 
 export default function DataCenterLayout({ children }: { children: React.ReactNode }) {

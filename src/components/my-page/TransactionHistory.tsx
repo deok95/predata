@@ -1,9 +1,10 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { ArrowUpCircle, ArrowDownCircle, ShieldCheck, TrendingUp, Wallet } from 'lucide-react';
 import { useTheme } from '@/hooks/useTheme';
-import { transactionApi } from '@/lib/api';
+import { questionApi, transactionApi } from '@/lib/api';
+import { useRouter } from 'next/navigation';
 import type { TransactionHistoryItem, TransactionType } from '@/types/api';
 
 interface TransactionHistoryProps {
@@ -11,12 +12,12 @@ interface TransactionHistoryProps {
 }
 
 const FILTERS: { key: string | null; label: string }[] = [
-  { key: null, label: '전체' },
-  { key: 'DEPOSIT', label: '충전' },
-  { key: 'BET', label: '베팅' },
-  { key: 'SETTLEMENT', label: '정산' },
-  { key: 'WITHDRAW', label: '출금' },
-  { key: 'VOTING_PASS', label: '투표패스' },
+  { key: null, label: 'All' },
+  { key: 'DEPOSIT', label: 'Deposit' },
+  { key: 'BET', label: 'Bet' },
+  { key: 'SETTLEMENT', label: 'Settlement' },
+  { key: 'WITHDRAW', label: 'Withdraw' },
+  { key: 'VOTING_PASS', label: 'Vote Pass' },
 ];
 
 function getIcon(type: TransactionType) {
@@ -36,11 +37,14 @@ function getIcon(type: TransactionType) {
 
 export default function TransactionHistory({ memberId }: TransactionHistoryProps) {
   const { isDark } = useTheme();
+  const router = useRouter();
   const [items, setItems] = useState<TransactionHistoryItem[]>([]);
   const [filter, setFilter] = useState<string | null>(null);
   const [page, setPage] = useState(0);
   const [totalPages, setTotalPages] = useState(0);
   const [loading, setLoading] = useState(false);
+  const [questionTitles, setQuestionTitles] = useState<Record<number, string>>({});
+  const questionTitlesRef = useRef<Record<number, string>>({});
 
   const fetchData = useCallback(async () => {
     setLoading(true);
@@ -48,6 +52,45 @@ export default function TransactionHistory({ memberId }: TransactionHistoryProps
       const res = await transactionApi.getMyTransactions(memberId, filter ?? undefined, page, 20);
       setItems(res.content);
       setTotalPages(res.totalPages);
+
+      const missingQuestionIds = Array.from(
+        new Set(
+          res.content
+            .map((tx) => tx.questionId)
+            .filter((id): id is number => typeof id === 'number' && !(id in questionTitlesRef.current))
+        )
+      );
+
+      if (missingQuestionIds.length > 0) {
+        const titlePairs = await Promise.all(
+          missingQuestionIds.map(async (id) => {
+            try {
+              const response = await questionApi.getById(id);
+              if (response.success && response.data?.title) {
+                return [id, response.data.title] as const;
+              }
+            } catch {
+              // ignore
+            }
+            return null;
+          })
+        );
+
+        const fetchedTitles: Record<number, string> = {};
+        titlePairs.forEach((pair) => {
+          if (pair) {
+            fetchedTitles[pair[0]] = pair[1];
+          }
+        });
+
+        if (Object.keys(fetchedTitles).length > 0) {
+          setQuestionTitles((prev) => {
+            const next = { ...prev, ...fetchedTitles };
+            questionTitlesRef.current = next;
+            return next;
+          });
+        }
+      }
     } catch {
       setItems([]);
     } finally {
@@ -64,9 +107,21 @@ export default function TransactionHistory({ memberId }: TransactionHistoryProps
     setPage(0);
   };
 
+  const getDisplayDescription = (tx: TransactionHistoryItem) => {
+    if (!tx.questionId) return tx.description;
+    const title = questionTitles[tx.questionId];
+    if (!title) return tx.description;
+    return tx.description.replace(/Question #\d+/g, title);
+  };
+
+  const goToQuestion = (questionId?: number | null) => {
+    if (!questionId) return;
+    router.push(`/question/${questionId}`);
+  };
+
   return (
     <div className={`p-6 rounded-3xl border ${isDark ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-100'}`}>
-      <h3 className={`font-black text-lg mb-4 ${isDark ? 'text-white' : 'text-slate-900'}`}>거래 내역</h3>
+      <h3 className={`font-black text-lg mb-4 ${isDark ? 'text-white' : 'text-slate-900'}`}>Transaction History</h3>
 
       {/* Filter buttons */}
       <div className="flex flex-wrap gap-2 mb-4">
@@ -88,24 +143,36 @@ export default function TransactionHistory({ memberId }: TransactionHistoryProps
       {/* List */}
       <div className="space-y-3 max-h-96 overflow-y-auto custom-scrollbar">
         {loading ? (
-          <p className="text-center text-sm text-slate-400 py-8">로딩 중...</p>
+          <p className="text-center text-sm text-slate-400 py-8">Loading...</p>
         ) : items.length === 0 ? (
-          <p className="text-center text-sm text-slate-400 py-8">거래 내역이 없습니다.</p>
+          <p className="text-center text-sm text-slate-400 py-8">No transactions yet.</p>
         ) : (
           items.map(tx => (
             <div
               key={tx.id}
-              className={`flex items-center justify-between p-3 rounded-xl ${isDark ? 'hover:bg-slate-800' : 'hover:bg-slate-50'}`}
+              onClick={() => goToQuestion(tx.questionId)}
+              onKeyDown={(e) => {
+                if (!tx.questionId) return;
+                if (e.key === 'Enter' || e.key === ' ') {
+                  e.preventDefault();
+                  goToQuestion(tx.questionId);
+                }
+              }}
+              role={tx.questionId ? 'button' : undefined}
+              tabIndex={tx.questionId ? 0 : -1}
+              className={`flex items-center justify-between p-3 rounded-xl ${
+                tx.questionId ? 'cursor-pointer' : ''
+              } ${isDark ? 'hover:bg-slate-800' : 'hover:bg-slate-50'}`}
             >
               <div className="flex items-center space-x-3">
                 {getIcon(tx.type)}
                 <div>
                   <p className={`text-sm font-bold line-clamp-1 ${isDark ? 'text-white' : 'text-slate-900'}`}>
-                    {tx.description}
+                    {getDisplayDescription(tx)}
                   </p>
                   <p className="text-xs text-slate-400">
-                    {new Date(tx.createdAt).toLocaleDateString('ko-KR')}{' '}
-                    {new Date(tx.createdAt).toLocaleTimeString('ko-KR', {
+                    {new Date(tx.createdAt).toLocaleDateString('en-US')}{' '}
+                    {new Date(tx.createdAt).toLocaleTimeString('en-US', {
                       hour: '2-digit',
                       minute: '2-digit',
                     })}
@@ -116,7 +183,7 @@ export default function TransactionHistory({ memberId }: TransactionHistoryProps
                 <p className={`text-sm font-black ${tx.amount >= 0 ? 'text-emerald-500' : 'text-rose-500'}`}>
                   {tx.amount >= 0 ? '+' : ''}${Math.abs(tx.amount).toLocaleString()}
                 </p>
-                <p className="text-xs text-slate-400">잔액 ${tx.balanceAfter.toLocaleString()}</p>
+                <p className="text-xs text-slate-400">Balance ${tx.balanceAfter.toLocaleString()}</p>
               </div>
             </div>
           ))
@@ -133,7 +200,7 @@ export default function TransactionHistory({ memberId }: TransactionHistoryProps
               isDark ? 'bg-slate-800 text-slate-300' : 'bg-slate-100 text-slate-600'
             }`}
           >
-            이전
+            Previous
           </button>
           <span className="text-xs text-slate-400 flex items-center">
             {page + 1} / {totalPages}
@@ -145,7 +212,7 @@ export default function TransactionHistory({ memberId }: TransactionHistoryProps
               isDark ? 'bg-slate-800 text-slate-300' : 'bg-slate-100 text-slate-600'
             }`}
           >
-            다음
+            Next
           </button>
         </div>
       )}

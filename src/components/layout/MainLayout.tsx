@@ -14,7 +14,7 @@ export default function MainLayout({ children }: { children: React.ReactNode }) 
   const { user, isLoading, isAuthenticated, logout } = useAuth();
   const { isDark } = useTheme();
 
-  // bfcache 복원 감지: 로그아웃 후 뒤로가기 시 stale state 방지
+  // Detect bfcache restore: prevent stale state after logout + back navigation
   useEffect(() => {
     const handlePageShow = (event: PageTransitionEvent) => {
       if (event.persisted) {

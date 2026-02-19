@@ -74,11 +74,25 @@ export interface PricePointResponse {
   noPrice: number;
 }
 
+export interface SwapHistoryResponse {
+  swapId: number;
+  memberId: number;
+  memberEmail?: string;
+  action: 'BUY' | 'SELL';
+  outcome: 'YES' | 'NO';
+  usdcAmount: number;
+  sharesAmount: number;
+  effectivePrice: number;
+  feeUsdc: number;
+  priceAfterYes: number;
+  createdAt: string;
+}
+
 // ===== API Functions =====
 
 export const swapApi = {
   /**
-   * 스왑 실행
+   * Execute swap
    */
   executeSwap: async (request: SwapRequest) => {
     const response = await apiRequest<{ success: boolean; data: SwapResponse }>('/api/swap', {
@@ -89,7 +103,7 @@ export const swapApi = {
   },
 
   /**
-   * 스왑 시뮬레이션
+   * Simulate swap
    */
   simulateSwap: async (params: {
     questionId: number;
@@ -108,7 +122,7 @@ export const swapApi = {
   },
 
   /**
-   * 풀 상태 조회
+   * Fetch pool state
    */
   getPoolState: async (questionId: number) => {
     const response = await apiRequest<{ success: boolean; data: PoolStateResponse }>(`/api/pool/${questionId}`);
@@ -116,7 +130,7 @@ export const swapApi = {
   },
 
   /**
-   * 내 포지션 조회
+   * Fetch my position
    */
   getMyShares: async (questionId: number) => {
     const response = await apiRequest<{ success: boolean; data: MySharesSnapshot }>(`/api/swap/my-shares/${questionId}`);
@@ -124,10 +138,30 @@ export const swapApi = {
   },
 
   /**
-   * 가격 히스토리 조회
+   * Fetch price history
    */
   getPriceHistory: async (questionId: number, limit: number = 100) => {
     const response = await apiRequest<{ success: boolean; data: PricePointResponse[] }>(`/api/swap/price-history/${questionId}?limit=${limit}`);
+    return unwrapApiEnvelope(response);
+  },
+
+  /**
+   * Fetch swap history (public)
+   */
+  getSwapHistory: async (questionId: number, limit: number = 20) => {
+    const response = await apiRequest<{ success: boolean; data: SwapHistoryResponse[] }>(
+      `/api/swap/history/${questionId}?limit=${limit}`
+    );
+    return unwrapApiEnvelope(response);
+  },
+
+  /**
+   * Fetch my swap history (authentication required)
+   */
+  getMySwapHistory: async (questionId: number, limit: number = 50) => {
+    const response = await apiRequest<{ success: boolean; data: SwapHistoryResponse[] }>(
+      `/api/swap/my-history/${questionId}?limit=${limit}`
+    );
     return unwrapApiEnvelope(response);
   },
 };

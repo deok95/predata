@@ -30,10 +30,17 @@ class QuestionManagementService(
      */
     @Transactional
     fun createQuestion(request: CreateQuestionRequest): QuestionCreationResponse {
+        val now = LocalDateTime.now()
+
         // 1. 마감일 검증
         val expiredAt = LocalDateTime.parse(request.expiredAt, DateTimeFormatter.ISO_DATE_TIME)
-        if (expiredAt.isBefore(LocalDateTime.now())) {
-            throw IllegalArgumentException("마감일은 현재 시간 이후여야 합니다.")
+        if (expiredAt.isBefore(now)) {
+            throw IllegalArgumentException("Expiration date must be in the future.")
+        }
+
+        val minRequiredExpiry = now.plusDays(1).plusMinutes(5)
+        if (expiredAt.isBefore(minRequiredExpiry)) {
+            throw IllegalArgumentException("Expiration date must allow voting first (at least 1 day + 5 minutes from now).")
         }
 
         // 2. 질문 생성
@@ -57,7 +64,7 @@ class QuestionManagementService(
             initialNoPool = INITIAL_LIQUIDITY,
             finalResult = FinalResult.PENDING,
             expiredAt = expiredAt,
-            createdAt = LocalDateTime.now()
+            createdAt = now
         )
 
         val savedQuestion = questionRepository.save(question)
@@ -71,7 +78,7 @@ class QuestionManagementService(
             title = savedQuestion.title,
             category = savedQuestion.category ?: "",
             expiredAt = savedQuestion.expiredAt.toString(),
-            message = "질문이 생성되었습니다."
+            message = "Question created successfully."
         )
     }
 
@@ -81,11 +88,11 @@ class QuestionManagementService(
     @Transactional
     fun updateQuestion(questionId: Long, request: UpdateQuestionRequest): QuestionCreationResponse {
         val question = questionRepository.findById(questionId)
-            .orElseThrow { IllegalArgumentException("질문을 찾을 수 없습니다.") }
+            .orElseThrow { IllegalArgumentException("Question not found.") }
 
         // 정산된 질문은 수정 불가
         if (question.status == QuestionStatus.SETTLED) {
-            throw IllegalStateException("정산된 질문은 수정할 수 없습니다.")
+            throw IllegalStateException("Cannot modify settled questions.")
         }
 
         // 수정 가능한 필드만 업데이트
@@ -94,7 +101,7 @@ class QuestionManagementService(
         request.expiredAt?.let {
             val newExpiredAt = LocalDateTime.parse(it, DateTimeFormatter.ISO_DATE_TIME)
             if (newExpiredAt.isBefore(LocalDateTime.now())) {
-                throw IllegalArgumentException("마감일은 현재 시간 이후여야 합니다.")
+                throw IllegalArgumentException("Expiration date must be in the future.")
             }
             question.expiredAt = newExpiredAt
         }
@@ -107,7 +114,7 @@ class QuestionManagementService(
             title = saved.title,
             category = saved.category ?: "",
             expiredAt = saved.expiredAt.toString(),
-            message = "질문이 수정되었습니다."
+            message = "Question updated successfully."
         )
     }
 
@@ -117,16 +124,16 @@ class QuestionManagementService(
     @Transactional
     fun deleteQuestion(questionId: Long): DeleteQuestionResponse {
         val question = questionRepository.findById(questionId)
-            .orElseThrow { IllegalArgumentException("질문을 찾을 수 없습니다.") }
+            .orElseThrow { IllegalArgumentException("Question not found.") }
 
         // 정산된 질문은 삭제 불가
         if (question.status == QuestionStatus.SETTLED) {
-            throw IllegalStateException("정산된 질문은 삭제할 수 없습니다.")
+            throw IllegalStateException("Cannot delete settled questions.")
         }
 
         // 실제 베팅이 있는 질문은 삭제 불가 (초기 유동성만 있는 경우 삭제 가능)
         if (question.totalBetPool > INITIAL_LIQUIDITY * 2) {
-            throw IllegalStateException("베팅이 있는 질문은 삭제할 수 없습니다.")
+            throw IllegalStateException("Cannot delete questions with active bets.")
         }
 
         question.status = QuestionStatus.SETTLED
@@ -134,7 +141,7 @@ class QuestionManagementService(
 
         return DeleteQuestionResponse(
             success = true,
-            message = "질문이 삭제되었습니다."
+            message = "Question deleted successfully."
         )
     }
 
@@ -176,14 +183,14 @@ class QuestionManagementService(
         // OPINION 타입 질문 템플릿 검증
         if (request.marketType == com.predata.backend.domain.MarketType.OPINION) {
             if (!request.title.startsWith("시장은 ") || !request.title.endsWith("라고 생각할까요?")) {
-                throw IllegalArgumentException("OPINION 타입 질문은 '시장은 ~라고 생각할까요?' 형식이어야 합니다")
+                throw IllegalArgumentException("OPINION type questions must follow the format: 'Will the market think ~?'")
             }
         }
 
         val voteResultSettlement = request.voteResultSettlement
             ?: (request.marketType == com.predata.backend.domain.MarketType.OPINION)
         if (request.marketType == com.predata.backend.domain.MarketType.OPINION && !voteResultSettlement) {
-            throw IllegalArgumentException("OPINION 타입 질문은 voteResultSettlement=true 이어야 합니다")
+            throw IllegalArgumentException("OPINION type questions must have voteResultSettlement=true")
         }
 
         val now = LocalDateTime.now()
@@ -237,7 +244,7 @@ class QuestionManagementService(
                 )
                 swapService.seedPool(seedRequest)
             } catch (e: Exception) {
-                throw IllegalStateException("질문은 생성되었지만 AMM 풀 시드에 실패했습니다: ${e.message}")
+                throw IllegalStateException("Question created but AMM pool seeding failed: ${e.message}")
             }
         } else {
             // ORDERBOOK_LEGACY인 경우 기존 로직
@@ -258,7 +265,7 @@ class QuestionManagementService(
             title = savedQuestion.title,
             category = savedQuestion.category ?: "",
             expiredAt = savedQuestion.expiredAt.toString(),
-            message = "질문이 생성되었습니다."
+            message = "Question created successfully."
         )
     }
 
@@ -273,7 +280,7 @@ class QuestionManagementService(
                 success = true,
                 deletedQuestions = 0,
                 cleanedTables = emptyMap(),
-                message = "삭제할 질문이 없습니다."
+                message = "No questions to delete."
             )
         }
 
@@ -331,7 +338,7 @@ class QuestionManagementService(
             success = true,
             deletedQuestions = deletedQuestions,
             cleanedTables = cleaned,
-            message = "질문 및 연관 데이터 초기화가 완료되었습니다."
+            message = "Questions and related data have been purged successfully."
         )
     }
 
@@ -355,13 +362,13 @@ class QuestionManagementService(
 // ===== DTOs =====
 
 data class CreateQuestionRequest(
-    @field:NotBlank(message = "제목은 필수입니다.")
+    @field:NotBlank(message = "Title is required.")
     val title: String,
 
-    @field:NotBlank(message = "카테고리는 필수입니다.")
+    @field:NotBlank(message = "Category is required.")
     val category: String,
 
-    @field:NotBlank(message = "마감일은 필수입니다.")
+    @field:NotBlank(message = "Expiration date is required.")
     val expiredAt: String, // ISO 8601 형식
 
     val categoryWeight: Double? = 1.0

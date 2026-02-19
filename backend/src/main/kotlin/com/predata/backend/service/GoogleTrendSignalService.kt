@@ -48,7 +48,7 @@ class GoogleTrendSignalService(
         val signals = try {
             fetchFromGoogleTrends(subcategory, region, maxSignals)
         } catch (e: Exception) {
-            logger.warn("[Trend] Google Trends fetch 실패, fallback 사용: {}", e.message)
+            logger.warn("[Trend] Google Trends fetch failed, using fallback: {}", e.message)
             fallbackSignals(subcategory, region, maxSignals)
         }
 

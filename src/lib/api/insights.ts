@@ -7,12 +7,13 @@ import type {
   GlobalStats,
   OpenPosition,
   PortfolioSummary,
+  QualityDashboard,
   ReferralResult,
   ReferralStats,
   RewardSummary,
   TierProgress,
 } from '@/types/api';
-import { apiRequest } from './core';
+import { apiRequest, unwrapApiEnvelope } from './core';
 
 export const blockchainApi = {
   getQuestionData: (questionId: number) =>
@@ -23,8 +24,13 @@ export const blockchainApi = {
 };
 
 export const analyticsApi = {
-  getDashboard: (questionId: number) =>
-    apiRequest<ApiResponse<DashboardData>>(`/api/analytics/dashboard/${questionId}`),
+  getDashboard: async (questionId: number): Promise<ApiResponse<QualityDashboard>> => {
+    const raw = await apiRequest<QualityDashboard | { success: boolean; data?: QualityDashboard; message?: string }>(
+      `/api/analytics/dashboard/${questionId}`
+    );
+    const data = unwrapApiEnvelope(raw);
+    return { success: true, data };
+  },
 
   getPremiumData: (filters: Record<string, unknown>) =>
     apiRequest<ApiResponse<Record<string, unknown>>>('/api/premium-data/preview', {
@@ -65,8 +71,38 @@ export const sportsApi = {
 };
 
 export const globalApi = {
-  getStats: () =>
-    apiRequest<ApiResponse<GlobalStats>>('/api/analytics/global/stats'),
+  getStats: async (): Promise<ApiResponse<GlobalStats>> => {
+    const raw = await apiRequest<
+      | GlobalStats
+      | {
+          success?: boolean;
+          data?: Partial<GlobalStats> & {
+            totalValueLocked?: number;
+            totalRewards?: number;
+            totalQuestions?: number;
+          };
+          totalPredictions?: number;
+          tvl?: number;
+          cumulativeRewards?: number;
+          activeUsers?: number;
+          activeMarkets?: number;
+          totalValueLocked?: number;
+          totalRewards?: number;
+          totalQuestions?: number;
+        }
+    >('/api/analytics/global/stats');
+
+    const normalized = unwrapApiEnvelope(raw as never) as Record<string, unknown>;
+    const stats: GlobalStats = {
+      totalPredictions: Number(normalized.totalPredictions ?? 0),
+      tvl: Number(normalized.tvl ?? normalized.totalValueLocked ?? 0),
+      cumulativeRewards: Number(normalized.cumulativeRewards ?? normalized.totalRewards ?? 0),
+      activeUsers: Number(normalized.activeUsers ?? 0),
+      activeMarkets: Number(normalized.activeMarkets ?? normalized.totalQuestions ?? 0),
+    };
+
+    return { success: true, data: stats };
+  },
 };
 
 export const tierApi = {

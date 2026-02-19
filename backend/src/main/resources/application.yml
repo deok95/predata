@@ -8,8 +8,8 @@ spring:
     password: ${DB_PASSWORD:predata}
     driver-class-name: org.mariadb.jdbc.Driver
     hikari:
-      maximum-pool-size: 50           # 동시 접속 300명 대응 (기본값 10 → 50)
-      minimum-idle: 10                # 유휴 커넥션 최소 10개 유지
+      maximum-pool-size: 100          # 동시 1000명 베팅 대응 (50 → 100)
+      minimum-idle: 20                # 유휴 커넥션 최소 20개 유지 (10 → 20)
       connection-timeout: 5000        # 커넥션 획득 타임아웃 5초
       idle-timeout: 300000            # 유휴 커넥션 제거 시간 5분
       max-lifetime: 600000            # 커넥션 최대 생명 주기 10분
@@ -36,13 +36,13 @@ spring:
         order_updates: true
 
   transaction:
-    default-timeout: 5                # 기본 트랜잭션 타임아웃 5초 (데드락 방지)
+    default-timeout: 10               # 기본 트랜잭션 타임아웃 10초 (5 → 10, 동시성 처리)
 
   mail:
-    host: ${MAIL_HOST:smtp.gmail.com}
-    port: ${MAIL_PORT:587}
-    username: ${MAIL_USERNAME:}
-    password: ${MAIL_PASSWORD:}
+    host: smtp.gmail.com
+    port: 587
+    username: predata.noreply@gmail.com
+    password: "acih bgzn xxjt qebk"
     properties:
       mail:
         smtp:
@@ -61,7 +61,8 @@ spring:
             scope:
               - email
               - profile
-            redirect-uri: "https://api.predata.io/login/oauth2/code/google"
+            # Use the running server base URL (localhost in dev, api.predata.io in prod).
+            redirect-uri: "{baseUrl}/login/oauth2/code/{registrationId}"
         provider:
           google:
             authorization-uri: https://accounts.google.com/o/oauth2/v2/auth
@@ -71,16 +72,23 @@ spring:
 
 server:
   port: 8080
+  forward-headers-strategy: framework
   servlet:
     session:
       timeout: 30m  # OAuth2 state 세션 타임아웃 (30분)
+  tomcat:
+    threads:
+      max: 400                        # 최대 쓰레드 400개 (동시 1000명 베팅 대응)
+      min-spare: 50                   # 최소 여유 쓰레드 50개
+    max-connections: 1000             # 최대 연결 수 1000개
+    accept-count: 200                 # 대기 큐 200개
 
 jwt:
   secret: ${JWT_SECRET:your-secret-key-must-be-at-least-256-bits-long-for-HS256-algorithm-to-work-properly}
   expiration-ms: ${JWT_EXPIRATION:86400000}  # 24 hours in milliseconds
 
 auth:
-  demo-mode: ${AUTH_DEMO_MODE:true}  # true: 이메일 발송 안함(로그만), false: 실제 이메일 발송
+  demo-mode: ${AUTH_DEMO_MODE:false}  # true: 이메일 발송 안함(로그만), false: 실제 이메일 발송
 
 google:
   oauth:
@@ -112,6 +120,11 @@ anthropic:
   api:
     key: ${ANTHROPIC_API_KEY:}
 
+gemini:
+  api:
+    key: ${GEMINI_API_KEY:}
+    model: ${GEMINI_MODEL:gemini-1.5-flash}
+
 openai:
   api:
     key: ${OPENAI_API_KEY:}
@@ -124,7 +137,7 @@ polygon:
   receiver-wallet: ${RECEIVER_WALLET:0xd65834BDfaeEA4539a5cEa715deebD7A899C9dAD}
   usdc-contract: ${USDC_CONTRACT_ADDRESS:0x8D298060d7D9C4C5Eb45c96FD61ecCEEDE020B05}
   chain-id: ${POLYGON_CHAIN_ID:80002}  # Amoy=80002, Mainnet=137
-  sender-private-key: ${SENDER_PRIVATE_KEY:1e8b9a5b19e2fd5b1e25a9b14a3e960e7a2bf9d092ede09d2509a845932549ad}  # 출금용 서버 지갑 프라이빗 키
+  sender-private-key: ${SENDER_PRIVATE_KEY:}  # 출금용 서버 지갑 프라이빗 키 (필수 환경변수)
 
 logging:
   level:
@@ -133,6 +146,9 @@ logging:
 
 # 리스크 관리 설정
 app:
+  # 프론트엔드 URL 설정 (이메일 링크 등에 사용)
+  frontend-url: https://predata.io
+
   rate-limit:
     dev-mode: ${RATE_LIMIT_DEV_MODE:true}  # 개발 기본값 true (로컬/데모 환경), prod 배포 시 환경변수로 false 설정
 
@@ -165,10 +181,32 @@ app:
     min-vote-history: 3      # 보상 대상 최소 투표 이력 (다른 질문)
 
   questiongen:
-    enabled: ${QUESTIONGEN_ENABLED:false}
+    enabled: ${QUESTIONGEN_ENABLED:true}
     daily-cron: ${QUESTIONGEN_DAILY_CRON:0 5 0 * * *}
+    # Legacy batch generation (disabled by default)
+    daily-batch-enabled: ${QUESTIONGEN_BATCH_ENABLED:false}
+    # New trend-based generation (1 question/day from Google Trends)
+    daily-trend-enabled: ${QUESTIONGEN_TREND_ENABLED:true}
+    daily-trend-cron: ${QUESTIONGEN_TREND_CRON:0 0 9 * * *}  # 9 AM UTC daily
+    daily-trend-geo: ${QUESTIONGEN_TREND_GEO:US}  # Google Trends region (US, KR, etc.)
+    max-generation-attempts: ${QUESTIONGEN_MAX_GENERATION_ATTEMPTS:3}
     legacy-interval-enabled: ${QUESTIONGEN_LEGACY_INTERVAL_ENABLED:false}
     trends-url: ${QUESTIONGEN_TRENDS_URL:https://trends.google.com/trends/api/dailytrends}
+    trends-force-refresh-on-generate: ${QUESTIONGEN_TRENDS_FORCE_REFRESH_ON_GENERATE:true}
+    trends-freshness-minutes: ${QUESTIONGEN_TRENDS_FRESHNESS_MINUTES:30}
+    realtime-trends-enabled: ${QUESTIONGEN_REALTIME_TRENDS_ENABLED:true}
+    realtime-trends-cron: ${QUESTIONGEN_REALTIME_TRENDS_CRON:0 */15 * * * *}
+    realtime-trends-max-signals: ${QUESTIONGEN_REALTIME_TRENDS_MAX_SIGNALS:20}
+    realtime-trends-freshness-minutes: ${QUESTIONGEN_REALTIME_TRENDS_FRESHNESS_MINUTES:30}
+    sanity:
+      kospi-current: ${QUESTIONGEN_SANITY_KOSPI_CURRENT:7000}
+      nasdaq-current: ${QUESTIONGEN_SANITY_NASDAQ_CURRENT:22000}
+      bitcoin-current: ${QUESTIONGEN_SANITY_BITCOIN_CURRENT:100000}
+
+  # Auto-resolution system (disabled by default for safety)
+  auto-resolution:
+    enabled: ${AUTO_RESOLUTION_ENABLED:true}
+    check-interval-ms: 300000  # 5 minutes
 
   # 마켓메이커 설정
   market-maker:

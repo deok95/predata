@@ -4,7 +4,6 @@ import { useState, useEffect } from 'react';
 import { Activity, Database, Award, Globe, ArrowUpRight } from 'lucide-react';
 import { useTheme } from '@/hooks/useTheme';
 import { globalApi } from '@/lib/api';
-import { mockGlobalStats } from '@/lib/mockData';
 import type { LucideIcon } from 'lucide-react';
 
 function GlobalStat({ label, value, trend, icon: Icon, isDark }: {
@@ -41,20 +40,20 @@ export default function GlobalStatsBar() {
   useEffect(() => {
     globalApi.getStats().then(res => {
       if (res.success && res.data) setStats(res.data);
-      else setStats(mockGlobalStats);
+      else setStats({ totalPredictions: 0, tvl: 0, cumulativeRewards: 0, activeUsers: 0 });
     }).catch(() => {
-      setStats(mockGlobalStats);
+      setStats({ totalPredictions: 0, tvl: 0, cumulativeRewards: 0, activeUsers: 0 });
     });
   }, []);
 
-  const fmt = (n: number, fallback: string) => n > 0 ? n.toLocaleString() : fallback;
+  const fmt = (n: number) => n.toLocaleString();
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-      <GlobalStat label="총 예측 수" value={fmt(stats.totalPredictions, '124,082')} icon={Activity} isDark={isDark} />
-      <GlobalStat label="글로벌 TVL" value={stats.tvl > 0 ? `$${(stats.tvl / 1000000).toFixed(2)}M` : '$4.24M'} icon={Database} isDark={isDark} />
-      <GlobalStat label="누적 보상" value={stats.cumulativeRewards > 0 ? `${(stats.cumulativeRewards / 1000000).toFixed(1)}M PRE` : '1.2M PRE'} icon={Award} isDark={isDark} />
-      <GlobalStat label="활성 유저" value={stats.activeUsers > 0 ? `${(stats.activeUsers / 1000).toFixed(1)}k` : '8.4k'} trend="+12%" icon={Globe} isDark={isDark} />
+      <GlobalStat label="Total Predictions" value={fmt(stats.totalPredictions)} icon={Activity} isDark={isDark} />
+      <GlobalStat label="Global TVL" value={`$${stats.tvl.toLocaleString()}`} icon={Database} isDark={isDark} />
+      <GlobalStat label="Cumulative Rewards" value={`${stats.cumulativeRewards.toLocaleString()} PRE`} icon={Award} isDark={isDark} />
+      <GlobalStat label="Active Users" value={fmt(stats.activeUsers)} icon={Globe} isDark={isDark} />
     </div>
   );
 }

@@ -5,7 +5,7 @@ import java.math.BigDecimal
 import java.time.LocalDateTime
 
 /**
- * 포지션 응답 DTO (PnL 포함)
+ * Position response DTO (includes PnL)
  */
 data class PositionResponse(
     val positionId: Long,

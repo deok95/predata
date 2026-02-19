@@ -123,7 +123,7 @@ export function useAdminQuestions(isAdmin: boolean) {
       if (process.env.NODE_ENV === 'development') {
         console.error('Failed to update generator settings:', error);
       }
-      alert('설정 업데이트에 실패했습니다.');
+      alert('Failed to update settings.');
     } finally {
       setGeneratorLoading(false);
     }
@@ -137,16 +137,16 @@ export function useAdminQuestions(isAdmin: boolean) {
       });
       const data = (await response.json()) as ApiResult;
       if (data.success) {
-        alert('✅ 질문이 생성되었습니다!');
+        alert('✅ Question generated successfully!');
         void fetchQuestions();
       } else {
-        alert(`❌ 생성 실패: ${data.message}`);
+        alert(`❌ Generation failed: ${data.message}`);
       }
     } catch (error) {
       if (process.env.NODE_ENV === 'development') {
         console.error('Failed to generate question:', error);
       }
-      alert('❌ 질문 생성 중 오류가 발생했습니다.');
+      alert('❌ An error occurred while generating question.');
     } finally {
       setGenerating(false);
     }
@@ -172,7 +172,7 @@ export function useAdminQuestions(isAdmin: boolean) {
 
   const handleCreate = async () => {
     if (!title) {
-      alert('제목을 입력해주세요.');
+      alert('Please enter a title.');
       return;
     }
 
@@ -183,33 +183,40 @@ export function useAdminQuestions(isAdmin: boolean) {
         body: JSON.stringify({
           title,
           type: questionType,
+          marketType: questionType,
+          resolutionRule: questionType === 'OPINION'
+            ? 'Settlement by majority vote of market participants'
+            : 'Manual settlement based on admin verified data',
           category,
           votingDuration,
           bettingDuration,
+          executionModel: 'AMM_FPMM',
+          seedUsdc: 1000,
+          feeRate: 0.01,
         }),
       });
 
       const data = (await response.json()) as ApiResult;
       if (data.success) {
-        alert('질문이 생성되었습니다!');
+        alert('Question created successfully!');
         setTitle('');
         setShowCreateForm(false);
         void fetchQuestions();
       } else {
-        alert(`생성 실패: ${data.message}`);
+        alert(`Creation failed: ${data.message}`);
       }
     } catch (error) {
       if (process.env.NODE_ENV === 'development') {
         console.error('Failed to create question:', error);
       }
-      alert('질문 생성 중 오류가 발생했습니다.');
+      alert('An error occurred while creating question.');
     } finally {
       setLoading(false);
     }
   };
 
   const handleDelete = async (id: number) => {
-    if (!confirm('정말 이 질문을 삭제하시겠습니까?')) return;
+    if (!confirm('Are you sure you want to delete this question?')) return;
 
     try {
       const response = await authFetch(`${API_BASE_URL}/admin/questions/${id}`, {
@@ -218,16 +225,16 @@ export function useAdminQuestions(isAdmin: boolean) {
       const data = (await response.json()) as ApiResult;
 
       if (data.success) {
-        alert('✅ 질문이 삭제되었습니다!');
+        alert('✅ Question deleted successfully!');
         void fetchQuestions();
       } else {
-        alert(`❌ 삭제 실패: ${data.message}`);
+        alert(`❌ Delete failed: ${data.message}`);
       }
     } catch (error) {
       if (process.env.NODE_ENV === 'development') {
         console.error('Failed to delete question:', error);
       }
-      alert('❌ 질문 삭제 중 오류가 발생했습니다.');
+      alert('❌ An error occurred while deleting question.');
     }
   };
 
@@ -255,25 +262,25 @@ export function useAdminQuestions(isAdmin: boolean) {
       });
       const data = (await response.json()) as ApiResult;
       if (response.ok) {
-        alert(`정산 시작: ${data.message}`);
+        alert(`Settlement started: ${data.message}`);
         closeSettleModal();
         setSettleSourceUrl('');
         void fetchQuestions();
       } else {
-        alert(`정산 실패: ${data.message || '오류 발생'}`);
+        alert(`Settlement failed: ${data.message || 'Error occurred'}`);
       }
     } catch (error) {
       if (process.env.NODE_ENV === 'development') {
         console.error('Settlement failed:', error);
       }
-      alert('정산 중 오류가 발생했습니다.');
+      alert('An error occurred during settlement.');
     } finally {
       setLoading(false);
     }
   };
 
   const handleFinalize = async (id: number) => {
-    if (!confirm('정산을 확정하시겠습니까? 배당금이 분배됩니다.')) return;
+    if (!confirm('Do you want to finalize settlement? Dividends will be distributed.')) return;
 
     try {
       const response = await authFetch(`${API_BASE_URL}/admin/settlements/questions/${id}/finalize`, {
@@ -283,21 +290,21 @@ export function useAdminQuestions(isAdmin: boolean) {
       const data = (await response.json()) as ApiResult;
 
       if (response.ok) {
-        alert(`정산 확정: ${data.message}`);
+        alert(`Settlement finalized: ${data.message}`);
         void fetchQuestions();
       } else {
-        alert(`확정 실패: ${data.message || '오류 발생'}`);
+        alert(`Finalization failed: ${data.message || 'Error occurred'}`);
       }
     } catch (error) {
       if (process.env.NODE_ENV === 'development') {
         console.error('Finalize failed:', error);
       }
-      alert('확정 중 오류가 발생했습니다.');
+      alert('An error occurred during finalization.');
     }
   };
 
   const handleCancelSettle = async (id: number) => {
-    if (!confirm('정산을 취소하시겠습니까? 질문이 OPEN 상태로 돌아갑니다.')) return;
+    if (!confirm('Do you want to cancel settlement? The question will return to OPEN status.')) return;
 
     try {
       const response = await authFetch(`${API_BASE_URL}/admin/settlements/questions/${id}/cancel`, {
@@ -306,16 +313,16 @@ export function useAdminQuestions(isAdmin: boolean) {
       const data = (await response.json()) as ApiResult;
 
       if (response.ok) {
-        alert(`정산 취소: ${data.message}`);
+        alert(`Settlement cancelled: ${data.message}`);
         void fetchQuestions();
       } else {
-        alert(`취소 실패: ${data.message || '오류 발생'}`);
+        alert(`Cancellation failed: ${data.message || 'Error occurred'}`);
       }
     } catch (error) {
       if (process.env.NODE_ENV === 'development') {
         console.error('Cancel failed:', error);
       }
-      alert('취소 중 오류가 발생했습니다.');
+      alert('An error occurred during cancellation.');
     }
   };
 

@@ -160,7 +160,7 @@ export default function TradingPanel({ question, user, onTradeComplete, votedCho
 
   // Simulate swap when amount changes (debounced)
   useEffect(() => {
-    // AMM 질문이 아니면 시뮬레이션 스킵
+    // Skip simulation if not AMM question
     if (question.executionModel !== 'AMM_FPMM') {
       setSimulation(null);
       return;
@@ -205,47 +205,47 @@ export default function TradingPanel({ question, user, onTradeComplete, votedCho
 
   const handleTrade = async () => {
     if (isGuest) {
-      showToast('로그인이 필요합니다', 'error');
+      showToast('Login required', 'error');
       return;
     }
 
     if (!tradeAmount || parseFloat(tradeAmount) <= 0) {
-      showToast('금액을 입력해주세요', 'error');
+      showToast('Please enter an amount', 'error');
       return;
     }
 
-    // AMM 질문일 때만 poolState 체크
+    // Check poolState only for AMM questions
     if (question.executionModel === 'AMM_FPMM' && !poolState) {
       console.log('[TradingPanel] poolState null - executionModel:', question.executionModel, 'poolState:', poolState);
-      showToast('풀 정보를 불러오는 중입니다. 잠시 후 다시 시도해주세요.', 'error');
+      showToast('Loading pool information. Please try again later.', 'error');
       return;
     }
 
     const amt = parseFloat(tradeAmount);
     if (amt < BET_MIN_USDC || amt > BET_MAX_USDC) {
-      showToast(`베팅 금액은 ${BET_MIN_USDC}~${BET_MAX_USDC} $ 범위여야 합니다.`, 'error');
+      showToast(`Bet amount must be between ${BET_MIN_USDC} and ${BET_MAX_USDC} dollars.`, 'error');
       return;
     }
 
-    // BUY: 잔액 확인
+    // BUY: Check balance
     if (activeTab === 'buy') {
       if (user.usdcBalance < amt) {
         setShowDepositModal(true);
         return;
       }
     } else {
-      // SELL: 보유 shares 확인
+      // SELL: Check owned shares
       const mySharesAmount = selectedOutcome === 'YES'
         ? myShares?.yesShares || 0
         : myShares?.noShares || 0;
 
       if (mySharesAmount === 0) {
-        showToast(`${selectedOutcome} 포지션이 없습니다. 먼저 구매해주세요.`, 'error');
+        showToast(`No ${selectedOutcome} position. Please buy first.`, 'error');
         return;
       }
 
       if (amt > mySharesAmount) {
-        showToast(`판매 가능 수량을 초과합니다. (보유: ${mySharesAmount.toFixed(2)} shares)`, 'error');
+        showToast(`Exceeds sellable amount. (Owned: ${mySharesAmount.toFixed(2)} shares)`, 'error');
         return;
       }
     }
@@ -270,12 +270,12 @@ export default function TradingPanel({ question, user, onTradeComplete, votedCho
 
       const response = await swapApi.executeSwap(swapRequest);
 
-      const action = activeTab === 'buy' ? '구매' : '매도';
+      const action = activeTab === 'buy' ? 'Buy' : 'Sell';
       const resultAmount = activeTab === 'buy'
         ? `${response.sharesAmount.toFixed(2)} shares`
         : `${response.usdcAmount.toFixed(2)} USDC`;
 
-      showToast(`${selectedOutcome} ${action} 완료! (${resultAmount})`, 'success');
+      showToast(`${selectedOutcome} ${action} Complete! (${resultAmount})`, 'success');
       setTradeAmount('');
       setSimulation(null);
 
@@ -293,16 +293,16 @@ export default function TradingPanel({ question, user, onTradeComplete, votedCho
     } catch (error) {
       if (error instanceof ApiError) {
         if (error.status === 409) {
-          showToast('동시 거래 충돌이 발생했습니다. 다시 시도해주세요.', 'error');
-        } else if (error.message.includes('슬리피지') || error.message.includes('slippage')) {
-          showToast('가격이 변동되었습니다. 다시 시도해주세요.', 'error');
-        } else if (error.message.includes('잔액') || error.message.includes('balance')) {
-          showToast('잔액이 부족합니다.', 'error');
+          showToast('Concurrent trade conflict occurred. Please try again.', 'error');
+        } else if (error.message.includes('slippage')) {
+          showToast('Price has changed. Please try again.', 'error');
+        } else if (error.message.includes('balance')) {
+          showToast('Insufficient balance.', 'error');
         } else {
           showToast(error.message, 'error');
         }
       } else {
-        showToast(activeTab === 'buy' ? '구매 중 오류가 발생했습니다.' : '매도 중 오류가 발생했습니다.', 'error');
+        showToast(activeTab === 'buy' ? 'An error occurred during purchase.' : 'An error occurred during sale.', 'error');
       }
     } finally {
       setLoading(false);
@@ -311,7 +311,7 @@ export default function TradingPanel({ question, user, onTradeComplete, votedCho
 
   const handleLimitOrder = async () => {
     if (!limitPrice || parseFloat(limitPrice) <= 0 || parseFloat(limitPrice) >= 1) {
-      showToast('유효한 가격을 입력해주세요 (0.01 ~ 0.99)', 'error');
+      showToast('Please enter a valid price (0.01 ~ 0.99)', 'error');
       return;
     }
 
@@ -326,13 +326,13 @@ export default function TradingPanel({ question, user, onTradeComplete, votedCho
       });
 
       if (result.success) {
-        const actionLabel = activeTab === 'buy' ? '매수' : '매도';
+        const actionLabel = activeTab === 'buy' ? 'Buy' : 'Sell';
         if (result.filledAmount === Number(tradeAmount)) {
-          showToast(`${actionLabel} 주문이 완전 체결되었습니다!`);
+          showToast(`${actionLabel} order filled completely!`);
         } else if (result.filledAmount > 0) {
-          showToast(`${actionLabel} 부분 체결: ${result.filledAmount}/${tradeAmount} $`);
+          showToast(`${actionLabel} partially filled: ${result.filledAmount}/${tradeAmount} $`);
         } else {
-          showToast(`${actionLabel} 주문이 오더북에 등록되었습니다.`);
+          showToast(`${actionLabel} order added to orderbook.`);
         }
         setTradeAmount('');
         setLimitPrice('');
@@ -344,7 +344,7 @@ export default function TradingPanel({ question, user, onTradeComplete, votedCho
       if (error instanceof ApiError) {
         showToast(error.message, 'error');
       } else {
-        showToast('주문 중 오류가 발생했습니다.', 'error');
+        showToast('An error occurred while placing order.', 'error');
       }
     } finally {
       setLoading(false);
@@ -352,29 +352,29 @@ export default function TradingPanel({ question, user, onTradeComplete, votedCho
   };
 
   /**
-   * 1단계: Commit (투표 내용 암호화하여 제출)
+   * Step 1: Commit (Submit encrypted vote)
    */
   const handleVoteCommit = async (choice: 'YES' | 'NO') => {
     setLoading(true);
     try {
-      // 1. salt 생성
+      // 1. Generate salt
       const salt = generateSalt();
 
-      // 2. commitHash 생성: SHA-256(questionId:memberId:choice:salt)
+      // 2. Generate commitHash: SHA-256(questionId:memberId:choice:salt)
       const commitHash = await generateCommitHash(question.id, user.id, choice, salt);
 
-      // 3. salt를 localStorage에 저장 (reveal 시 사용)
+      // 3. Save salt to localStorage (used for reveal)
       saveSaltToStorage(question.id, salt);
       localStorage.setItem(`vote_choice_${question.id}`, choice);
 
-      // 4. 서버에 commitHash만 전송 (choice, salt 미전송)
+      // 4. Send only commitHash to server (choice and salt not sent)
       const result = await bettingApi.voteCommit({
         questionId: question.id,
         commitHash,
       });
 
       if (result.success) {
-        showToast(`${choice} 투표 커밋 완료! 공개 시간에 다시 방문하세요.`, 'vote');
+        showToast(`${choice} vote committed! Please return at reveal time.`, 'vote');
         setHasCommitted(true);
         setCommittedChoice(choice);
         onVoted?.(choice);
@@ -391,7 +391,7 @@ export default function TradingPanel({ question, user, onTradeComplete, votedCho
       if (error instanceof ApiError) {
         showToast(error.message, 'error');
       } else {
-        showToast('투표 커밋 중 오류가 발생했습니다.', 'error');
+        showToast('An error occurred while committing vote.', 'error');
       }
     } finally {
       setLoading(false);
@@ -399,18 +399,18 @@ export default function TradingPanel({ question, user, onTradeComplete, votedCho
   };
 
   /**
-   * 2단계: Reveal (투표 내용 공개)
+   * Step 2: Reveal (Reveal vote content)
    */
   const handleVoteReveal = async () => {
     if (!committedChoice) {
-      showToast('커밋된 투표를 찾을 수 없습니다.', 'error');
+      showToast('Cannot find committed vote.', 'error');
       return;
     }
 
-    // localStorage에서 salt 조회
+    // Retrieve salt from localStorage
     const salt = getSaltFromStorage(question.id);
     if (!salt) {
-      showToast('투표 데이터가 유실되었습니다. 이 브라우저에서 투표한 경우에만 공개할 수 있습니다.', 'error');
+      showToast('Vote data has been lost. You can only reveal if you voted in this browser.', 'error');
       return;
     }
 
@@ -423,8 +423,8 @@ export default function TradingPanel({ question, user, onTradeComplete, votedCho
       });
 
       if (result.success) {
-        showToast(`${committedChoice} 투표 공개 완료!`, 'vote');
-        // localStorage에서 salt와 choice 삭제
+        showToast(`${committedChoice} vote revealed!`, 'vote');
+        // Delete salt and choice from localStorage
         removeSaltFromStorage(question.id);
         localStorage.removeItem(`vote_choice_${question.id}`);
         onVoted?.(committedChoice);
@@ -435,34 +435,7 @@ export default function TradingPanel({ question, user, onTradeComplete, votedCho
       if (error instanceof ApiError) {
         showToast(error.message, 'error');
       } else {
-        showToast('투표 공개 중 오류가 발생했습니다.', 'error');
-      }
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // Legacy: 기존 Activity 기반 투표 (fallback)
-  const handleVoteLegacy = async (choice: 'YES' | 'NO') => {
-    setLoading(true);
-    try {
-      const result = await bettingApi.vote({
-        memberId: user.id,
-        questionId: question.id,
-        choice,
-        latencyMs: Math.floor(Math.random() * 10000) + 2000,
-      });
-      if (result.success) {
-        showToast(`${choice} 투표 완료!`, 'vote');
-        onVoted?.(choice);
-        await refreshUser();
-        onTradeComplete();
-      }
-    } catch (error) {
-      if (error instanceof ApiError) {
-        showToast(error.message, 'error');
-      } else {
-        showToast('투표 중 오류가 발생했습니다.', 'error');
+        showToast('An error occurred while revealing vote.', 'error');
       }
     } finally {
       setLoading(false);
@@ -475,7 +448,7 @@ export default function TradingPanel({ question, user, onTradeComplete, votedCho
     setTradeAmount(String(nextAmount));
   };
 
-  // Polymarket 스타일 수익 계산
+  // Polymarket-style profit calculation
   const tradeEstimates = tradeAmount && parseFloat(tradeAmount) > 0
     ? (() => {
         const amount = parseFloat(tradeAmount);
@@ -487,11 +460,11 @@ export default function TradingPanel({ question, user, onTradeComplete, votedCho
 
         if (activeTab === 'buy') {
           const shares = amount / avgPrice;
-          const toWin = shares * 1.0; // 정답 시 $1 정산
+          const toWin = shares * 1.0; // $1 settlement if correct
           const profit = toWin - amount;
           return { avgPrice, shares, toWin, profit };
         } else {
-          // Sell: 반대 포지션 수익 추정
+          // Sell: Estimate profit from opposite position
           const oppositeOdds = selectedOutcome === 'YES' ? (100 - yesOdds) : yesOdds;
           const oppositePrice = oppositeOdds / 100;
           if (oppositePrice <= 0) return { avgPrice: 0, shares: 0, toWin: 0, profit: 0 };
@@ -639,19 +612,19 @@ export default function TradingPanel({ question, user, onTradeComplete, votedCho
             {activeTab === 'buy' ? (
               <>
                 <div className="flex justify-between text-sm mb-2">
-                  <span className="text-slate-500">예상 수령</span>
+                  <span className="text-slate-500">Expected Receive</span>
                   <span className="font-bold text-slate-700 dark:text-slate-300">
                     {simulation.sharesOut?.toFixed(2)} shares
                   </span>
                 </div>
                 <div className="flex justify-between text-sm mb-2">
-                  <span className="text-slate-500">평균가</span>
+                  <span className="text-slate-500">Avg Price</span>
                   <span className="font-bold text-indigo-600">
                     {Math.round(simulation.effectivePrice * 100)}¢
                   </span>
                 </div>
                 <div className="flex justify-between text-sm mb-2">
-                  <span className="text-slate-500">슬리피지</span>
+                  <span className="text-slate-500">Slippage</span>
                   <span className={`font-bold ${
                     simulation.slippage < 0.001 ? 'text-emerald-600' :
                     simulation.slippage < 0.01 ? 'text-amber-500' :
@@ -661,13 +634,13 @@ export default function TradingPanel({ question, user, onTradeComplete, votedCho
                   </span>
                 </div>
                 <div className="flex justify-between text-sm mb-2">
-                  <span className="text-slate-500">수수료</span>
+                  <span className="text-slate-500">Fee</span>
                   <span className="font-bold text-slate-700 dark:text-slate-300">
                     {simulation.fee.toFixed(2)} USDC
                   </span>
                 </div>
                 <div className="flex justify-between text-xs pt-2 border-t border-slate-200 dark:border-slate-700">
-                  <span className="text-slate-400">정답 시 수익</span>
+                  <span className="text-slate-400">Profit if Correct</span>
                   <span className="font-bold text-emerald-600">
                     +{((simulation.sharesOut || 0) - parseFloat(tradeAmount || '0')).toFixed(2)} USDC
                   </span>
@@ -676,13 +649,13 @@ export default function TradingPanel({ question, user, onTradeComplete, votedCho
             ) : (
               <>
                 <div className="flex justify-between text-sm mb-2">
-                  <span className="text-slate-500">예상 수령</span>
+                  <span className="text-slate-500">Expected Receive</span>
                   <span className="font-bold text-emerald-600">
                     {simulation.usdcOut?.toFixed(2)} USDC
                   </span>
                 </div>
                 <div className="flex justify-between text-sm mb-2">
-                  <span className="text-slate-500">수수료</span>
+                  <span className="text-slate-500">Fee</span>
                   <span className="font-bold text-slate-700 dark:text-slate-300">
                     {simulation.fee.toFixed(2)} USDC
                   </span>
@@ -695,14 +668,14 @@ export default function TradingPanel({ question, user, onTradeComplete, votedCho
         {/* My Position */}
         {!isGuest && (hasYesShares || hasNoShares) && (
           <div className={`rounded-2xl p-4 mb-6 ${isDark ? 'bg-slate-800 border border-slate-700' : 'bg-slate-50 border border-slate-200'}`}>
-            <div className="text-xs font-bold text-slate-400 uppercase mb-3">내 포지션</div>
+            <div className="text-xs font-bold text-slate-400 uppercase mb-3">My Position</div>
             {hasYesShares && (
               <div className="flex justify-between items-center mb-2">
                 <span className="text-sm text-slate-500">YES</span>
                 <div className="text-right">
                   <div className="font-bold text-emerald-600">{myYesShares.toFixed(2)} shares</div>
                   <div className="text-xs text-slate-400">
-                    가치: ${(myYesShares * currentYesPrice).toFixed(2)}
+                    Value: ${(myYesShares * currentYesPrice).toFixed(2)}
                   </div>
                 </div>
               </div>
@@ -713,7 +686,7 @@ export default function TradingPanel({ question, user, onTradeComplete, votedCho
                 <div className="text-right">
                   <div className="font-bold text-rose-600">{myNoShares.toFixed(2)} shares</div>
                   <div className="text-xs text-slate-400">
-                    가치: ${(myNoShares * currentNoPrice).toFixed(2)}
+                    Value: ${(myNoShares * currentNoPrice).toFixed(2)}
                   </div>
                 </div>
               </div>
@@ -728,7 +701,7 @@ export default function TradingPanel({ question, user, onTradeComplete, votedCho
             className="w-full py-4 rounded-2xl font-black text-lg transition-all shadow-xl active:scale-95 bg-indigo-600 text-white hover:bg-indigo-700 flex items-center justify-center gap-2"
           >
             <UserPlus size={20} />
-            회원가입 후 참여 가능
+            Sign up to participate
           </button>
         ) : (
           <button
@@ -742,35 +715,35 @@ export default function TradingPanel({ question, user, onTradeComplete, votedCho
                 : 'bg-orange-500 text-white shadow-orange-500/20 hover:bg-orange-600'
             }`}
           >
-            {loading ? '처리 중...' : activeTab === 'buy' ? `Buy ${selectedOutcome}` : `Sell ${selectedOutcome}`}
+            {loading ? 'Processing...' : activeTab === 'buy' ? `Buy ${selectedOutcome}` : `Sell ${selectedOutcome}`}
           </button>
         )}
 
         {/* Pool Stats */}
         {poolState && (
           <div className={`mt-6 pt-6 border-t ${isDark ? 'border-slate-800' : 'border-slate-100'}`}>
-            <div className="text-xs font-bold text-slate-400 uppercase mb-3">풀 통계</div>
+            <div className="text-xs font-bold text-slate-400 uppercase mb-3">Pool Stats</div>
             <div className="space-y-2">
               <div className="flex justify-between text-sm">
-                <span className="text-slate-500">총 거래량</span>
+                <span className="text-slate-500">Total Volume</span>
                 <span className="font-bold text-slate-700 dark:text-slate-300">
                   ${poolState.totalVolumeUsdc.toFixed(2)}
                 </span>
               </div>
               <div className="flex justify-between text-sm">
-                <span className="text-slate-500">총 유동성</span>
+                <span className="text-slate-500">Total Liquidity</span>
                 <span className="font-bold text-slate-700 dark:text-slate-300">
                   ${poolState.collateralLocked.toFixed(2)}
                 </span>
               </div>
               <div className="flex justify-between text-sm">
-                <span className="text-slate-500">YES 풀</span>
+                <span className="text-slate-500">YES Pool</span>
                 <span className="font-bold text-emerald-600">
                   {poolState.yesShares.toFixed(2)}
                 </span>
               </div>
               <div className="flex justify-between text-sm">
-                <span className="text-slate-500">NO 풀</span>
+                <span className="text-slate-500">NO Pool</span>
                 <span className="font-bold text-rose-600">
                   {poolState.noShares.toFixed(2)}
                 </span>
@@ -790,17 +763,17 @@ export default function TradingPanel({ question, user, onTradeComplete, votedCho
 
     return (
       <div className={`p-6 rounded-2xl border ${isDark ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-100 shadow-sm'}`}>
-        {/* 단계 표시 배지 */}
+        {/* Stage indicator badge */}
         {isCommitPhase && (
           <div className="mb-6 inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-blue-100 text-blue-700">
             <Shield size={14} />
-            <span className="text-sm font-bold">투표 접수 중</span>
+            <span className="text-sm font-bold">Accepting Votes</span>
           </div>
         )}
         {isRevealPhase && (
           <div className="mb-6 inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-green-100 text-green-700">
             <Shield size={14} />
-            <span className="text-sm font-bold">투표 공개 중</span>
+            <span className="text-sm font-bold">Revealing Votes</span>
           </div>
         )}
 
@@ -808,18 +781,18 @@ export default function TradingPanel({ question, user, onTradeComplete, votedCho
           <div className={`mb-6 px-4 py-2 rounded-xl text-xs font-bold ${
             isDark ? 'bg-slate-800 text-slate-300' : 'bg-slate-50 text-slate-700'
           }`}>
-            홈팀 승리를 예상하면 YES, 승리하지 못할 것 같으면 NO를 선택하세요.
+            Choose YES if you expect home team to win, NO if you think they won't.
           </div>
         )}
 
-        {/* 티켓 상태 표시 */}
+        {/* Ticket status display */}
         {!isGuest && !hasVotingPass ? (
           <div className={`mb-6 px-4 py-3 rounded-xl flex items-center gap-3 ${
             isDark ? 'bg-amber-950 border border-amber-800' : 'bg-amber-50 border border-amber-200'
           }`}>
             <AlertTriangle className="w-4 h-4 text-amber-500" />
             <p className={`text-sm font-bold ${isDark ? 'text-amber-300' : 'text-amber-700'}`}>
-              투표 패스가 필요합니다. 마이페이지에서 구매해주세요.
+              Voting pass required. Please purchase from My Page.
             </p>
           </div>
         ) : ticketStatus && (
@@ -839,8 +812,8 @@ export default function TradingPanel({ question, user, onTradeComplete, votedCho
                 : isDark ? 'text-indigo-400' : 'text-indigo-600'
             }`}>
               {ticketStatus.remainingTickets === 0
-                ? '오늘 투표 가능 횟수를 모두 사용했습니다'
-                : `남은 투표권: ${ticketStatus.remainingTickets}/${ticketStatus.maxTickets}`
+                ? 'You have used all your votes for today'
+                : `Remaining votes: ${ticketStatus.remainingTickets}/${ticketStatus.maxTickets}`
               }
             </p>
           </div>
@@ -848,13 +821,13 @@ export default function TradingPanel({ question, user, onTradeComplete, votedCho
 
         {isGuest ? (
           <div className={`text-center py-8 rounded-xl ${isDark ? 'bg-slate-800/50' : 'bg-slate-50'}`}>
-            <p className={`text-sm ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>회원가입 후 투표에 참여할 수 있습니다</p>
+            <p className={`text-sm ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>You can participate in voting after signing up</p>
             <button
               onClick={openRegister}
               className="mt-4 px-6 py-3 rounded-xl font-black text-sm transition-all bg-indigo-600 text-white hover:bg-indigo-700 flex items-center justify-center gap-2 mx-auto"
             >
               <UserPlus size={16} />
-              회원가입
+              Sign Up
             </button>
           </div>
         ) : isCommitPhase ? (
@@ -868,12 +841,12 @@ export default function TradingPanel({ question, user, onTradeComplete, votedCho
               }`}>
                 <CheckCircle size={20} className={committedChoice === 'YES' ? 'text-emerald-500' : 'text-rose-500'} />
                 <span className={`font-bold ${committedChoice === 'YES' ? 'text-emerald-500' : 'text-rose-500'}`}>
-                  {committedChoice} 투표 커밋 완료
+                  {committedChoice} Vote Committed
                 </span>
               </div>
               <div className={`mt-4 p-3 rounded-xl text-sm flex items-start gap-2 ${isDark ? 'bg-slate-800 text-slate-400' : 'bg-slate-50 text-slate-600'}`}>
                 <Shield className="mt-0.5 flex-shrink-0" size={14} />
-                <span>선택은 암호화되어 저장되며, 베팅 종료 후 공개됩니다.</span>
+                <span>Your choice is encrypted and will be revealed after betting ends.</span>
               </div>
             </div>
           ) : (
@@ -884,19 +857,19 @@ export default function TradingPanel({ question, user, onTradeComplete, votedCho
                   disabled={loading || !hasVotingPass || ticketStatus?.remainingTickets === 0}
                   className="bg-green-500 hover:bg-green-600 text-white py-4 rounded-xl text-lg font-bold transition-all disabled:opacity-50"
                 >
-                  {loading ? '처리 중...' : 'YES 투표'}
+                  {loading ? 'Processing...' : 'Vote YES'}
                 </button>
                 <button
                   onClick={() => handleVoteCommit('NO')}
                   disabled={loading || !hasVotingPass || ticketStatus?.remainingTickets === 0}
                   className="bg-red-500 hover:bg-red-600 text-white py-4 rounded-xl text-lg font-bold transition-all disabled:opacity-50"
                 >
-                  {loading ? '처리 중...' : 'NO 투표'}
+                  {loading ? 'Processing...' : 'Vote NO'}
                 </button>
               </div>
               <div className={`p-3 rounded-xl text-sm flex items-start gap-2 ${isDark ? 'bg-slate-800 text-slate-400' : 'bg-slate-50 text-slate-600'}`}>
                 <Shield className="mt-0.5 flex-shrink-0" size={14} />
-                <span>선택은 암호화되어 저장되며, 베팅 종료 후 공개됩니다.</span>
+                <span>Your choice is encrypted and will be revealed after betting ends.</span>
               </div>
             </div>
           )
@@ -906,7 +879,7 @@ export default function TradingPanel({ question, user, onTradeComplete, votedCho
             <div>
               <div className={`mb-4 p-4 rounded-xl ${isDark ? 'bg-slate-800' : 'bg-slate-50'}`}>
                 <p className={`text-sm ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
-                  투표한 선택: <span className={`font-bold ${committedChoice === 'YES' ? 'text-green-600' : 'text-red-600'}`}>{committedChoice}</span>
+                  Your vote: <span className={`font-bold ${committedChoice === 'YES' ? 'text-green-600' : 'text-red-600'}`}>{committedChoice}</span>
                 </p>
               </div>
               <button
@@ -914,15 +887,15 @@ export default function TradingPanel({ question, user, onTradeComplete, votedCho
                 disabled={loading}
                 className="w-full py-4 rounded-xl font-bold text-lg transition-all bg-green-500 hover:bg-green-600 text-white disabled:opacity-50"
               >
-                {loading ? '처리 중...' : '투표 공개하기'}
+                {loading ? 'Processing...' : 'Reveal Vote'}
               </button>
             </div>
           ) : (
             <div className={`text-center py-8 rounded-xl ${isDark ? 'bg-slate-800/50 border border-slate-700' : 'bg-slate-50 border border-slate-200'}`}>
               <AlertTriangle size={32} className="mx-auto mb-2 text-amber-500" />
-              <p className={`text-sm font-bold ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>투표 데이터 없음</p>
+              <p className={`text-sm font-bold ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>No Vote Data</p>
               <p className={`text-xs mt-2 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
-                이 브라우저에서 투표하지 않았거나 데이터가 유실되었습니다.
+                You did not vote in this browser or the data has been lost.
               </p>
             </div>
           )
@@ -935,42 +908,32 @@ export default function TradingPanel({ question, user, onTradeComplete, votedCho
           }`}>
             <CheckCircle size={20} className={votedChoice === 'YES' ? 'text-emerald-500' : 'text-rose-500'} />
             <span className={`font-bold ${votedChoice === 'YES' ? 'text-emerald-500' : 'text-rose-500'}`}>
-              {votedChoice} 투표 완료
+              {votedChoice} Vote Complete
             </span>
           </div>
         ) : (
-          // Fallback: Legacy voting (if votingPhase not supported)
-          <div className="space-y-3">
-            <button
-              onClick={() => handleVoteLegacy('YES')}
-              disabled={loading}
-              className={`w-full py-5 rounded-2xl font-black text-lg transition-all shadow-lg ${isDark ? 'bg-emerald-500/20 text-emerald-400 hover:bg-emerald-500/30 border-2 border-emerald-500/50' : 'bg-emerald-50 text-emerald-600 hover:bg-emerald-100 border-2 border-emerald-200'}`}
-            >
-              {loading ? '처리 중...' : 'Vote Yes'}
-            </button>
-            <button
-              onClick={() => handleVoteLegacy('NO')}
-              disabled={loading}
-              className={`w-full py-5 rounded-2xl font-black text-lg transition-all shadow-lg ${isDark ? 'bg-rose-500/20 text-rose-400 hover:bg-rose-500/30 border-2 border-rose-500/50' : 'bg-rose-50 text-rose-600 hover:bg-rose-100 border-2 border-rose-200'}`}
-            >
-              {loading ? '처리 중...' : 'Vote No'}
-            </button>
+          <div className={`text-center py-8 rounded-xl ${isDark ? 'bg-slate-800/50 border border-slate-700' : 'bg-slate-50 border border-slate-200'}`}>
+            <AlertTriangle size={32} className="mx-auto mb-2 text-amber-500" />
+            <p className={`text-sm font-bold ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>Cannot check current voting status</p>
+            <p className={`text-xs mt-2 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+              Please refresh and try again later.
+            </p>
           </div>
         )}
 
         {question.votingEndAt && (
           <div className={`mt-6 pt-6 border-t ${isDark ? 'border-slate-800' : 'border-slate-100'}`}>
             <div className="flex justify-between items-center text-sm">
-              <span className="text-slate-400">{isRevealPhase ? 'Reveal 종료까지' : '투표 종료까지'}</span>
+              <span className="text-slate-400">{isRevealPhase ? 'Until Reveal Ends' : 'Until Voting Ends'}</span>
               <span className="text-indigo-500 font-bold">
                 {(() => {
                   const now = new Date().getTime();
                   const end = new Date(question.votingEndAt).getTime();
                   const diff = end - now;
-                  if (diff <= 0) return '종료됨';
+                  if (diff <= 0) return 'Ended';
                   const hours = Math.floor(diff / (1000 * 60 * 60));
                   const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
-                  return hours > 0 ? `${hours}시간 ${minutes}분` : `${minutes}분`;
+                  return hours > 0 ? `${hours}h ${minutes}m` : `${minutes}m`;
                 })()}
               </span>
             </div>
@@ -986,10 +949,10 @@ export default function TradingPanel({ question, user, onTradeComplete, votedCho
       <div className={`p-6 rounded-[2.5rem] border sticky top-24 ${isDark ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-100 shadow-xl'}`}>
         <div className={`text-center py-12 rounded-xl ${isDark ? 'bg-amber-950/20 border border-amber-900/30' : 'bg-amber-50 border border-amber-200'}`}>
           <Clock size={48} className="mx-auto mb-4 text-amber-500" />
-          <h3 className={`text-lg font-black mb-2 ${isDark ? 'text-amber-400' : 'text-amber-700'}`}>휴식 시간</h3>
+          <h3 className={`text-lg font-black mb-2 ${isDark ? 'text-amber-400' : 'text-amber-700'}`}>Break Time</h3>
           <p className={`text-sm ${isDark ? 'text-amber-500/70' : 'text-amber-600'}`}>
-            투표가 종료되었습니다.<br/>
-            잠시 후 베팅이 시작됩니다.
+            Voting has ended.<br/>
+            Betting will start soon.
           </p>
         </div>
       </div>
@@ -1002,9 +965,9 @@ export default function TradingPanel({ question, user, onTradeComplete, votedCho
       <div className={`p-6 rounded-[2.5rem] border sticky top-24 ${isDark ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-100 shadow-xl'}`}>
         <div className={`text-center py-12 rounded-xl ${isDark ? 'bg-emerald-950/20 border border-emerald-900/30' : 'bg-emerald-50 border border-emerald-200'}`}>
           <CheckCircle size={48} className="mx-auto mb-4 text-emerald-500" />
-          <h3 className={`text-lg font-black mb-2 ${isDark ? 'text-emerald-400' : 'text-emerald-700'}`}>정산 완료</h3>
+          <h3 className={`text-lg font-black mb-2 ${isDark ? 'text-emerald-400' : 'text-emerald-700'}`}>Settlement Complete</h3>
           <p className={`text-sm ${isDark ? 'text-emerald-500/70' : 'text-emerald-600'}`}>
-            이 질문의 정산이 완료되었습니다.
+            Settlement for this question has been completed.
           </p>
         </div>
       </div>
@@ -1012,10 +975,10 @@ export default function TradingPanel({ question, user, onTradeComplete, votedCho
   }
 
   // BETTING status: Show full trading interface
-  // 포지션 체크 (Sell 탭 활성화 조건)
+  // Position check (condition for enabling Sell tab)
   const hasAnyPosition = positions.length > 0 && positions.some(p => p.quantity > 0);
 
-  // SELL 임시 비활성화: 현재 YES BUY ↔ NO BUY 매칭 구조에서 SELL 정상 체결 불가
+  // SELL temporarily disabled: Cannot properly execute SELL in current YES BUY ↔ NO BUY matching structure
   const sellTemporarilyDisabled = true;
 
   // Mobile: Show bottom button and slide-up panel
@@ -1065,7 +1028,7 @@ export default function TradingPanel({ question, user, onTradeComplete, votedCho
             {/* Panel */}
             <div className={`fixed bottom-0 left-0 right-0 z-[201] max-h-[85vh] overflow-y-auto rounded-t-3xl animate-slide-up ${isDark ? 'bg-slate-900' : 'bg-white'}`}>
               <div className={`sticky top-0 z-10 flex items-center justify-between p-4 border-b bg-inherit ${isDark ? 'border-slate-800' : 'border-slate-100'}`}>
-                <h3 className={`text-lg font-black ${isDark ? 'text-slate-200' : 'text-slate-900'}`}>베팅하기</h3>
+                <h3 className={`text-lg font-black ${isDark ? 'text-slate-200' : 'text-slate-900'}`}>Place Bet</h3>
                 <button
                   onClick={() => setIsMobilePanelOpen(false)}
                   className="p-2 rounded-full hover:bg-slate-800 transition-colors"

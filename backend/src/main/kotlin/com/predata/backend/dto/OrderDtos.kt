@@ -9,31 +9,31 @@ import java.math.BigDecimal
 import java.time.LocalDateTime
 
 /**
- * 주문 생성 요청
+ * Order creation request
  */
 data class CreateOrderRequest(
-    @field:NotNull(message = "질문 ID는 필수입니다")
+    @field:NotNull(message = "Question ID is required")
     val questionId: Long,
 
-    @field:NotNull(message = "포지션(side)은 필수입니다")
+    @field:NotNull(message = "Position (side) is required")
     val side: OrderSide,  // YES or NO
 
-    // MARKET 주문일 경우 price는 optional (서버가 최적가로 체결)
-    // LIMIT 주문일 경우 price는 필수
-    @field:DecimalMin(value = "0.01", message = "가격은 0.01 이상이어야 합니다")
-    @field:DecimalMax(value = "0.99", message = "가격은 0.99 이하이어야 합니다")
+    // For MARKET orders, price is optional (server fills at best price)
+    // For LIMIT orders, price is required
+    @field:DecimalMin(value = "0.01", message = "Price must be 0.01 or more")
+    @field:DecimalMax(value = "0.99", message = "Price must be 0.99 or less")
     val price: BigDecimal? = null,
 
-    @field:NotNull(message = "수량은 필수입니다")
-    @field:Min(value = 1, message = "수량은 1 이상이어야 합니다")
+    @field:NotNull(message = "Amount is required")
+    @field:Min(value = 1, message = "Amount must be 1 or more")
     val amount: Long,
 
-    val orderType: OrderType? = null,  // 기본값: LIMIT (null이면 LIMIT으로 처리)
+    val orderType: OrderType? = null,  // Default: LIMIT (null treated as LIMIT)
 
-    @field:NotNull(message = "주문 방향은 필수입니다")
-    val direction: OrderDirection = OrderDirection.BUY  // BUY: 매수(USDC 예치), SELL: 매도(포지션 담보)
+    @field:NotNull(message = "Order direction is required")
+    val direction: OrderDirection = OrderDirection.BUY  // BUY: buy (deposit USDC), SELL: sell (position collateral)
 ) {
-    @AssertTrue(message = "지정가(LIMIT) 주문은 가격을 입력해야 합니다.")
+    @AssertTrue(message = "LIMIT order must have a price.")
     fun isLimitOrderPricePresent(): Boolean {
         val resolvedOrderType = orderType ?: OrderType.LIMIT
         return resolvedOrderType == OrderType.MARKET || price != null
@@ -41,18 +41,18 @@ data class CreateOrderRequest(
 }
 
 /**
- * 주문 생성 응답
+ * Order creation response
  */
 data class CreateOrderResponse(
     val success: Boolean,
     val message: String? = null,
     val orderId: Long? = null,
-    val filledAmount: Long = 0,      // 즉시 체결된 수량
-    val remainingAmount: Long = 0     // 오더북에 남은 수량
+    val filledAmount: Long = 0,      // Immediately filled amount
+    val remainingAmount: Long = 0     // Amount remaining in order book
 )
 
 /**
- * 오더북 레벨 (가격별 집계)
+ * Order book level (aggregated by price)
  */
 data class OrderBookLevel(
     val price: BigDecimal,
@@ -61,18 +61,18 @@ data class OrderBookLevel(
 )
 
 /**
- * 오더북 응답
+ * Order book response
  */
 data class OrderBookResponse(
     val questionId: Long,
-    val bids: List<OrderBookLevel>,   // YES 매수 (내림차순)
-    val asks: List<OrderBookLevel>,   // NO 매수 = YES 매도 (오름차순)
+    val bids: List<OrderBookLevel>,   // YES buy (descending order)
+    val asks: List<OrderBookLevel>,   // NO buy = YES sell (ascending order)
     val lastPrice: BigDecimal? = null,
     val spread: BigDecimal? = null
 )
 
 /**
- * 주문 취소 응답
+ * Order cancellation response
  */
 data class CancelOrderResponse(
     val success: Boolean,
@@ -81,7 +81,7 @@ data class CancelOrderResponse(
 )
 
 /**
- * 주문 상세 정보
+ * Order detail information
  */
 data class OrderResponse(
     val orderId: Long,
@@ -98,7 +98,7 @@ data class OrderResponse(
 )
 
 /**
- * 체결 정보
+ * Trade information
  */
 data class TradeResponse(
     val tradeId: Long,

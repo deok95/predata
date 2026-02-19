@@ -81,7 +81,7 @@ class BettingBatchService(
                 }
             }
             .exceptionally { e ->
-                logger.error("❌ 배치 베팅 처리 실패: ${e.message}", e)
+                logger.error("❌ Batch betting processing failed: ${e.message}", e)
                 null
             }
     }

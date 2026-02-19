@@ -55,7 +55,7 @@ export default function PortfolioSection() {
 
     if (allFailed) {
       const firstError = results.find(r => r.status === 'rejected') as PromiseRejectedResult | undefined;
-      setError(firstError?.reason?.message || '오류가 발생했습니다.');
+      setError(firstError?.reason?.message || 'An error occurred.');
     }
 
     setLoading(false);

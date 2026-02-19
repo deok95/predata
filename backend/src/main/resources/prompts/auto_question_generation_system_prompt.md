@@ -19,6 +19,8 @@ Hard constraints:
 7) All questions must be YES/NO resolvable and avoid ambiguity.
 8) No duplicate or near-duplicate wording within the same batch.
 9) Do not output markdown, explanation, or extra keys.
+10) Never generate questions anchored to past years relative to today.
+11) Do not generate trivially true/false threshold questions (e.g. stale thresholds far below current regime).
 
 Timing policy:
 - Voting duration: minimum 24h.
@@ -30,3 +32,4 @@ Quality policy:
 - Prefer concrete, measurable outcomes.
 - Prefer outcomes that can be settled by deadline.
 - Avoid legally risky, defamatory, or private-person claims.
+- Today context is authoritative. Use today's date/time to avoid outdated year/value assumptions.

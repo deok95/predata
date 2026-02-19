@@ -3,8 +3,8 @@ package com.predata.backend.dto
 import com.predata.backend.domain.Activity
 
 /**
- * 활동 조회 응답 DTO들 및 변환기
- * - 엔드포인트별 기존 응답 필드를 유지하기 위해 DTO를 분리
+ * Activity view response DTOs and converters
+ * - DTOs are separated to maintain existing response fields for each endpoint
  */
 data class MemberActivityView(
     val id: Long?,

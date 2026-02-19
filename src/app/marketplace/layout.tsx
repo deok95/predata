@@ -1,8 +1,8 @@
 import type { Metadata } from 'next';
 
 export const metadata: Metadata = {
-  title: 'Predata - 마켓 탐색',
-  description: '다양한 예측 마켓에 참여하고 트렌드를 분석하세요',
+  title: 'Predata - Marketplace',
+  description: 'Participate in various prediction markets and analyze trends',
 };
 
 export default function MarketplaceLayout({ children }: { children: React.ReactNode }) {

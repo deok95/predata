@@ -42,7 +42,7 @@ class AdminAuthInterceptor(
             response.characterEncoding = "UTF-8"
             val error = ErrorResponse(
                 code = "FORBIDDEN",
-                message = "관리자 권한이 필요합니다.",
+                message = "Admin privileges required.",
                 status = 403
             )
             response.writer.write(objectMapper.writeValueAsString(error))

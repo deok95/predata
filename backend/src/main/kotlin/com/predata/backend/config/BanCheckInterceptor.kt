@@ -46,7 +46,7 @@ class BanCheckInterceptor(
 
             val error = ErrorResponse(
                 code = "ACCOUNT_BANNED",
-                message = "계정이 정지되었습니다. 사유: ${member.banReason ?: "이용약관 위반"}",
+                message = "Account has been suspended. Reason: ${member.banReason ?: "Terms of Service violation"}",
                 status = 403
             )
             response.writer.write(objectMapper.writeValueAsString(error))

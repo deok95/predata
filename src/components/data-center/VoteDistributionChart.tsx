@@ -23,7 +23,7 @@ export default function VoteDistributionChart({ voteDistribution, isDark }: Vote
     <div className={cardClass}>
       <div className="flex items-center gap-2 mb-4">
         <Vote className="h-6 w-6 text-indigo-600" />
-        <h2 className={`text-lg font-black ${isDark ? 'text-white' : 'text-slate-900'}`}>투표 분포</h2>
+        <h2 className={`text-lg font-black ${isDark ? 'text-white' : 'text-slate-900'}`}>Vote Distribution</h2>
       </div>
 
       <div className="flex items-center justify-center">
@@ -45,7 +45,7 @@ export default function VoteDistributionChart({ voteDistribution, isDark }: Vote
                 ))}
               </Pie>
               <Tooltip
-                formatter={(value, name) => [`${Number(value).toLocaleString()}표`, String(name)]}
+                formatter={(value, name) => [`${Number(value).toLocaleString()} votes`, String(name)]}
                 contentStyle={{
                   backgroundColor: isDark ? '#0f172a' : '#fff',
                   border: isDark ? '1px solid #1e293b' : '1px solid #e2e8f0',

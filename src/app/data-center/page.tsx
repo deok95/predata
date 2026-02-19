@@ -6,6 +6,7 @@ import { Database, ArrowUpDown } from 'lucide-react';
 import MainLayout from '@/components/layout/MainLayout';
 import CategoryFilter from '@/components/market/CategoryFilter';
 import DataCenterCard from '@/components/data-center/DataCenterCard';
+import GlobalStatsBar from '@/components/dashboard/GlobalStatsBar';
 import { useTheme } from '@/hooks/useTheme';
 import { useAuth } from '@/hooks/useAuth';
 import { useQuestions } from '@/hooks/useQueries';
@@ -47,9 +48,9 @@ function DataCenterList() {
         <div className="mb-8">
           <div className="flex items-center gap-3 mb-2">
             <Database className="h-8 w-8 text-indigo-600" />
-            <h1 className={`text-3xl font-black ${isDark ? 'text-white' : 'text-slate-900'}`}>데이터 센터</h1>
+            <h1 className={`text-3xl font-black ${isDark ? 'text-white' : 'text-slate-900'}`}>Data Center</h1>
           </div>
-          <p className="text-slate-400">질문을 선택하여 데이터 품질을 분석하세요</p>
+          <p className="text-slate-400">Select a question to analyze data quality</p>
         </div>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
           {[...Array(6)].map((_, i) => (
@@ -66,9 +67,13 @@ function DataCenterList() {
       <div className="mb-6">
         <div className="flex items-center gap-3 mb-2">
           <Database className="h-8 w-8 text-indigo-600" />
-          <h1 className={`text-3xl font-black ${isDark ? 'text-white' : 'text-slate-900'}`}>데이터 센터</h1>
+          <h1 className={`text-3xl font-black ${isDark ? 'text-white' : 'text-slate-900'}`}>Data Center</h1>
         </div>
-        <p className="text-slate-400">질문을 선택하여 데이터 품질을 분석하세요</p>
+        <p className="text-slate-400">Select a question to analyze data quality</p>
+      </div>
+
+      <div className="mb-8">
+        <GlobalStatsBar />
       </div>
 
       {/* Filters + Sort */}
@@ -84,7 +89,7 @@ function DataCenterList() {
                 : isDark ? 'bg-slate-800 text-slate-400 hover:bg-slate-700' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
             }`}
           >
-            거래량순
+            By Volume
           </button>
           <button
             onClick={() => setSortBy('latest')}
@@ -94,14 +99,14 @@ function DataCenterList() {
                 : isDark ? 'bg-slate-800 text-slate-400 hover:bg-slate-700' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
             }`}
           >
-            최신순
+            Latest
           </button>
         </div>
       </div>
 
       {/* Question count */}
       <p className={`text-sm font-bold mb-4 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
-        총 {filtered.length}개 질문
+        Total {filtered.length} questions
       </p>
 
       {/* Card Grid */}
@@ -114,7 +119,7 @@ function DataCenterList() {
       ) : (
         <div className={`p-12 rounded-3xl border text-center ${isDark ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-100'}`}>
           <Database className="h-10 w-10 text-slate-400 mx-auto mb-3" />
-          <p className={`font-black ${isDark ? 'text-white' : 'text-slate-900'}`}>해당 카테고리에 질문이 없습니다</p>
+          <p className={`font-black ${isDark ? 'text-white' : 'text-slate-900'}`}>No questions in this category</p>
         </div>
       )}
     </div>

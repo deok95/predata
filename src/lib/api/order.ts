@@ -17,11 +17,11 @@ export interface OrderBookData {
 export interface CreateOrderRequest {
   questionId: number;
   side: 'YES' | 'NO';
-  // MARKET 주문은 price 미전송(서버가 최적가로 체결), LIMIT 주문은 price 필요
+  // MARKET orders don't send price (server fills at best price), LIMIT orders require price
   price?: number;
   amount: number;
-  direction?: 'BUY' | 'SELL'; // BUY: 매수(USDC 예치), SELL: 매도(포지션 담보), 기본값 BUY
-  orderType?: 'LIMIT' | 'MARKET'; // 주문 타입, 기본값 LIMIT
+  direction?: 'BUY' | 'SELL'; // BUY: Buy (USDC deposit), SELL: Sell (position collateral), defaults to BUY
+  orderType?: 'LIMIT' | 'MARKET'; // Order type, defaults to LIMIT
 }
 
 export interface CreateOrderResponse {

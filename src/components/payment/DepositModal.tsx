@@ -42,11 +42,11 @@ export default function DepositModal({ isOpen, onClose }: DepositModalProps) {
 
   const stepLabels: Record<PaymentStep, string> = {
     idle: '',
-    sending: 'MetaMask에서 트랜잭션을 승인해주세요...',
-    confirming: '블록체인에서 트랜잭션 확인 중...',
-    verifying: '서버에서 충전을 검증 중...',
-    success: '충전이 완료되었습니다!',
-    error: error || '충전에 실패했습니다.',
+    sending: 'Please approve the transaction in MetaMask...',
+    confirming: 'Confirming transaction on blockchain...',
+    verifying: 'Verifying deposit on server...',
+    success: 'Deposit completed!',
+    error: error || 'Deposit failed.',
   };
 
   return (
@@ -62,14 +62,14 @@ export default function DepositModal({ isOpen, onClose }: DepositModalProps) {
             <DollarSign size={24} className="text-white" />
           </div>
           <div>
-            <h2 className={`text-xl font-black ${isDark ? 'text-white' : 'text-slate-900'}`}>$ 충전</h2>
-            <p className="text-xs text-slate-400">최소 $1부터</p>
+            <h2 className={`text-xl font-black ${isDark ? 'text-white' : 'text-slate-900'}`}>Deposit $</h2>
+            <p className="text-xs text-slate-400">Minimum $1</p>
           </div>
         </div>
 
         {step === 'idle' && (
           <>
-            {/* 금액 입력 */}
+            {/* Amount input */}
             <div className="mb-4">
               <div className="relative">
                 <input
@@ -77,7 +77,7 @@ export default function DepositModal({ isOpen, onClose }: DepositModalProps) {
                   min={1}
                   value={amount}
                   onChange={(e) => setAmount(e.target.value)}
-                  placeholder="충전할 금액"
+                  placeholder="Amount to deposit"
                   className={`w-full p-5 rounded-2xl border-2 font-black text-2xl transition-all ${
                     isDark
                       ? 'bg-slate-800 border-slate-700 text-white focus:border-emerald-500'
@@ -88,7 +88,7 @@ export default function DepositModal({ isOpen, onClose }: DepositModalProps) {
               </div>
             </div>
 
-            {/* 프리셋 버튼 */}
+            {/* Preset buttons */}
             <div className="grid grid-cols-4 gap-2 mb-6">
               {PRESET_AMOUNTS.map((preset) => (
                 <button
@@ -103,14 +103,14 @@ export default function DepositModal({ isOpen, onClose }: DepositModalProps) {
               ))}
             </div>
 
-            {/* 안내 메시지 */}
+            {/* Warning message */}
             {amount && !isValidAmount && (
               <p className="text-xs text-rose-400 mb-4">
-                최소 $1 이상 충전해야 합니다.
+                Minimum deposit is $1.
               </p>
             )}
 
-            {/* 지갑 연결 & 충전 */}
+            {/* Wallet connect & deposit */}
             {!isConnected ? (
               <div className="flex justify-center">
                 <ConnectButton />
@@ -122,13 +122,13 @@ export default function DepositModal({ isOpen, onClose }: DepositModalProps) {
                 className="w-full py-4 rounded-2xl font-black text-lg bg-emerald-600 text-white hover:bg-emerald-700 disabled:opacity-50 transition-all active:scale-[0.98] flex items-center justify-center gap-2"
               >
                 <Wallet size={20} />
-                {isValidAmount ? `$${numAmount} 충전하기` : '금액을 입력하세요'}
+                {isValidAmount ? `Deposit $${numAmount}` : 'Enter amount'}
               </button>
             )}
           </>
         )}
 
-        {/* 진행 중 상태 */}
+        {/* Processing states */}
         {(step === 'sending' || step === 'confirming' || step === 'verifying') && (
           <div className="text-center py-8">
             <Loader2 size={48} className="mx-auto mb-4 text-emerald-500 animate-spin" />
@@ -141,32 +141,32 @@ export default function DepositModal({ isOpen, onClose }: DepositModalProps) {
           </div>
         )}
 
-        {/* 성공 */}
+        {/* Success */}
         {step === 'success' && (
           <div className="text-center py-8">
             <CheckCircle size={48} className="mx-auto mb-4 text-emerald-500" />
-            <p className={`font-black text-lg mb-2 ${isDark ? 'text-white' : 'text-slate-900'}`}>충전 완료!</p>
-            <p className="text-sm text-slate-400">${numAmount}가 계정에 반영되었습니다.</p>
+            <p className={`font-black text-lg mb-2 ${isDark ? 'text-white' : 'text-slate-900'}`}>Deposit Complete!</p>
+            <p className="text-sm text-slate-400">${numAmount} has been added to your account.</p>
             <button
               onClick={handleClose}
               className="mt-6 px-8 py-3 rounded-2xl font-bold bg-emerald-600 text-white hover:bg-emerald-700 transition-all"
             >
-              확인
+              Confirm
             </button>
           </div>
         )}
 
-        {/* 에러 */}
+        {/* Error */}
         {step === 'error' && (
           <div className="text-center py-8">
             <AlertCircle size={48} className="mx-auto mb-4 text-rose-500" />
-            <p className={`font-bold mb-2 ${isDark ? 'text-white' : 'text-slate-900'}`}>충전 실패</p>
+            <p className={`font-bold mb-2 ${isDark ? 'text-white' : 'text-slate-900'}`}>Deposit Failed</p>
             <p className="text-sm text-rose-400 mb-6">{error}</p>
             <button
               onClick={reset}
               className="px-8 py-3 rounded-2xl font-bold bg-emerald-600 text-white hover:bg-emerald-700 transition-all"
             >
-              다시 시도
+              Retry
             </button>
           </div>
         )}

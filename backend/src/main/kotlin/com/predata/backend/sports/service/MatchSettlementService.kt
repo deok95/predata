@@ -35,7 +35,7 @@ class MatchSettlementService(
         val question = questionRepository.findById(questionId).orElse(null) ?: return
         question.phase = QuestionPhase.FINISHED
         questionRepository.save(question)
-        logger.info("[MatchSettlement] phase=FINISHED 설정 - questionId={}", questionId)
+        logger.info("[MatchSettlement] phase=FINISHED set - questionId={}", questionId)
     }
 
     /**
@@ -45,7 +45,7 @@ class MatchSettlementService(
     @Retryable(maxAttempts = 3, backoff = Backoff(delay = 5000))
     @Transactional
     fun settleQuestion(questionId: Long, finalResult: FinalResult) {
-        logger.info("[MatchSettlement] 정산 시작 - questionId={}, result={}", questionId, finalResult)
+        logger.info("[MatchSettlement] Settlement started - questionId={}, result={}", questionId, finalResult)
 
         settlementService.initiateSettlement(questionId, finalResult, "MATCH_RESULT")
         settlementService.finalizeSettlement(questionId, skipDeadlineCheck = true)
@@ -56,13 +56,13 @@ class MatchSettlementService(
             questionRepository.save(question)
         }
 
-        logger.info("[MatchSettlement] 정산 완료 - questionId={}, result={}", questionId, finalResult)
+        logger.info("[MatchSettlement] Settlement completed - questionId={}, result={}", questionId, finalResult)
     }
 
     @Recover
     fun recoverSettleQuestion(e: Exception, questionId: Long, finalResult: FinalResult) {
         logger.error(
-            "[MatchSettlement] 정산 최종 실패 (3회 재시도 소진) - questionId={}, result={}, error={}",
+            "[MatchSettlement] Settlement final failure (3 retries exhausted) - questionId={}, result={}, error={}",
             questionId, finalResult, e.message, e
         )
         // phase = FINISHED 유지 → 어드민 수동 정산 필요
@@ -75,13 +75,13 @@ class MatchSettlementService(
     @Retryable(maxAttempts = 3, backoff = Backoff(delay = 5000))
     @Transactional
     fun refundAllBets(questionId: Long, reason: String) {
-        logger.info("[MatchSettlement] 전액 환불 시작 - questionId={}, reason={}", questionId, reason)
+        logger.info("[MatchSettlement] Full refund started - questionId={}, reason={}", questionId, reason)
 
         val question = questionRepository.findByIdWithLock(questionId)
-            ?: throw IllegalArgumentException("질문을 찾을 수 없습니다: $questionId")
+            ?: throw IllegalArgumentException("Question not found: $questionId")
 
         if (question.status == QuestionStatus.SETTLED && question.phase == QuestionPhase.SETTLED) {
-            logger.warn("[MatchSettlement] 이미 정산 완료된 질문 - questionId={}", questionId)
+            logger.warn("[MatchSettlement] Question already settled - questionId={}", questionId)
             return
         }
 
@@ -115,7 +115,7 @@ class MatchSettlementService(
         questionRepository.save(question)
 
         logger.info(
-            "[MatchSettlement] 전액 환불 완료 - questionId={}, reason={}, refundCount={}, totalRefunded={}",
+            "[MatchSettlement] Full refund completed - questionId={}, reason={}, refundCount={}, totalRefunded={}",
             questionId, reason, refundCount, totalRefunded
         )
     }
@@ -123,7 +123,7 @@ class MatchSettlementService(
     @Recover
     fun recoverRefundAllBets(e: Exception, questionId: Long, reason: String) {
         logger.error(
-            "[MatchSettlement] 환불 최종 실패 (3회 재시도 소진) - questionId={}, reason={}, error={}",
+            "[MatchSettlement] Refund final failure (3 retries exhausted) - questionId={}, reason={}, error={}",
             questionId, reason, e.message, e
         )
         // phase = FINISHED 유지 → 어드민 수동 정산 필요
@@ -135,10 +135,10 @@ class MatchSettlementService(
     @Transactional
     fun manualSettle(questionId: Long, result: String): String {
         val question = questionRepository.findByIdWithLock(questionId)
-            ?: throw IllegalArgumentException("질문을 찾을 수 없습니다: $questionId")
+            ?: throw IllegalArgumentException("Question not found: $questionId")
 
         if (question.phase == QuestionPhase.SETTLED) {
-            throw IllegalStateException("이미 정산 완료된 질문입니다.")
+            throw IllegalStateException("Question already settled.")
         }
 
         return when (result.uppercase()) {
@@ -147,20 +147,20 @@ class MatchSettlementService(
                 settlementService.finalizeSettlement(questionId, skipDeadlineCheck = true)
                 question.phase = QuestionPhase.SETTLED
                 questionRepository.save(question)
-                "수동 정산 완료 (YES 승)"
+                "Manual settlement completed (YES win)"
             }
             "NO" -> {
                 settlementService.initiateSettlement(questionId, FinalResult.NO, "ADMIN_MANUAL")
                 settlementService.finalizeSettlement(questionId, skipDeadlineCheck = true)
                 question.phase = QuestionPhase.SETTLED
                 questionRepository.save(question)
-                "수동 정산 완료 (NO 승)"
+                "Manual settlement completed (NO win)"
             }
             "DRAW" -> {
                 refundAllBets(questionId, "ADMIN_MANUAL_DRAW")
-                "수동 정산 완료 (무승부 - 전액 환불)"
+                "Manual settlement completed (Draw - full refund)"
             }
-            else -> throw IllegalArgumentException("결과는 YES, NO, DRAW만 가능합니다.")
+            else -> throw IllegalArgumentException("Result must be YES, NO, or DRAW.")
         }
     }
 }

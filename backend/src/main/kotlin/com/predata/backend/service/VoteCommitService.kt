@@ -47,7 +47,7 @@ class VoteCommitService(
     fun commit(memberId: Long, request: VoteCommitRequest): VoteCommitResponse {
         // 0. 투표 중지 상태 체크
         if (pauseService.isPaused(request.questionId) || circuitBreaker.isOpen()) {
-            throw ServiceUnavailableException("시스템 점검 중입니다.")
+            throw ServiceUnavailableException("System maintenance in progress.")
         }
 
         // 1. 회원 존재 확인
@@ -55,7 +55,7 @@ class VoteCommitService(
             ?: run {
                 return VoteCommitResponse(
                     success = false,
-                    message = "회원을 찾을 수 없습니다."
+                    message = "Member not found."
                 )
             }
 
@@ -63,7 +63,7 @@ class VoteCommitService(
         if (member.isBanned) {
             return VoteCommitResponse(
                 success = false,
-                message = "계정이 정지되었습니다. 사유: ${member.banReason ?: "이용약관 위반"}"
+                message = "Account has been suspended. Reason: ${member.banReason ?: "Terms of Service violation"}"
             )
         }
 
@@ -71,14 +71,14 @@ class VoteCommitService(
         if (!member.hasVotingPass) {
             return VoteCommitResponse(
                 success = false,
-                message = "투표 패스가 필요합니다. 마이페이지에서 구매해주세요."
+                message = "Voting pass required. Please purchase one from your My Page."
             )
         }
 
         // 2-2. 티켓 차감 (5개 제한)
         val ticketConsumed = ticketService.consumeTicket(memberId)
         if (!ticketConsumed) {
-            throw IllegalStateException("오늘 투표 가능 횟수를 모두 사용했습니다")
+            throw IllegalStateException("You have used all available votes for today")
         }
 
         // 3. 질문 존재 확인
@@ -86,20 +86,20 @@ class VoteCommitService(
             ?: run {
                 return VoteCommitResponse(
                     success = false,
-                    message = "질문을 찾을 수 없습니다."
+                    message = "Question not found."
                 )
             }
 
         // 4. 투표 단계 확인 (VOTING_COMMIT_OPEN만 가능)
         if (question.votingPhase != VotingPhase.VOTING_COMMIT_OPEN) {
-            throw IllegalStateException("현재 투표 접수 기간이 아닙니다.")
+            throw IllegalStateException("Not currently in voting commit period.")
         }
 
         // 5. 중복 투표 체크 (UNIQUE 제약으로 자동 방지)
         if (voteCommitRepository.existsByMemberIdAndQuestionId(memberId, request.questionId)) {
             return VoteCommitResponse(
                 success = false,
-                message = "이미 투표하셨습니다."
+                message = "You have already voted."
             )
         }
 
@@ -116,7 +116,7 @@ class VoteCommitService(
             logger.warn("Daily vote limit exceeded: memberId=$memberId, count=$todayCount, limit=${votingConfig.dailyLimit}")
             return VoteCommitResponse(
                 success = false,
-                message = "일일 투표 한도(${votingConfig.dailyLimit}개)를 초과했습니다."
+                message = "Daily vote limit (${votingConfig.dailyLimit}) exceeded."
             )
         }
 
@@ -149,7 +149,7 @@ class VoteCommitService(
 
             VoteCommitResponse(
                 success = true,
-                message = "투표 커밋이 완료되었습니다.",
+                message = "Vote commit completed successfully.",
                 voteCommitId = saved.id,
                 remainingTickets = remainingTickets
             )
@@ -157,7 +157,7 @@ class VoteCommitService(
             logger.warn("Duplicate vote commit attempt: memberId=$memberId, questionId=${request.questionId}")
             VoteCommitResponse(
                 success = false,
-                message = "이미 투표하셨습니다."
+                message = "You have already voted."
             )
         } catch (e: Exception) {
             circuitBreaker.recordFailure()
@@ -174,7 +174,7 @@ class VoteCommitService(
     fun reveal(memberId: Long, request: VoteRevealRequest): VoteRevealResponse {
         // 0. 투표 중지 상태 체크
         if (pauseService.isPaused(request.questionId) || circuitBreaker.isOpen()) {
-            throw ServiceUnavailableException("시스템 점검 중입니다.")
+            throw ServiceUnavailableException("System maintenance in progress.")
         }
 
         // 0-1. 투표 패스 확인 (미구매 계정은 투표 불가)
@@ -182,13 +182,13 @@ class VoteCommitService(
             ?: run {
                 return VoteRevealResponse(
                     success = false,
-                    message = "회원을 찾을 수 없습니다."
+                    message = "Member not found."
                 )
             }
         if (!member.hasVotingPass) {
             return VoteRevealResponse(
                 success = false,
-                message = "투표 패스가 필요합니다. 마이페이지에서 구매해주세요."
+                message = "Voting pass required. Please purchase one from your My Page."
             )
         }
 
@@ -197,7 +197,7 @@ class VoteCommitService(
             ?: run {
                 return VoteRevealResponse(
                     success = false,
-                    message = "커밋된 투표를 찾을 수 없습니다."
+                    message = "Committed vote not found."
                 )
             }
 
@@ -205,7 +205,7 @@ class VoteCommitService(
         if (voteCommit.status == VoteCommitStatus.REVEALED) {
             return VoteRevealResponse(
                 success = false,
-                message = "이미 투표를 공개하셨습니다."
+                message = "Vote already revealed."
             )
         }
 
@@ -214,13 +214,13 @@ class VoteCommitService(
             ?: run {
                 return VoteRevealResponse(
                     success = false,
-                    message = "질문을 찾을 수 없습니다."
+                    message = "Question not found."
                 )
             }
 
         // 4. 투표 단계 확인 (VOTING_REVEAL_OPEN만 가능)
         if (question.votingPhase != VotingPhase.VOTING_REVEAL_OPEN) {
-            throw IllegalStateException("현재 투표 공개 기간이 아닙니다.")
+            throw IllegalStateException("Not currently in vote reveal period.")
         }
 
         // 5. commitHash 검증: SHA-256(questionId:memberId:choice:salt) == commitHash
@@ -229,7 +229,7 @@ class VoteCommitService(
             logger.warn("Vote reveal hash mismatch: memberId=$memberId, questionId=${request.questionId}")
             return VoteRevealResponse(
                 success = false,
-                message = "투표 검증에 실패했습니다. (해시 불일치)"
+                message = "Vote verification failed (hash mismatch)."
             )
         }
 
@@ -256,7 +256,7 @@ class VoteCommitService(
 
             VoteRevealResponse(
                 success = true,
-                message = "투표 공개가 완료되었습니다."
+                message = "Vote reveal completed successfully."
             )
         } catch (e: Exception) {
             circuitBreaker.recordFailure()
@@ -269,11 +269,11 @@ class VoteCommitService(
      */
     fun getResults(questionId: Long): Map<String, Any> {
         val question = questionRepository.findById(questionId).orElse(null)
-            ?: throw IllegalArgumentException("질문을 찾을 수 없습니다.")
+            ?: throw IllegalArgumentException("Question not found.")
 
         // Reveal 종료 전에는 공개 금지
         if (question.votingPhase.ordinal < VotingPhase.BETTING_OPEN.ordinal) {
-            throw IllegalStateException("투표 결과는 공개 전입니다.")
+            throw IllegalStateException("Vote results not yet revealed.")
         }
 
         val yesCount = voteCommitRepository.countByQuestionIdAndRevealedChoice(questionId, Choice.YES)
@@ -281,7 +281,7 @@ class VoteCommitService(
 
         return mapOf(
             "success" to true,
-            "message" to "투표 결과 조회 성공",
+            "message" to "Vote results retrieved successfully",
             "yesCount" to yesCount,
             "noCount" to noCount,
             "totalCount" to (yesCount + noCount)
@@ -293,7 +293,7 @@ class VoteCommitService(
      */
     fun getStatus(questionId: Long): Map<String, Any> {
         val question = questionRepository.findById(questionId).orElse(null)
-            ?: throw IllegalArgumentException("질문을 찾을 수 없습니다.")
+            ?: throw IllegalArgumentException("Question not found.")
 
         val totalParticipants = voteCommitRepository.countByQuestionIdAndStatus(
             questionId, VoteCommitStatus.REVEALED

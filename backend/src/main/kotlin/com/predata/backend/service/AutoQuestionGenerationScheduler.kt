@@ -16,24 +16,46 @@ import org.springframework.stereotype.Service
 class AutoQuestionGenerationScheduler(
     private val autoQuestionGenerationService: AutoQuestionGenerationService,
     private val settingsService: QuestionGenerationSettingsService,
-    @Value("\${app.questiongen.enabled:false}") private val appEnabled: Boolean
+    @Value("\${app.questiongen.enabled:false}") private val appEnabled: Boolean,
+    @Value("\${app.questiongen.daily-batch-enabled:false}") private val dailyBatchEnabled: Boolean,
+    @Value("\${app.questiongen.daily-trend-enabled:true}") private val dailyTrendEnabled: Boolean
 ) {
 
     private val logger = LoggerFactory.getLogger(AutoQuestionGenerationScheduler::class.java)
 
-    /**
-     * 하루 1회 subcategory별 자동 생성
-     * 기본: UTC 00:05
-     */
-    @Scheduled(cron = "\${app.questiongen.daily-cron:0 5 0 * * *}")
-    fun runDailyBatch() {
-        val settings = settingsService.get()
-        if (!appEnabled || !settings.autoEnabled) {
-            logger.debug("[AutoQuestionScheduler] 비활성 상태 - skip")
+    @Scheduled(cron = "\${app.questiongen.daily-trend-cron:0 0 9 * * *}")
+    fun runDailyTrendQuestion() {
+        if (!appEnabled || !dailyTrendEnabled) {
+            logger.debug("[AutoQuestionScheduler] daily trend generation disabled - skip")
             return
         }
 
-        logger.info("[AutoQuestionScheduler] 일일 자동생성 시작 - subcategories={}", settings.subcategories)
+        try {
+            val result = autoQuestionGenerationService.generateDailyTrendQuestion()
+            if (result.success) {
+                logger.info("[AutoQuestionScheduler] daily trend question created: id={}, title={}", result.questionId, result.title)
+            } else {
+                logger.warn("[AutoQuestionScheduler] daily trend generation skipped: {}", result.message)
+            }
+        } catch (e: Exception) {
+            logger.error("[AutoQuestionScheduler] daily trend generation failed: {}", e.message, e)
+        }
+    }
+
+    @Scheduled(cron = "\${app.questiongen.daily-cron:0 5 0 * * *}")
+    fun runDailyBatch() {
+        if (!dailyBatchEnabled) {
+            logger.debug("[AutoQuestionScheduler] daily batch generation disabled - skip")
+            return
+        }
+
+        val settings = settingsService.get()
+        if (!appEnabled || !settings.autoEnabled) {
+            logger.debug("[AutoQuestionScheduler] auto-generation disabled in settings - skip")
+            return
+        }
+
+        logger.info("[AutoQuestionScheduler] starting legacy daily batch generation - subcategories={}", settings.subcategories)
 
         settings.subcategories.forEach { subcategory ->
             try {
@@ -44,13 +66,13 @@ class AutoQuestionGenerationScheduler(
                     )
                 )
                 logger.info(
-                    "[AutoQuestionScheduler] 완료: subcategory={}, accepted={}, rejected={}",
+                    "[AutoQuestionScheduler] legacy batch done: subcategory={}, accepted={}, rejected={}",
                     subcategory,
                     response.acceptedCount,
                     response.rejectedCount
                 )
             } catch (e: Exception) {
-                logger.error("[AutoQuestionScheduler] 실패: subcategory={}, error={}", subcategory, e.message, e)
+                logger.error("[AutoQuestionScheduler] Failed: subcategory={}, error={}", subcategory, e.message, e)
             }
         }
     }

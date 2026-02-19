@@ -30,7 +30,7 @@ class VotingPassController(
                     success = false,
                     hasVotingPass = false,
                     remainingBalance = 0.0,
-                    message = "인증이 필요합니다."
+                    message = "Authentication required."
                 )
             )
 
@@ -44,7 +44,7 @@ class VotingPassController(
                     success = false,
                     hasVotingPass = false,
                     remainingBalance = 0.0,
-                    message = e.message ?: "투표 패스 구매에 실패했습니다."
+                    message = e.message ?: "Failed to purchase voting pass."
                 )
             )
         }

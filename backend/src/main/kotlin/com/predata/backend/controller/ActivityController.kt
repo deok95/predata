@@ -40,7 +40,7 @@ class ActivityController(
         // JWT에서 인증된 memberId 가져오기 (IDOR 방지)
         val authenticatedMemberId = httpRequest.getAttribute(com.predata.backend.config.JwtAuthInterceptor.ATTR_MEMBER_ID) as? Long
             ?: return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(
-                ActivityResponse(success = false, message = "인증이 필요합니다.")
+                ActivityResponse(success = false, message = "Authentication required.")
             )
 
         val clientIp = clientIpService.extractClientIp(httpRequest)
@@ -65,7 +65,7 @@ class ActivityController(
         // JWT에서 인증된 memberId 가져오기 (IDOR 방지)
         val authenticatedMemberId = httpRequest.getAttribute(com.predata.backend.config.JwtAuthInterceptor.ATTR_MEMBER_ID) as? Long
             ?: return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(
-                ActivityResponse(success = false, message = "인증이 필요합니다.")
+                ActivityResponse(success = false, message = "Authentication required.")
             )
 
         val clientIp = clientIpService.extractClientIp(httpRequest)
@@ -116,7 +116,7 @@ class ActivityController(
         return ResponseEntity.status(410).body(
             SellBetResponse(
                 success = false,
-                message = "AMM 판매는 더 이상 지원되지 않습니다. 마켓 탭에서 반대 주문으로 포지션을 청산할 수 있습니다."
+                message = "AMM selling is no longer supported. You can close your position using counter orders in the Market tab."
             )
         )
     }
@@ -141,7 +141,7 @@ class ActivityController(
             ResponseEntity.ok(ApiEnvelope(success = true, data = question))
         } else {
             ResponseEntity.status(HttpStatus.NOT_FOUND).body(
-                ApiEnvelope(success = false, data = null, message = "질문을 찾을 수 없습니다.")
+                ApiEnvelope(success = false, data = null, message = "Question not found.")
             )
         }
     }
@@ -156,7 +156,7 @@ class ActivityController(
             ResponseEntity.ok(ApiEnvelope(success = true, data = true))
         } else {
             ResponseEntity.status(HttpStatus.NOT_FOUND).body(
-                ApiEnvelope(success = false, data = null, message = "질문을 찾을 수 없습니다.")
+                ApiEnvelope(success = false, data = null, message = "Question not found.")
             )
         }
     }
@@ -255,7 +255,7 @@ class ActivityController(
 
         if (question == null) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body(
-                ApiEnvelope(success = false, data = null, message = "질문을 찾을 수 없습니다.")
+                ApiEnvelope(success = false, data = null, message = "Question not found.")
             )
         }
 
@@ -265,7 +265,7 @@ class ActivityController(
                 ApiEnvelope(
                     success = false,
                     data = null,
-                    message = "투표 진행 중에는 배당률을 조회할 수 없습니다."
+                    message = "Odds cannot be viewed while voting is in progress."
                 )
             )
         }

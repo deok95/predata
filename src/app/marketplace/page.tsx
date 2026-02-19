@@ -7,7 +7,6 @@ import MarketCard from '@/components/market/MarketCard';
 import CategoryFilter from '@/components/market/CategoryFilter';
 import { useTheme } from '@/hooks/useTheme';
 import { questionApi } from '@/lib/api';
-import { mockQuestions } from '@/lib/mockData';
 import { useAuth } from '@/hooks/useAuth';
 import { useVotedQuestions } from '@/hooks/useVotedQuestions';
 import type { Question, QuestionCategory } from '@/types/api';
@@ -24,7 +23,7 @@ function MarketplaceContent() {
   const fetchQuestions = useCallback(() => {
     questionApi.getAll().then(res => {
       if (res.success && res.data && res.data.length > 0) {
-        // BETTING 상태이면서 베팅 종료 시간이 지나지 않은 질문만 필터링
+        // Filter only questions in BETTING status with betting end time not passed
         const now = new Date();
         const bettingQuestions = res.data.filter(q =>
           q.status === 'BETTING' && new Date(q.bettingEndAt) > now
@@ -32,27 +31,19 @@ function MarketplaceContent() {
         setQuestions(bettingQuestions);
       }
       else {
-        const now = new Date();
-        const bettingQuestions = mockQuestions.filter(q =>
-          q.status === 'BETTING' && new Date(q.bettingEndAt) > now
-        );
-        setQuestions(bettingQuestions);
+        setQuestions([]);
       }
     }).catch(() => {
-      const now = new Date();
-      const bettingQuestions = mockQuestions.filter(q =>
-        q.status === 'BETTING' && new Date(q.bettingEndAt) > now
-      );
-      setQuestions(bettingQuestions);
+      setQuestions([]);
     }).finally(() => setLoading(false));
   }, []);
 
-  // 초기 로드
+  // Initial load
   useEffect(() => {
     fetchQuestions();
   }, [fetchQuestions]);
 
-  // 5초마다 자동 리프레시
+  // Auto refresh every 5 seconds
   useEffect(() => {
     const interval = setInterval(() => {
       fetchQuestions();
@@ -87,8 +78,8 @@ function MarketplaceContent() {
   return (
     <div className="max-w-7xl mx-auto animate-fade-in">
       <div className="mb-8">
-        <h1 className={`text-3xl font-black mb-2 ${isDark ? 'text-white' : 'text-slate-900'}`}>마켓 탐색</h1>
-        <p className="text-slate-400">투표가 완료된 예측 마켓에서 베팅하세요</p>
+        <h1 className={`text-3xl font-black mb-2 ${isDark ? 'text-white' : 'text-slate-900'}`}>Explore Markets</h1>
+        <p className="text-slate-400">Bet on prediction markets where voting is complete</p>
       </div>
 
       <div className="flex items-center justify-between mb-6 gap-4 flex-wrap">
@@ -103,7 +94,7 @@ function MarketplaceContent() {
                 : isDark ? 'text-slate-400 hover:bg-slate-800' : 'text-slate-500 hover:bg-slate-100'
             }`}
           >
-            거래량순
+            By Volume
           </button>
           <button
             onClick={() => setSortBy('recent')}
@@ -113,7 +104,7 @@ function MarketplaceContent() {
                 : isDark ? 'text-slate-400 hover:bg-slate-800' : 'text-slate-500 hover:bg-slate-100'
             }`}
           >
-            최신순
+            Most Recent
           </button>
         </div>
       </div>
@@ -121,7 +112,7 @@ function MarketplaceContent() {
       {filtered.length === 0 ? (
         <div className="text-center py-20">
           <p className="text-slate-400 text-lg">
-            {questions.length === 0 ? '현재 등록된 마켓이 없습니다.' : '해당 카테고리에 마켓이 없습니다.'}
+            {questions.length === 0 ? 'No markets available at the moment.' : 'No markets in this category.'}
           </p>
         </div>
       ) : (

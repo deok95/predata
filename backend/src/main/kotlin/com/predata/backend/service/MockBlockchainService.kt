@@ -67,8 +67,8 @@ class MockBlockchainService {
                 Thread.sleep(100) // 실제 블록체인처럼 약간의 지연
                 txHash
             } catch (e: Exception) {
-                logger.error("❌ Mock 체인 기록 실패: ${e.message}", e)
-                throw e  // 예외를 삼키지 않고 재throw하여 CompletableFuture.failedFuture로 전파
+                logger.error("❌ Mock chain record failed: ${e.message}", e)
+                throw e  // Re-throw exception to propagate to CompletableFuture.failedFuture
             }
         }
     }
@@ -118,8 +118,8 @@ class MockBlockchainService {
                 Thread.sleep(200) // 배치는 조금 더 긴 지연
                 txHash
             } catch (e: Exception) {
-                logger.error("❌ Mock 체인 배치 기록 실패: ${e.message}", e)
-                throw e  // 예외를 삼키지 않고 재throw하여 CompletableFuture.failedFuture로 전파
+                logger.error("❌ Mock chain batch record failed: ${e.message}", e)
+                throw e  // Re-throw exception to propagate to CompletableFuture.failedFuture
             }
         }
     }
@@ -159,8 +159,8 @@ class MockBlockchainService {
                 Thread.sleep(150)
                 txHash
             } catch (e: Exception) {
-                logger.error("❌ Mock 체인 정산 실패: ${e.message}", e)
-                throw e  // 예외를 삼키지 않고 재throw하여 CompletableFuture.failedFuture로 전파
+                logger.error("❌ Mock chain settlement failed: ${e.message}", e)
+                throw e  // Re-throw exception to propagate to CompletableFuture.failedFuture
             }
         }
     }
@@ -182,7 +182,7 @@ class MockBlockchainService {
                 settled = mockQuestion.settled
             )
         } catch (e: Exception) {
-            logger.error("Mock 체인 조회 실패: ${e.message}", e)
+            logger.error("Mock chain query failed: ${e.message}", e)
             null
         }
     }

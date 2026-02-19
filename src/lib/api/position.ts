@@ -1,7 +1,7 @@
 import { apiRequest } from './core';
 
 /**
- * 포지션 데이터
+ * Position data
  */
 export interface PositionData {
   positionId: number;
@@ -17,7 +17,7 @@ export interface PositionData {
 }
 
 /**
- * 내 포지션 조회 (전체)
+ * Fetch my positions (all)
  * GET /api/positions/me
  */
 export async function getMyPositions(): Promise<PositionData[]> {
@@ -31,7 +31,7 @@ export async function getMyPositions(): Promise<PositionData[]> {
 }
 
 /**
- * 특정 질문에 대한 내 포지션 조회
+ * Fetch my positions for specific question
  * GET /api/positions/me/question/{id}
  */
 export async function getMyPositionsByQuestion(questionId: number): Promise<PositionData[]> {

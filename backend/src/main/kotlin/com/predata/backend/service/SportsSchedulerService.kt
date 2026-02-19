@@ -26,7 +26,7 @@ class SportsSchedulerService(
             val result = questionAutoGenerationService.generateSportsQuestions()
             println("[Scheduler] 자동 질문 생성 완료: 생성 ${result.created}건, 스킵 ${result.skipped}건")
         } catch (e: Exception) {
-            println("[Scheduler] 자동 질문 생성 실패: ${e.message}")
+            println("[Scheduler] Auto question generation failed: ${e.message}")
         }
     }
 
@@ -43,7 +43,7 @@ class SportsSchedulerService(
                 println("[Scheduler] ✅ 실시간 스코어 업데이트 완료: ${result.updated}건")
             }
         } catch (e: Exception) {
-            println("[Scheduler] 실시간 스코어 업데이트 실패: ${e.message}")
+            println("[Scheduler] Real-time score update failed: ${e.message}")
         }
     }
 
@@ -60,7 +60,7 @@ class SportsSchedulerService(
                 println("[Scheduler] ✅ 자동 정산 완료: ${result.settled}건")
             }
         } catch (e: Exception) {
-            println("[Scheduler] 자동 정산 실패: ${e.message}")
+            println("[Scheduler] Auto-settlement failed: ${e.message}")
         }
     }
 
@@ -83,7 +83,7 @@ class SportsSchedulerService(
             val settleResult = questionAutoGenerationService.autoSettleSportsQuestions()
             println("[Scheduler] 테스트 자동 정산: ${settleResult.settled}건")
         } catch (e: Exception) {
-            println("[Scheduler] 테스트 실행 실패: ${e.message}")
+            println("[Scheduler] Test execution failed: ${e.message}")
         }
     }
 }

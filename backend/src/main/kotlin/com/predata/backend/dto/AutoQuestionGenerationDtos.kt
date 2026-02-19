@@ -9,9 +9,9 @@ import java.time.LocalDate
 import java.time.LocalDateTime
 
 /**
- * 자동 질문 생성 배치 실행 요청
- * - subcategory 미지정 시 첫 번째 subcategory 사용 (스케줄러에서 모든 subcategories 순회)
- * - dryRun=true일 경우 DB 저장 없이 초안만 생성
+ * Auto question generation batch execution request
+ * - If subcategory is not specified, uses the first subcategory (scheduler iterates through all subcategories)
+ * - If dryRun=true, only generates drafts without DB persistence
  */
 data class BatchGenerateQuestionsRequest(
     val subcategory: String? = null,
@@ -20,7 +20,7 @@ data class BatchGenerateQuestionsRequest(
 )
 
 /**
- * 자동 질문 생성 결과 응답
+ * Auto question generation result response
  */
 data class BatchGenerateQuestionsResponse(
     val success: Boolean,
@@ -37,7 +37,7 @@ data class BatchGenerateQuestionsResponse(
 )
 
 /**
- * 생성된 질문 초안 DTO
+ * Generated question draft DTO
  */
 data class GeneratedQuestionDraftDto(
     val draftId: String,
@@ -62,18 +62,18 @@ data class GeneratedQuestionDraftDto(
 )
 
 /**
- * 트렌드 기반 입력 신호 DTO
+ * Trend-based input signal DTO
  */
 data class TrendSignalDto(
-    @field:NotBlank(message = "subcategory는 필수입니다.")
+    @field:NotBlank(message = "subcategory is required.")
     val subcategory: String,
 
-    @field:NotBlank(message = "keyword는 필수입니다.")
+    @field:NotBlank(message = "keyword is required.")
     val keyword: String,
 
-    @field:NotNull(message = "trendScore는 필수입니다.")
-    @field:Min(value = 0, message = "trendScore는 0 이상이어야 합니다.")
-    @field:Max(value = 100, message = "trendScore는 100 이하여야 합니다.")
+    @field:NotNull(message = "trendScore is required.")
+    @field:Min(value = 0, message = "trendScore must be 0 or more.")
+    @field:Max(value = 100, message = "trendScore must be 100 or less.")
     val trendScore: Int,
 
     val region: String = "US",
@@ -81,7 +81,7 @@ data class TrendSignalDto(
 )
 
 /**
- * LLM 호출용 정규화 요청 DTO
+ * Normalized request DTO for LLM invocation
  */
 data class LlmQuestionGenerationRequest(
     val subcategory: String,
@@ -97,7 +97,7 @@ data class LlmQuestionGenerationRequest(
 )
 
 /**
- * LLM 응답(구조화 JSON) DTO
+ * LLM response (structured JSON) DTO
  */
 data class LlmQuestionGenerationResponse(
     val batchId: String,
@@ -121,7 +121,7 @@ data class LlmGeneratedQuestionDto(
 )
 
 /**
- * 배치 검증 결과 DTO
+ * Batch validation result DTO
  */
 data class QuestionBatchValidationResult(
     val batchId: String,
@@ -134,10 +134,10 @@ data class QuestionBatchValidationResult(
 )
 
 /**
- * 운영 재시도/게시 명령 DTO
+ * Operation retry/publish command DTO
  */
 data class PublishGeneratedBatchRequest(
-    @field:NotEmpty(message = "publishDraftIds는 비어 있을 수 없습니다.")
+    @field:NotEmpty(message = "publishDraftIds cannot be empty.")
     val publishDraftIds: List<String>
 )
 

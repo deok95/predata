@@ -43,7 +43,7 @@ export default function DataCenterDashboard({ questionId }: DataCenterDashboardP
       }`}
     >
       <ArrowLeft size={16} />
-      데이터 센터로 돌아가기
+      Back to Data Center
     </button>
   );
 
@@ -54,7 +54,7 @@ export default function DataCenterDashboard({ questionId }: DataCenterDashboardP
           {backButton}
           <div className="flex items-center gap-3 mb-2">
             <Database className="h-8 w-8 text-indigo-600" />
-            <h1 className={`text-3xl font-black ${isDark ? 'text-white' : 'text-slate-900'}`}>질문 분석</h1>
+            <h1 className={`text-3xl font-black ${isDark ? 'text-white' : 'text-slate-900'}`}>Question Analysis</h1>
           </div>
         </div>
         <div className="space-y-4">
@@ -75,7 +75,7 @@ export default function DataCenterDashboard({ questionId }: DataCenterDashboardP
         {backButton}
         <div className={`p-8 rounded-[2.5rem] border text-center ${isDark ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-100'}`}>
           <Database className="h-12 w-12 text-slate-400 mx-auto mb-4" />
-          <p className={`text-lg font-black ${isDark ? 'text-white' : 'text-slate-900'}`}>데이터를 불러올 수 없습니다</p>
+          <p className={`text-lg font-black ${isDark ? 'text-white' : 'text-slate-900'}`}>Unable to load data</p>
         </div>
       </div>
     );
@@ -90,7 +90,7 @@ export default function DataCenterDashboard({ questionId }: DataCenterDashboardP
         {backButton}
         <div className="flex items-center gap-3 mb-2">
           <Database className="h-8 w-8 text-indigo-600" />
-          <h1 className={`text-3xl font-black ${isDark ? 'text-white' : 'text-slate-900'}`}>질문 분석</h1>
+          <h1 className={`text-3xl font-black ${isDark ? 'text-white' : 'text-slate-900'}`}>Question Analysis</h1>
         </div>
         {question && (
           <p className={`text-base font-bold mt-1 ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>

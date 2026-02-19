@@ -1,10 +1,10 @@
 /**
  * localStorage polyfill for SSR
- * Next.js 서버 사이드 렌더링 환경에서 localStorage 에러 방지
+ * Prevents localStorage errors in Next.js server-side rendering environment
  */
 
 if (typeof window === 'undefined') {
-  // 서버 환경에서는 localStorage mock 제공
+  // Provide localStorage mock in server environment
   global.localStorage = {
     getItem: () => null,
     setItem: () => {},

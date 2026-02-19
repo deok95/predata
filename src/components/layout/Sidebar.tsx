@@ -16,13 +16,13 @@ interface SidebarProps {
 }
 
 const navItems = [
-  { id: '/', icon: LayoutDashboard, label: '메인 광장', adminOnly: false },
-  { id: '/vote', icon: Vote, label: '투표', adminOnly: false },
-  { id: '/marketplace', icon: Globe, label: '마켓 탐색', adminOnly: false },
-  { id: '/my-page', icon: User, label: '마이페이지', adminOnly: false },
-  // 어드민 전용 메뉴
-  { id: '/admin/questions', icon: Settings, label: '질문 관리', adminOnly: true },
-  { id: '/data-center', icon: BarChart3, label: '데이터센터', adminOnly: true },
+  { id: '/', icon: LayoutDashboard, label: 'Home', adminOnly: false },
+  { id: '/vote', icon: Vote, label: 'Vote', adminOnly: false },
+  { id: '/marketplace', icon: Globe, label: 'Explore Markets', adminOnly: false },
+  { id: '/my-page', icon: User, label: 'My Page', adminOnly: false },
+  // Admin only menu
+  { id: '/admin/questions', icon: Settings, label: 'Admin', adminOnly: true },
+  { id: '/data-center', icon: BarChart3, label: 'Data Center', adminOnly: true },
 ];
 
 export default function Sidebar({ user, onLogout }: SidebarProps) {
@@ -36,24 +36,24 @@ export default function Sidebar({ user, onLogout }: SidebarProps) {
     return pathname.startsWith(path);
   };
 
-  // ADMIN 권한 체크
+  // Check ADMIN permission
   const isAdmin = user && user.role === 'ADMIN';
 
-  // 권한에 따라 메뉴 필터링
+  // Filter menu items based on permission
   const visibleNavItems = navItems.filter(item => {
     if (item.adminOnly) {
-      return isAdmin; // adminOnly 메뉴는 ADMIN만 표시
+      return isAdmin; // Only show admin menu items to ADMIN users
     }
-    return true; // 나머지 메뉴는 모두 표시
+    return true; // Show all other menu items
   });
 
-  // 모바일용 주요 네비게이션 아이템 (어드민 메뉴 제외)
+  // Mobile navigation items (exclude admin menu)
   const mobileNavItems = navItems.filter(item => !item.adminOnly);
 
   return (
     <>
       {/* Desktop Sidebar */}
-      <aside className={`hidden lg:flex lg:relative z-50 lg:w-72 h-screen border-r flex-col transition-all duration-300 ${isDark ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-100'}`}>
+      <aside className={`hidden lg:flex sticky top-0 z-50 lg:w-72 h-screen border-r flex-col transition-all duration-300 overflow-y-auto ${isDark ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-100'}`}>
         <div className="p-8">
           <PredataLogo />
         </div>
@@ -82,7 +82,7 @@ export default function Sidebar({ user, onLogout }: SidebarProps) {
               className="w-full flex items-center space-x-3 px-4 py-3 rounded-xl transition-all font-bold bg-indigo-600 text-white hover:bg-indigo-700"
             >
               <UserPlus size={20} />
-              <span>회원가입</span>
+              <span>Sign Up</span>
             </button>
           )}
           <button
@@ -90,7 +90,7 @@ export default function Sidebar({ user, onLogout }: SidebarProps) {
             className={`w-full flex items-center space-x-3 px-4 py-3 rounded-xl transition-all font-bold ${isDark ? 'text-rose-400 hover:bg-rose-500/10' : 'text-rose-500 hover:bg-rose-50'}`}
           >
             <LogOut size={20} />
-            <span>{isGuest ? '나가기' : '로그아웃'}</span>
+            <span>{isGuest ? 'Exit' : 'Logout'}</span>
           </button>
         </div>
       </aside>

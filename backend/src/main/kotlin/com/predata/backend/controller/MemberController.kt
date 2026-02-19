@@ -139,14 +139,14 @@ class MemberController(
         httpRequest: HttpServletRequest
     ): ResponseEntity<Any> {
         val memberId = httpRequest.getAttribute("authenticatedMemberId") as? Long
-            ?: return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(mapOf("message" to "로그인이 필요합니다."))
+            ?: return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(mapOf("message" to "Login required."))
 
         val member = memberRepository.findById(memberId)
             .orElseThrow { IllegalArgumentException("회원을 찾을 수 없습니다.") }
 
         // 지갑 주소 형식 검증
         if (request.walletAddress != null && !request.walletAddress.matches(Regex("^0x[a-fA-F0-9]{40}$"))) {
-            return ResponseEntity.badRequest().body(mapOf("message" to "유효하지 않은 지갑 주소입니다."))
+            return ResponseEntity.badRequest().body(mapOf("message" to "Invalid wallet address."))
         }
 
         // 이미 다른 유저가 사용 중인 지갑인지 확인
@@ -154,7 +154,7 @@ class MemberController(
             val existingMember = memberRepository.findByWalletAddress(request.walletAddress)
             if (existingMember.isPresent && existingMember.get().id != memberId) {
                 return ResponseEntity.status(HttpStatus.CONFLICT)
-                    .body(mapOf("message" to "이미 다른 사용자가 사용 중인 지갑입니다."))
+                    .body(mapOf("message" to "Wallet already in use by another user."))
             }
         }
 
@@ -172,15 +172,15 @@ class MemberController(
  * DTO: 회원 생성 요청
  */
 data class CreateMemberRequest(
-    @field:NotBlank(message = "이메일은 필수입니다.")
-    @field:Email(message = "유효한 이메일 형식이 아닙니다.")
+    @field:NotBlank(message = "Email is required.")
+    @field:Email(message = "Invalid email format.")
     val email: String,
 
-    @field:Size(min = 42, max = 42, message = "지갑 주소는 42자여야 합니다.")
+    @field:Size(min = 42, max = 42, message = "Wallet address must be 42 characters.")
     val walletAddress: String? = null,
 
-    @field:NotBlank(message = "국가 코드는 필수입니다.")
-    @field:Size(min = 2, max = 2, message = "국가 코드는 2자리여야 합니다.")
+    @field:NotBlank(message = "Country code is required.")
+    @field:Size(min = 2, max = 2, message = "Country code must be 2 characters.")
     val countryCode: String,
 
     val jobCategory: String,

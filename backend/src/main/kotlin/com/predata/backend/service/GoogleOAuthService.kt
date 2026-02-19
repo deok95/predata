@@ -89,7 +89,7 @@ class GoogleOAuthService(
                 email = email,
                 googleId = googleId,
                 passwordHash = null,  // Google 사용자는 비밀번호 없음
-                countryCode = request.countryCode,
+                countryCode = request.countryCode ?: "KR",
                 jobCategory = request.jobCategory,
                 ageGroup = request.ageGroup,
                 tier = "BRONZE",
@@ -142,12 +142,31 @@ class GoogleOAuthService(
                 )
             }
 
-            // 2. 신규 회원 생성
+            // 2. Parse optional fields
+            val genderEnum = request.gender?.let {
+                try {
+                    com.predata.backend.domain.Gender.valueOf(it.uppercase())
+                } catch (e: IllegalArgumentException) {
+                    null
+                }
+            }
+
+            val birthDateParsed = request.birthDate?.let {
+                try {
+                    java.time.LocalDate.parse(it)
+                } catch (e: Exception) {
+                    null
+                }
+            }
+
+            // 3. 신규 회원 생성
             val newMember = Member(
                 email = email,
                 googleId = request.googleId,
                 passwordHash = null,  // Google 사용자는 비밀번호 없음
                 countryCode = request.countryCode,
+                gender = genderEnum,
+                birthDate = birthDateParsed,
                 jobCategory = request.jobCategory,
                 ageGroup = request.ageGroup,
                 tier = "BRONZE",

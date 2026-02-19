@@ -19,27 +19,40 @@ class QuestionAutoGenerationService(
     private val bettingSuspensionService: BettingSuspensionService,
     private val settlementService: SettlementService
 ) {
+    companion object {
+        // Ensure generated sports questions have an actual VOTING window before BETTING starts.
+        private const val MIN_MATCH_LEAD_MINUTES = 70L
+    }
 
     /**
      * 스포츠 경기 자동 질문 생성
      */
     @Transactional
     fun generateSportsQuestions(): GenerationResult {
-        println("[AutoGen] 스포츠 경기 자동 질문 생성 시작")
+        println("[AutoGen] Sports match auto question generation started")
         
         // 1. API에서 다가오는 경기 가져오기
         val upcomingMatches = sportsApiService.fetchUpcomingMatches()
-        println("[AutoGen] 가져온 경기 수: ${upcomingMatches.size}")
+        println("[AutoGen] Fetched matches count: ${upcomingMatches.size}")
         
         var createdCount = 0
         var skippedCount = 0
         
+        val now = LocalDateTime.now()
+        val minStartTime = now.plusMinutes(MIN_MATCH_LEAD_MINUTES)
+
         for (match in upcomingMatches) {
             try {
+                if (match.matchDate.isBefore(minStartTime)) {
+                    println("[AutoGen] Skipped (insufficient lead time for voting): ${match.homeTeam} vs ${match.awayTeam}")
+                    skippedCount++
+                    continue
+                }
+
                 // 2. 이미 저장된 경기인지 확인
                 val existingMatch = sportsMatchRepository.findByExternalApiId(match.externalApiId)
                 if (existingMatch != null) {
-                    println("[AutoGen] 이미 존재하는 경기: ${match.homeTeam} vs ${match.awayTeam}")
+                    println("[AutoGen] Match already exists: ${match.homeTeam} vs ${match.awayTeam}")
                     skippedCount++
                     continue
                 }
@@ -52,16 +65,16 @@ class QuestionAutoGenerationService(
                 val matchToSave = match.copy(questionId = savedQuestion.id)
                 sportsMatchRepository.save(matchToSave)
                 
-                println("[AutoGen] ✅ 생성됨: ${match.homeTeam} vs ${match.awayTeam} (Question ID: ${savedQuestion.id})")
+                println("[AutoGen] ✅ Created: ${match.homeTeam} vs ${match.awayTeam} (Question ID: ${savedQuestion.id})")
                 createdCount++
                 
             } catch (e: Exception) {
-                println("[AutoGen] ❌ 오류: ${match.homeTeam} vs ${match.awayTeam} - ${e.message}")
+                println("[AutoGen] ❌ Error: ${match.homeTeam} vs ${match.awayTeam} - ${e.message}")
                 skippedCount++
             }
         }
         
-        println("[AutoGen] 완료 - 생성: $createdCount, 스킵: $skippedCount")
+        println("[AutoGen] Completed - Created: $createdCount, Skipped: $skippedCount")
         return GenerationResult(createdCount, skippedCount)
     }
 
@@ -106,7 +119,7 @@ class QuestionAutoGenerationService(
      */
     @Transactional
     fun updateFinishedMatches(): UpdateResult {
-        println("[AutoGen] 완료된 경기 결과 업데이트 시작")
+        println("[AutoGen] Started updating finished match results")
         
         // 1. SCHEDULED 또는 LIVE 상태의 경기 중 경기 시작 시간이 지난 것들
         val now = LocalDateTime.now()
@@ -137,7 +150,7 @@ class QuestionAutoGenerationService(
                     bettingSuspensionService.suspendBettingOnScoreChange(match, oldHomeScore, oldAwayScore)
                     
                     if (result.status == "FINISHED") {
-                        println("[AutoGen] ✅ 경기 종료: ${match.homeTeam} ${result.homeScore} - ${result.awayScore} ${match.awayTeam}")
+                        println("[AutoGen] ✅ Match finished: ${match.homeTeam} ${result.homeScore} - ${result.awayScore} ${match.awayTeam}")
                     } else if (result.status == "LIVE") {
                         println("[AutoGen] 🔴 LIVE: ${match.homeTeam} ${result.homeScore} - ${result.awayScore} ${match.awayTeam}")
                     }
@@ -148,11 +161,11 @@ class QuestionAutoGenerationService(
                 Thread.sleep(400)
                 
             } catch (e: Exception) {
-                println("[AutoGen] ❌ 결과 업데이트 실패: ${match.homeTeam} vs ${match.awayTeam} - ${e.message}")
+                println("[AutoGen] ❌ Result update failed: ${match.homeTeam} vs ${match.awayTeam} - ${e.message}")
             }
         }
         
-        println("[AutoGen] 결과 업데이트 완료: $updatedCount 건")
+        println("[AutoGen] Result update completed: $updatedCount matches")
         return UpdateResult(updatedCount)
     }
 
@@ -160,7 +173,7 @@ class QuestionAutoGenerationService(
      * 완료된 경기의 질문 자동 정산
      */
     fun autoSettleSportsQuestions(): SportsSettlementResult {
-        println("[AutoGen] 스포츠 질문 자동 정산 시작")
+        println("[AutoGen] Sports question auto settlement started")
         
         // 1. 완료된 경기 중 정산되지 않은 질문 찾기
         val finishedMatches = sportsMatchRepository.findByStatus("FINISHED")
@@ -197,15 +210,15 @@ class QuestionAutoGenerationService(
                     skipDeadlineCheck = true
                 )
                 
-                println("[AutoGen] ✅ 정산 완료: ${question.title} -> $finalResult")
+                println("[AutoGen] ✅ Settlement completed: ${question.title} -> $finalResult")
                 settledCount++
                 
             } catch (e: Exception) {
-                println("[AutoGen] ❌ 정산 실패: Question ID ${match.questionId} - ${e.message}")
+                println("[AutoGen] ❌ Settlement failed: Question ID ${match.questionId} - ${e.message}")
             }
         }
         
-        println("[AutoGen] 자동 정산 완료: $settledCount 건")
+        println("[AutoGen] Auto settlement completed: $settledCount questions")
         return SportsSettlementResult(settledCount)
     }
 }

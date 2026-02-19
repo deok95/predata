@@ -18,9 +18,9 @@ export default function TrendingMarkets({ questions, getVotedChoice }: TrendingM
   return (
     <section>
       <div className="flex items-center justify-between mb-8">
-        <h2 className={`text-2xl font-black ${isDark ? 'text-white' : 'text-slate-900'}`}>트렌딩 마켓</h2>
+        <h2 className={`text-2xl font-black ${isDark ? 'text-white' : 'text-slate-900'}`}>Trending Markets</h2>
         <Link href="/marketplace" className="text-indigo-600 text-xs font-bold flex items-center cursor-pointer hover:underline">
-          전체 보기 <ChevronRight size={14} />
+          View All <ChevronRight size={14} />
         </Link>
       </div>
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">

@@ -34,7 +34,7 @@ class QuestionManagementController(
                     title = "",
                     category = "",
                     expiredAt = "",
-                    message = e.message ?: "질문 생성에 실패했습니다."
+                    message = e.message ?: "Failed to create question."
                 )
             )
         }
@@ -57,7 +57,7 @@ class QuestionManagementController(
                     title = "",
                     category = "",
                     expiredAt = "",
-                    message = e.message ?: "질문 생성에 실패했습니다."
+                    message = e.message ?: "Failed to create question."
                 )
             )
         }
@@ -83,7 +83,7 @@ class QuestionManagementController(
                     title = "",
                     category = "",
                     expiredAt = "",
-                    message = e.message ?: "질문 수정에 실패했습니다."
+                    message = e.message ?: "Failed to update question."
                 )
             )
         } catch (e: IllegalStateException) {
@@ -94,7 +94,7 @@ class QuestionManagementController(
                     title = "",
                     category = "",
                     expiredAt = "",
-                    message = e.message ?: "질문 수정에 실패했습니다."
+                    message = e.message ?: "Failed to update question."
                 )
             )
         }
@@ -113,14 +113,14 @@ class QuestionManagementController(
             ResponseEntity.badRequest().body(
                 DeleteQuestionResponse(
                     success = false,
-                    message = e.message ?: "질문 삭제에 실패했습니다."
+                    message = e.message ?: "Failed to delete question."
                 )
             )
         } catch (e: IllegalStateException) {
             ResponseEntity.status(HttpStatus.CONFLICT).body(
                 DeleteQuestionResponse(
                     success = false,
-                    message = e.message ?: "질문 삭제에 실패했습니다."
+                    message = e.message ?: "Failed to delete question."
                 )
             )
         }
@@ -162,7 +162,7 @@ class QuestionManagementController(
                     success = false,
                     deletedQuestions = 0,
                     cleanedTables = emptyMap(),
-                    message = e.message ?: "질문 전체 삭제에 실패했습니다."
+                    message = e.message ?: "Failed to purge all questions."
                 )
             )
         }

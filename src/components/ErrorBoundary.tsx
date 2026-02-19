@@ -46,15 +46,15 @@ export default class ErrorBoundary extends Component<Props, State> {
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
               </svg>
             </div>
-            <h2 className="text-xl font-black text-white mb-2">오류가 발생했습니다</h2>
+            <h2 className="text-xl font-black text-white mb-2">An Error Occurred</h2>
             <p className="text-slate-400 text-sm mb-6">
-              {this.state.error?.message || '예상치 못한 오류가 발생했습니다.'}
+              {this.state.error?.message || 'An unexpected error occurred.'}
             </p>
             <button
               onClick={this.handleReset}
               className="bg-indigo-600 text-white px-6 py-3 rounded-xl font-bold text-sm hover:bg-indigo-700 transition-colors"
             >
-              다시 시도
+              Try Again
             </button>
           </div>
         </div>
