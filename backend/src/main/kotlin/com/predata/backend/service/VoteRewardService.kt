@@ -1,9 +1,11 @@
 package com.predata.backend.service
 
 import com.predata.backend.config.RewardConfig
+import com.predata.backend.domain.ActivityType
 import com.predata.backend.domain.VoteCommitStatus
 import com.predata.backend.dto.RewardCalculation
 import com.predata.backend.dto.RewardCalculationSummary
+import com.predata.backend.repository.ActivityRepository
 import com.predata.backend.repository.MemberRepository
 import com.predata.backend.repository.VoteCommitRepository
 import org.slf4j.LoggerFactory
@@ -21,6 +23,7 @@ import java.math.RoundingMode
 @Service
 class VoteRewardService(
     private val voteCommitRepository: VoteCommitRepository,
+    private val activityRepository: ActivityRepository,
     private val memberRepository: MemberRepository,
     private val feePoolService: FeePoolService,
     private val rewardConfig: RewardConfig,
@@ -59,8 +62,20 @@ class VoteRewardService(
             questionId, VoteCommitStatus.REVEALED
         )
 
-        if (revealedVotes.isEmpty()) {
-            logger.warn("No revealed votes for questionId=$questionId")
+        // Commit-Reveal 미사용 환경 대응: /api/vote(ActivityType.VOTE) 기준 fallback
+        val participantIds = if (revealedVotes.isNotEmpty()) {
+            revealedVotes.map { it.memberId }
+        } else {
+            val activityVotes = activityRepository.findByQuestionIdAndActivityType(questionId, ActivityType.VOTE)
+            val ids = activityVotes.map { it.memberId }.distinct().sorted()
+            if (ids.isNotEmpty()) {
+                logger.info("No revealed votes for questionId=$questionId, fallback to activity votes: participants=${ids.size}")
+            }
+            ids
+        }
+
+        if (participantIds.isEmpty()) {
+            logger.warn("No vote participants for questionId=$questionId")
             return RewardCalculationSummary(
                 questionId = questionId,
                 totalRewardPool = rewardPool,
@@ -73,8 +88,16 @@ class VoteRewardService(
         }
 
         // 3. 시빌 가드: 보상 대상 필터링
-        val allMemberIds = revealedVotes.map { it.memberId }
-        val eligibleMemberIds = sybilGuardService.filterEligibleMembers(allMemberIds)
+        val allMemberIds = participantIds
+        val eligibleMemberIdsRaw = sybilGuardService.filterEligibleMembers(allMemberIds)
+        // /api/vote 기반 운영 흐름에서 기존 vote_commit 기준 시빌 가드가 전원 탈락시키는 경우가 있어
+        // 분배가 완전히 막히지 않도록 fallback 적용
+        val eligibleMemberIds = if (eligibleMemberIdsRaw.isEmpty() && allMemberIds.isNotEmpty()) {
+            logger.warn("Sybil guard filtered all participants for questionId=$questionId. Fallback to all participants.")
+            allMemberIds
+        } else {
+            eligibleMemberIdsRaw
+        }
         val eligibleMemberIdSet = eligibleMemberIds.toSet()
 
         logger.info("Sybil guard applied: questionId=$questionId, total=${allMemberIds.size}, eligible=${eligibleMemberIds.size}")
@@ -85,13 +108,13 @@ class VoteRewardService(
         var totalWeightSum = BigDecimal.ZERO
         val weightMap = mutableMapOf<Long, BigDecimal>()
 
-        for (vote in revealedVotes) {
+        for (memberId in allMemberIds) {
             // 보상 대상이 아니면 스킵
-            if (vote.memberId !in eligibleMemberIdSet) continue
+            if (memberId !in eligibleMemberIdSet) continue
 
-            val member = members[vote.memberId] ?: continue
+            val member = members[memberId] ?: continue
             val weight = rewardConfig.getWeight(member.level)
-            weightMap[vote.memberId] = weight
+            weightMap[memberId] = weight
             totalWeightSum = totalWeightSum.add(weight)
         }
 
@@ -104,7 +127,7 @@ class VoteRewardService(
                 individualRewards = emptyList(),
                 totalDistributed = BigDecimal.ZERO,
                 truncatedAmount = BigDecimal.ZERO,
-                participantCount = revealedVotes.size
+                participantCount = allMemberIds.size
             )
         }
 
@@ -113,12 +136,12 @@ class VoteRewardService(
         var totalDistributed = BigDecimal.ZERO
         var totalTruncated = BigDecimal.ZERO
 
-        for (vote in revealedVotes) {
+        for (memberId in allMemberIds) {
             // 보상 대상이 아니면 스킵
-            if (vote.memberId !in eligibleMemberIdSet) continue
+            if (memberId !in eligibleMemberIdSet) continue
 
-            val member = members[vote.memberId] ?: continue
-            val weight = weightMap[vote.memberId] ?: BigDecimal.ZERO
+            val member = members[memberId] ?: continue
+            val weight = weightMap[memberId] ?: BigDecimal.ZERO
 
             // 보상 = (리워드풀 × 가중치) / 가중치합계, 6자리 소수점 반올림
             val rawReward = rewardPool
@@ -138,7 +161,7 @@ class VoteRewardService(
             if (truncatedReward > BigDecimal.ZERO) {
                 individualRewards.add(
                     RewardCalculation(
-                        memberId = vote.memberId,
+                        memberId = memberId,
                         level = member.level,
                         weight = weight,
                         rewardAmount = truncatedReward,
@@ -164,7 +187,7 @@ class VoteRewardService(
             individualRewards = individualRewards,
             totalDistributed = totalDistributed,
             truncatedAmount = totalTruncated,
-            participantCount = revealedVotes.size
+            participantCount = allMemberIds.size
         )
     }
 }

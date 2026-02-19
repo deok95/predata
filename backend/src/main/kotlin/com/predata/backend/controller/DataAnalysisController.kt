@@ -12,7 +12,7 @@ import org.springframework.web.bind.annotation.*
 
 @RestController
 @RequestMapping("/api/analysis")
-@CrossOrigin(origins = ["http://localhost:3000"])
+@CrossOrigin(originPatterns = ["http://localhost:*", "http://127.0.0.1:*", "https://predata.io", "https://www.predata.io", "https://*.vercel.app", "https://*.trycloudflare.com"])
 class DataAnalysisController(
     private val abusingDetectionService: AbusingDetectionService,
     private val dataQualityService: DataQualityService,

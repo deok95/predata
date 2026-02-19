@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { questionApi, globalApi, bettingApi, settlementApi } from '@/lib/api';
 import type { Question, GlobalStats, Activity, SettlementHistory, QualityDashboard } from '@/types/api';
+import { swapApi, type SwapHistoryResponse } from '@/lib/api/swap';
 
 // === Questions ===
 
@@ -122,7 +123,25 @@ export function useQuestionActivities(questionId: number) {
       }
     },
     enabled: !!questionId,
-    staleTime: 60_000,
+    staleTime: 0,
+    refetchInterval: 5000,
+  });
+}
+
+export function useQuestionSwapHistory(questionId: number) {
+  return useQuery<SwapHistoryResponse[]>({
+    queryKey: ['datacenter', 'swap-history', questionId],
+    queryFn: async () => {
+      try {
+        const data = await swapApi.getSwapHistory(questionId, 100);
+        return Array.isArray(data) ? data : [];
+      } catch {
+        return [];
+      }
+    },
+    enabled: !!questionId,
+    staleTime: 0,
+    refetchInterval: 5000,
   });
 }
 

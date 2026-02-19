@@ -1,11 +1,11 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { Database, ArrowLeft } from 'lucide-react';
 import { useTheme } from '@/hooks/useTheme';
 import { useAuth } from '@/hooks/useAuth';
-import { useQualityDashboard, useQuestionActivities, useQuestion } from '@/hooks/useQueries';
+import { useQualityDashboard, useQuestionActivities, useQuestion, useQuestionSwapHistory } from '@/hooks/useQueries';
 import QualityScoreCards from './QualityScoreCards';
 import VoteDistributionChart from './VoteDistributionChart';
 import VoteBetGapChart from './VoteBetGapChart';
@@ -14,6 +14,7 @@ import DemographicsSection from './DemographicsSection';
 import BettingOverviewPanel from './BettingOverviewPanel';
 import BettingTrendChart from './BettingTrendChart';
 import FilteringEffectPanel from './FilteringEffectPanel';
+import type { DistributionData, VoteBetGapReport } from '@/types/api';
 
 interface DataCenterDashboardProps {
   questionId: number;
@@ -27,6 +28,83 @@ export default function DataCenterDashboard({ questionId }: DataCenterDashboardP
   const { data: dashboardData, isLoading: dashboardLoading } = useQualityDashboard(questionId);
   const { data: activities = [] } = useQuestionActivities(questionId);
   const { data: question } = useQuestion(questionId);
+  const { data: swapHistory = [] } = useQuestionSwapHistory(questionId);
+
+  const realtimeMetrics = useMemo(() => {
+    const voteActivities = activities.filter((a) => a.activityType === 'VOTE');
+    const betActivities = activities.filter((a) => a.activityType === 'BET');
+    const useSwapAsPrimary = question?.executionModel === 'AMM_FPMM' && swapHistory.length > 0;
+    const buySwaps = swapHistory.filter((s) => s.action === 'BUY');
+
+    const uniqueVotePeople = new Set(voteActivities.map((a) => a.memberId)).size;
+
+    const voteYesCount = voteActivities.filter((a) => a.choice === 'YES').length;
+    const voteNoCount = voteActivities.length - voteYesCount;
+    const voteTotal = voteYesCount + voteNoCount;
+
+    const voteDistribution: DistributionData = {
+      yesCount: voteYesCount,
+      noCount: voteNoCount,
+      yesPercentage: voteTotal > 0 ? (voteYesCount / voteTotal) * 100 : 0,
+      noPercentage: voteTotal > 0 ? (voteNoCount / voteTotal) * 100 : 0,
+    };
+
+    const betYesAmount = useSwapAsPrimary
+      ? buySwaps.filter((s) => s.outcome === 'YES').reduce((sum, s) => sum + s.usdcAmount, 0)
+      : betActivities.filter((a) => a.choice === 'YES').reduce((sum, a) => sum + a.amount, 0);
+    const betNoAmount = useSwapAsPrimary
+      ? buySwaps.filter((s) => s.outcome === 'NO').reduce((sum, s) => sum + s.usdcAmount, 0)
+      : betActivities.filter((a) => a.choice === 'NO').reduce((sum, a) => sum + a.amount, 0);
+    const betTotalAmount = betYesAmount + betNoAmount;
+
+    const betYesCount = useSwapAsPrimary
+      ? buySwaps.filter((s) => s.outcome === 'YES').length
+      : betActivities.filter((a) => a.choice === 'YES').length;
+    const betNoCount = useSwapAsPrimary
+      ? buySwaps.filter((s) => s.outcome === 'NO').length
+      : betActivities.filter((a) => a.choice === 'NO').length;
+
+    const betDistribution: DistributionData = {
+      yesCount: betYesCount,
+      noCount: betNoCount,
+      yesPercentage: betTotalAmount > 0 ? (betYesAmount / betTotalAmount) * 100 : 0,
+      noPercentage: betTotalAmount > 0 ? (betNoAmount / betTotalAmount) * 100 : 0,
+    };
+
+    const gapPercentage = Math.abs(voteDistribution.yesPercentage - betDistribution.yesPercentage);
+
+    const parsedPools = {
+      totalPool: betTotalAmount,
+      yesPool: betYesAmount,
+      noPool: betNoAmount,
+    };
+
+    const gapReport: VoteBetGapReport = {
+      questionId,
+      voteDistribution,
+      betDistribution,
+      gapPercentage,
+      qualityScore: dashboardData?.gapAnalysis.qualityScore ?? 0,
+    };
+
+    return {
+      votePeople: uniqueVotePeople,
+      voteDistribution,
+      gapReport,
+      parsedPools,
+      effectiveBetActivities: useSwapAsPrimary
+        ? buySwaps.map((s, idx) => ({
+            id: s.swapId ?? idx,
+            memberId: s.memberId,
+            questionId,
+            activityType: 'BET' as const,
+            choice: s.outcome,
+            amount: s.usdcAmount,
+            createdAt: s.createdAt,
+          }))
+        : betActivities,
+    };
+  }, [activities, question?.executionModel, questionId, dashboardData?.gapAnalysis.qualityScore, swapHistory]);
 
   // Admin access check
   useEffect(() => {
@@ -82,6 +160,12 @@ export default function DataCenterDashboard({ questionId }: DataCenterDashboardP
   }
 
   const { demographics, gapAnalysis, filteringEffect, overallQualityScore } = dashboardData;
+  const effectiveVoteDistribution =
+    realtimeMetrics.votePeople > 0 ? realtimeMetrics.voteDistribution : gapAnalysis.voteDistribution;
+  const effectiveGapAnalysis =
+    realtimeMetrics.votePeople > 0 ? realtimeMetrics.gapReport : gapAnalysis;
+  const effectiveVotePeople =
+    realtimeMetrics.votePeople > 0 ? realtimeMetrics.votePeople : demographics.totalVotes;
 
   return (
     <div className="max-w-7xl mx-auto animate-fade-in">
@@ -103,8 +187,8 @@ export default function DataCenterDashboard({ questionId }: DataCenterDashboardP
       <div className="mb-6">
         <QualityScoreCards
           overallQualityScore={overallQualityScore}
-          totalVotes={demographics.totalVotes}
-          gapPercentage={gapAnalysis.gapPercentage}
+          totalVotes={effectiveVotePeople}
+          gapPercentage={effectiveGapAnalysis.gapPercentage}
           filteredPercentage={filteringEffect.filteredPercentage}
           isDark={isDark}
         />
@@ -113,11 +197,11 @@ export default function DataCenterDashboard({ questionId }: DataCenterDashboardP
       {/* Vote Distribution + Gap Analysis */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6">
         <VoteDistributionChart
-          voteDistribution={gapAnalysis.voteDistribution}
+          voteDistribution={effectiveVoteDistribution}
           isDark={isDark}
         />
         <VoteBetGapChart
-          gapAnalysis={gapAnalysis}
+          gapAnalysis={effectiveGapAnalysis}
           isDark={isDark}
         />
       </div>
@@ -150,9 +234,10 @@ export default function DataCenterDashboard({ questionId }: DataCenterDashboardP
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         <BettingOverviewPanel
           question={question ?? null}
-          betDistribution={gapAnalysis.betDistribution}
-          activities={activities}
-          totalVotes={demographics.totalVotes}
+          betDistribution={effectiveGapAnalysis.betDistribution}
+          activities={realtimeMetrics.effectiveBetActivities}
+          totalVotes={effectiveVotePeople}
+          parsedPools={realtimeMetrics.parsedPools}
           isDark={isDark}
         />
         <FilteringEffectPanel

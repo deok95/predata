@@ -358,6 +358,21 @@ class SettlementService(
         question.disputeDeadline = null
         questionRepository.save(question)
 
+        // 6) 투표 리워드 분배 (AMM도 동일하게 reward_pool_share를 투표 참여자에게 분배)
+        var voterRewards = 0L
+        try {
+            val distributionResult = voteRewardDistributionService.distributeRewards(questionId)
+            voterRewards = when (val amount = distributionResult["totalAmount"]) {
+                is BigDecimal -> amount.setScale(0, RoundingMode.DOWN).toLong()
+                is Number -> amount.toLong()
+                is String -> amount.toBigDecimalOrNull()?.setScale(0, RoundingMode.DOWN)?.toLong() ?: 0L
+                else -> 0L
+            }
+            logger.info("[AMM Settlement] Reward distribution completed: questionId={}, voterRewards={}", questionId, voterRewards)
+        } catch (e: Exception) {
+            logger.error("[AMM Settlement] Reward distribution failed (manual retry required) questionId={}: {}", questionId, e.message, e)
+        }
+
         // 온체인 기록
         blockchainService.settleQuestionOnChain(questionId, finalResult)
 
@@ -367,8 +382,8 @@ class SettlementService(
             totalBets = allShares.size,
             totalWinners = totalWinners,
             totalPayout = totalPayout.setScale(0, RoundingMode.DOWN).toLong(),
-            voterRewards = 0, // AMM은 voter rewards 없음
-            message = "AMM settlement finalized."
+            voterRewards = voterRewards,
+            message = "AMM settlement finalized. (rewards: ${voterRewards}P distributed)"
         )
     }
 

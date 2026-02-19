@@ -9,6 +9,11 @@ interface BettingOverviewPanelProps {
   betDistribution: DistributionData;
   activities: Activity[];
   totalVotes: number;
+  parsedPools?: {
+    totalPool: number;
+    yesPool: number;
+    noPool: number;
+  };
   isDark: boolean;
 }
 
@@ -27,6 +32,9 @@ function computeBetStats(activities: Activity[], totalVotes: number): BetStats {
   const bets = activities.filter(a => a.activityType === 'BET');
   const yesBets = bets.filter(b => b.choice === 'YES');
   const noBets = bets.filter(b => b.choice === 'NO');
+  const totalBettorsSet = new Set(bets.map((b) => b.memberId));
+  const yesBettorsSet = new Set(yesBets.map((b) => b.memberId));
+  const noBettorsSet = new Set(noBets.map((b) => b.memberId));
 
   const totalAmount = bets.reduce((s, b) => s + b.amount, 0);
   const yesAmount = yesBets.reduce((s, b) => s + b.amount, 0);
@@ -34,23 +42,27 @@ function computeBetStats(activities: Activity[], totalVotes: number): BetStats {
   const maxBet = bets.length > 0 ? Math.max(...bets.map(b => b.amount)) : 0;
 
   return {
-    totalBettors: bets.length,
-    yesBettors: yesBets.length,
-    noBettors: noBets.length,
+    totalBettors: totalBettorsSet.size,
+    yesBettors: yesBettorsSet.size,
+    noBettors: noBettorsSet.size,
     avgBet: bets.length > 0 ? Math.round(totalAmount / bets.length) : 0,
     avgYesBet: yesBets.length > 0 ? Math.round(yesAmount / yesBets.length) : 0,
     avgNoBet: noBets.length > 0 ? Math.round(noAmount / noBets.length) : 0,
     maxBet,
-    participationRate: totalVotes > 0 ? Math.round((bets.length / totalVotes) * 1000) / 10 : 0,
+    participationRate: totalVotes > 0 ? Math.round((totalBettorsSet.size / totalVotes) * 1000) / 10 : 0,
   };
 }
 
-export default function BettingOverviewPanel({ question, betDistribution, activities, totalVotes, isDark }: BettingOverviewPanelProps) {
+export default function BettingOverviewPanel({ question, betDistribution, activities, totalVotes, parsedPools, isDark }: BettingOverviewPanelProps) {
   const cardClass = `p-6 rounded-3xl border ${isDark ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-100'}`;
   const statBg = isDark ? 'bg-slate-800/60' : 'bg-slate-50';
-  const totalPool = question?.totalBetPool ?? 0;
-  const yesPool = question?.yesBetPool ?? 0;
-  const noPool = question?.noBetPool ?? 0;
+  const questionTotalPool = question?.totalBetPool ?? 0;
+  const questionYesPool = question?.yesBetPool ?? 0;
+  const questionNoPool = question?.noBetPool ?? 0;
+  const hasQuestionPools = questionTotalPool > 0 || questionYesPool > 0 || questionNoPool > 0;
+  const totalPool = hasQuestionPools ? questionTotalPool : (parsedPools?.totalPool ?? 0);
+  const yesPool = hasQuestionPools ? questionYesPool : (parsedPools?.yesPool ?? 0);
+  const noPool = hasQuestionPools ? questionNoPool : (parsedPools?.noPool ?? 0);
   const yesPct = totalPool > 0 ? (yesPool / totalPool) * 100 : 50;
 
   const stats = useMemo(() => computeBetStats(activities, totalVotes), [activities, totalVotes]);
