@@ -119,7 +119,7 @@ class FeePoolService(
     @Transactional
     fun withdrawPlatformShare(questionId: Long): BigDecimal {
         val feePool = feePoolRepository.findByQuestionId(questionId).orElseThrow {
-            IllegalArgumentException("수수료 풀을 찾을 수 없습니다.")
+            IllegalArgumentException("Fee pool not found.")
         }
 
         val availablePlatform = feePool.platformShare
@@ -157,7 +157,7 @@ class FeePoolService(
         }
 
         val feePool = feePoolRepository.findByQuestionId(questionId).orElseThrow {
-            IllegalArgumentException("수수료 풀을 찾을 수 없습니다.")
+            IllegalArgumentException("Fee pool not found.")
         }
 
         feePool.reserveShare = feePool.reserveShare.add(amount)
@@ -185,7 +185,7 @@ class FeePoolService(
         val feePool = feePoolRepository.findByQuestionId(questionId).orElse(null)
             ?: return mapOf(
                 "success" to false,
-                "message" to "수수료 풀을 찾을 수 없습니다."
+                "message" to "Fee pool not found."
             )
 
         val availableReward = getAvailableRewardPool(questionId)

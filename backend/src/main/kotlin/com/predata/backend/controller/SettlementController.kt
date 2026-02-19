@@ -39,9 +39,9 @@ class SettlementController(
             val result = settlementService.initiateSettlementAuto(id)
             ResponseEntity.ok(result)
         } catch (e: IllegalArgumentException) {
-            ResponseEntity.badRequest().body(mapOf("error" to (e.message ?: "정산 실패")))
+            ResponseEntity.badRequest().body(mapOf("error" to (e.message ?: "Settlement failed")))
         } catch (e: IllegalStateException) {
-            ResponseEntity.status(HttpStatus.CONFLICT).body(mapOf("error" to (e.message ?: "정산 실패")))
+            ResponseEntity.status(HttpStatus.CONFLICT).body(mapOf("error" to (e.message ?: "Settlement failed")))
         }
     }
 

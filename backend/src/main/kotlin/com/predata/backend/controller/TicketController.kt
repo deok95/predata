@@ -33,7 +33,7 @@ class TicketController(
             ?: return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(
                 mapOf(
                     "success" to false,
-                    "message" to "인증이 필요합니다."
+                    "message" to "Authentication required."
                 )
             )
 

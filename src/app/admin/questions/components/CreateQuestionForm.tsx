@@ -44,16 +44,16 @@ export default function CreateQuestionForm({
     <div className={`rounded-2xl p-6 mb-8 border-2 ${
       isDark ? 'bg-slate-800/50 border-indigo-500/50' : 'bg-white border-indigo-200 shadow-lg'
     }`}>
-      <h2 className={`text-2xl font-bold mb-4 ${isDark ? 'text-white' : 'text-slate-800'}`}>새 질문 만들기</h2>
+      <h2 className={`text-2xl font-bold mb-4 ${isDark ? 'text-white' : 'text-slate-800'}`}>Create New Question</h2>
 
       <div className="space-y-4">
         <div>
-          <label className={`block text-sm font-semibold mb-2 ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>질문 제목</label>
+          <label className={`block text-sm font-semibold mb-2 ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>Question Title</label>
           <input
             type="text"
             value={title}
             onChange={(e) => onChangeTitle(e.target.value)}
-            placeholder="예: Will Bitcoin reach $100,000 by end of 2026?"
+            placeholder="e.g., Will Bitcoin reach $100,000 by end of 2026?"
             className={`w-full p-3 rounded-lg focus:ring-2 focus:ring-indigo-500 ${
               isDark
                 ? 'bg-slate-700 border-slate-600 text-white placeholder-slate-400'
@@ -63,7 +63,7 @@ export default function CreateQuestionForm({
         </div>
 
         <div>
-          <label className={`block text-sm font-semibold mb-2 ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>질문 타입</label>
+          <label className={`block text-sm font-semibold mb-2 ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>Question Type</label>
           <div className="grid grid-cols-2 gap-3">
             <button
               type="button"
@@ -74,7 +74,7 @@ export default function CreateQuestionForm({
                   : isDark ? 'bg-slate-700 text-slate-300 border-slate-600' : 'bg-slate-100 text-slate-600 border-slate-300'
               }`}
             >
-              VERIFIABLE (검증 가능)
+              VERIFIABLE (Fact-based)
             </button>
             <button
               type="button"
@@ -85,13 +85,13 @@ export default function CreateQuestionForm({
                   : isDark ? 'bg-slate-700 text-slate-300 border-slate-600' : 'bg-slate-100 text-slate-600 border-slate-300'
               }`}
             >
-              OPINION (의견 기반)
+              OPINION (Opinion-based)
             </button>
           </div>
         </div>
 
         <div>
-          <label className={`block text-sm font-semibold mb-2 ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>카테고리</label>
+          <label className={`block text-sm font-semibold mb-2 ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>Category</label>
           <select
             value={category}
             onChange={(e) => onChangeCategory(e.target.value)}
@@ -106,7 +106,7 @@ export default function CreateQuestionForm({
         </div>
 
         <div>
-          <label className={`block text-sm font-semibold mb-2 ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>투표 기간</label>
+          <label className={`block text-sm font-semibold mb-2 ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>Voting Duration</label>
           <select
             value={votingDuration}
             onChange={(e) => onChangeVotingDuration(Number(e.target.value))}
@@ -121,7 +121,7 @@ export default function CreateQuestionForm({
         </div>
 
         <div>
-          <label className={`block text-sm font-semibold mb-2 ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>베팅 기간</label>
+          <label className={`block text-sm font-semibold mb-2 ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>Betting Duration</label>
           <select
             value={bettingDuration}
             onChange={(e) => onChangeBettingDuration(Number(e.target.value))}
@@ -142,14 +142,14 @@ export default function CreateQuestionForm({
               isDark ? 'bg-slate-700 text-slate-300 hover:bg-slate-600' : 'bg-slate-200 text-slate-800 hover:bg-slate-300'
             }`}
           >
-            취소
+            Cancel
           </button>
           <button
             onClick={onCreate}
             disabled={loading}
             className="flex-1 py-3 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition font-semibold disabled:opacity-50"
           >
-            {loading ? '생성 중...' : '질문 생성'}
+            {loading ? 'Creating...' : 'Create Question'}
           </button>
         </div>
       </div>

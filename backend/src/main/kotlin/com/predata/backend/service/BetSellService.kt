@@ -15,6 +15,6 @@ class BetSellService {
      */
     @Transactional
     fun sellBet(memberId: Long, request: SellBetRequest, clientIp: String? = null): SellBetResponse {
-        throw IllegalStateException("AMM 판매는 더 이상 지원되지 않습니다. 마켓에서 반대 주문을 통해 포지션을 청산하세요.")
+        throw IllegalStateException("AMM selling is no longer supported. Please liquidate positions through opposite orders in the market.")
     }
 }

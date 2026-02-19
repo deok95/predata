@@ -40,7 +40,7 @@ class OrderController(
         // JWT에서 인증된 memberId 가져오기 (IDOR 방지)
         val authenticatedMemberId = httpRequest.getAttribute(com.predata.backend.config.JwtAuthInterceptor.ATTR_MEMBER_ID) as? Long
             ?: return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(
-                CreateOrderResponse(success = false, message = "인증이 필요합니다.")
+                CreateOrderResponse(success = false, message = "Authentication required.")
             )
 
         // 베팅 일시 중지 체크 (쿨다운)
@@ -49,7 +49,7 @@ class OrderController(
             return ResponseEntity.status(HttpStatus.FORBIDDEN).body(
                 CreateOrderResponse(
                     success = false,
-                    message = "⚠️ 골 직후 베팅이 일시 중지되었습니다. ${suspensionStatus.remainingSeconds}초 후 재개됩니다."
+                    message = "⚠️ Betting is temporarily suspended after a goal. It will resume in ${suspensionStatus.remainingSeconds} seconds."
                 )
             )
         }
@@ -74,7 +74,7 @@ class OrderController(
         // JWT에서 인증된 memberId 가져오기 (IDOR 방지)
         val authenticatedMemberId = httpRequest.getAttribute(com.predata.backend.config.JwtAuthInterceptor.ATTR_MEMBER_ID) as? Long
             ?: return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(
-                CancelOrderResponse(success = false, message = "인증이 필요합니다.")
+                CancelOrderResponse(success = false, message = "Authentication required.")
             )
 
         val response = orderMatchingService.cancelOrder(id, authenticatedMemberId)

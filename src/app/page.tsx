@@ -2,11 +2,9 @@
 
 import { useState, useEffect } from 'react';
 import MainLayout from '@/components/layout/MainLayout';
-import GlobalStatsBar from '@/components/dashboard/GlobalStatsBar';
 import SponsoredMarket from '@/components/dashboard/SponsoredMarket';
 import TrendingMarkets from '@/components/dashboard/TrendingMarkets';
 import { questionApi } from '@/lib/api';
-import { mockQuestions } from '@/lib/mockData';
 import { useAuth } from '@/hooks/useAuth';
 import { useVotedQuestions } from '@/hooks/useVotedQuestions';
 import type { Question } from '@/types/api';
@@ -20,13 +18,31 @@ function DashboardContent() {
   useEffect(() => {
     questionApi.getAll().then(res => {
       if (res.success && res.data && res.data.length > 0) setQuestions(res.data);
-      else setQuestions(mockQuestions);
+      else setQuestions([]);
     }).catch(() => {
-      setQuestions(mockQuestions);
+      setQuestions([]);
     }).finally(() => setLoading(false));
   }, []);
 
-  const featured = questions.find(q => q.status === 'VOTING' || q.status === 'BETTING') || questions[0] || null;
+  const featuredQuestions = (() => {
+    if (questions.length === 0) return [];
+
+    const statusPriority = (status: Question['status']) => {
+      if (status === 'VOTING') return 0;
+      if (status === 'BETTING') return 1;
+      return 2;
+    };
+
+    return [...questions]
+      .filter((q) => q.status === 'VOTING' || q.status === 'BETTING')
+      .sort((a, b) => {
+        const statusDiff = statusPriority(a.status) - statusPriority(b.status);
+        if (statusDiff !== 0) return statusDiff;
+        if (b.totalBetPool !== a.totalBetPool) return b.totalBetPool - a.totalBetPool;
+        return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+      })
+      .slice(0, 8);
+  })();
 
   if (loading) {
     return (
@@ -38,15 +54,14 @@ function DashboardContent() {
 
   return (
     <div className="max-w-7xl mx-auto space-y-10 animate-fade-in">
-      <GlobalStatsBar />
       {questions.length === 0 ? (
         <div className="text-center py-20">
-          <p className="text-slate-400 text-lg">현재 등록된 마켓이 없습니다.</p>
-          <p className="text-slate-500 text-sm mt-2">백엔드 서비스가 실행 중인지 확인해주세요.</p>
+          <p className="text-slate-400 text-lg">No markets available.</p>
+          <p className="text-slate-500 text-sm mt-2">Please check if the backend service is running.</p>
         </div>
       ) : (
         <>
-          <SponsoredMarket question={featured} />
+          <SponsoredMarket questions={featuredQuestions} />
           <TrendingMarkets questions={questions} getVotedChoice={getChoice} />
         </>
       )}

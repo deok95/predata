@@ -1,14 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
 import { questionApi, globalApi, bettingApi, settlementApi } from '@/lib/api';
-import {
-  mockQuestions,
-  mockGlobalStats,
-  mockActivities,
-  mockSettlementHistory,
-  mockGuestActivities,
-  mockQualityDashboard,
-  generateMockDashboard,
-} from '@/lib/mockData';
 import type { Question, GlobalStats, Activity, SettlementHistory, QualityDashboard } from '@/types/api';
 
 // === Questions ===
@@ -20,9 +11,9 @@ export function useQuestions() {
       try {
         const res = await questionApi.getAll();
         if (res.success && res.data && res.data.length > 0) return res.data;
-        return mockQuestions;
+        return [];
       } catch {
-        return mockQuestions;
+        return [];
       }
     },
     staleTime: 30_000,
@@ -36,9 +27,9 @@ export function useQuestion(id: number) {
       try {
         const res = await questionApi.getById(id);
         if (res.success && res.data) return res.data;
-        return mockQuestions.find(q => q.id === id) || null;
+        return null;
       } catch {
-        return mockQuestions.find(q => q.id === id) || null;
+        return null;
       }
     },
     enabled: !!id && !isNaN(id),
@@ -55,9 +46,9 @@ export function useGlobalStats() {
       try {
         const res = await globalApi.getStats();
         if (res.success && res.data) return res.data;
-        return mockGlobalStats;
+        return { totalPredictions: 0, tvl: 0, activeUsers: 0, cumulativeRewards: 0, activeMarkets: 0 };
       } catch {
-        return mockGlobalStats;
+        return { totalPredictions: 0, tvl: 0, activeUsers: 0, cumulativeRewards: 0, activeMarkets: 0 };
       }
     },
     staleTime: 60_000,
@@ -73,9 +64,9 @@ export function useActivitiesByQuestion(questionId: number, refreshKey: number) 
       try {
         const res = await bettingApi.getActivitiesByQuestion(questionId);
         if (res.success && res.data && res.data.length > 0) return res.data;
-        return mockActivities.filter(a => a.questionId === questionId);
+        return [];
       } catch {
-        return mockActivities.filter(a => a.questionId === questionId);
+        return [];
       }
     },
     enabled: !!questionId,
@@ -89,9 +80,9 @@ export function useActivitiesByMember(memberId: number) {
       try {
         const res = await bettingApi.getActivitiesByMember('BET');
         if (res.success && res.data && res.data.length > 0) return res.data;
-        return mockGuestActivities;
+        return [];
       } catch {
-        return mockGuestActivities;
+        return [];
       }
     },
     enabled: !!memberId,
@@ -107,9 +98,9 @@ export function useSettlementHistory(memberId: number) {
       try {
         const res = await settlementApi.getHistory();
         if (res.success && res.data && res.data.length > 0) return res.data;
-        return mockSettlementHistory;
+        return [];
       } catch {
-        return mockSettlementHistory;
+        return [];
       }
     },
     enabled: !!memberId,
@@ -125,9 +116,9 @@ export function useQuestionActivities(questionId: number) {
       try {
         const res = await bettingApi.getActivitiesByQuestion(questionId);
         if (res.success && res.data && res.data.length > 0) return res.data;
-        return mockActivities.filter(a => a.questionId === questionId);
+        return [];
       } catch {
-        return mockActivities.filter(a => a.questionId === questionId);
+        return [];
       }
     },
     enabled: !!questionId,
@@ -148,9 +139,9 @@ export function useQualityDashboard(questionId: number) {
           const data = res.data as unknown as QualityDashboard;
           if (data.gapAnalysis && data.demographics && data.filteringEffect) return data;
         }
-        return generateMockDashboard(questionId);
+        return null;
       } catch {
-        return generateMockDashboard(questionId);
+        return null;
       }
     },
     staleTime: 60_000,

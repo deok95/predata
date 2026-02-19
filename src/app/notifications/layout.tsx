@@ -1,8 +1,8 @@
 import type { Metadata } from 'next';
 
 export const metadata: Metadata = {
-  title: 'Predata - 알림 센터',
-  description: '베팅, 투표, 정산 등의 알림을 확인하세요',
+  title: 'Predata - Notification Center',
+  description: 'Check notifications for bets, votes, settlements, and more',
 };
 
 export default function NotificationsLayout({ children }: { children: React.ReactNode }) {

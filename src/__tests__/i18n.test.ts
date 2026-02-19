@@ -3,8 +3,8 @@ import { getTranslation, translations } from '@/lib/i18n';
 
 describe('i18n', () => {
   it('should return Korean translation by default', () => {
-    expect(getTranslation('ko', 'nav.home')).toBe('홈');
-    expect(getTranslation('ko', 'nav.marketplace')).toBe('마켓 탐색');
+    expect(getTranslation('ko', 'nav.home')).toBe('Home');
+    expect(getTranslation('ko', 'nav.marketplace')).toBe('Marketplace');
   });
 
   it('should return English translation', () => {
@@ -41,9 +41,9 @@ describe('i18n', () => {
   });
 
   it('should have auth keys in both locales', () => {
-    expect(getTranslation('ko', 'auth.login')).toBe('로그인');
+    expect(getTranslation('ko', 'auth.login')).toBe('Log In');
     expect(getTranslation('en', 'auth.login')).toBe('Log In');
-    expect(getTranslation('ko', 'auth.register')).toBe('회원가입');
+    expect(getTranslation('ko', 'auth.register')).toBe('Sign Up');
     expect(getTranslation('en', 'auth.register')).toBe('Sign Up');
   });
 });

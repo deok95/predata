@@ -26,7 +26,7 @@ class VotingAdminController(
         pauseService.pauseVoting(questionId)
         return ResponseEntity.ok(
             mapOf(
-                "message" to "투표가 일시 중지되었습니다.",
+                "message" to "Voting has been paused.",
                 "questionId" to questionId
             )
         )
@@ -41,7 +41,7 @@ class VotingAdminController(
         pauseService.resumeVoting(questionId)
         return ResponseEntity.ok(
             mapOf(
-                "message" to "투표가 재개되었습니다.",
+                "message" to "Voting has been resumed.",
                 "questionId" to questionId
             )
         )
@@ -56,7 +56,7 @@ class VotingAdminController(
         pauseService.pauseAll()
         return ResponseEntity.ok(
             mapOf(
-                "message" to "모든 투표가 일시 중지되었습니다."
+                "message" to "All voting has been paused."
             )
         )
     }
@@ -70,7 +70,7 @@ class VotingAdminController(
         pauseService.resumeAll()
         return ResponseEntity.ok(
             mapOf(
-                "message" to "모든 투표가 재개되었습니다."
+                "message" to "All voting has been resumed."
             )
         )
     }
@@ -101,7 +101,7 @@ class VotingAdminController(
         circuitBreaker.reset()
         return ResponseEntity.ok(
             mapOf(
-                "message" to "서킷브레이커가 리셋되었습니다."
+                "message" to "Circuit breaker has been reset."
             )
         )
     }

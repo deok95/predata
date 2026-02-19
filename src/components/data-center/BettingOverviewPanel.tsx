@@ -59,7 +59,7 @@ export default function BettingOverviewPanel({ question, betDistribution, activi
     <div className={cardClass}>
       <div className="flex items-center gap-2 mb-5">
         <Coins className="h-6 w-6 text-indigo-500" />
-        <h2 className={`text-lg font-black ${isDark ? 'text-white' : 'text-slate-900'}`}>베팅 분석</h2>
+        <h2 className={`text-lg font-black ${isDark ? 'text-white' : 'text-slate-900'}`}>Betting Analysis</h2>
       </div>
 
       {/* Pool cards */}
@@ -98,12 +98,12 @@ export default function BettingOverviewPanel({ question, betDistribution, activi
         <div className={`p-3 rounded-xl flex items-center justify-between ${statBg}`}>
           <div className="flex items-center gap-2">
             <Users size={14} className="text-indigo-500" />
-            <span className={`text-xs font-bold ${isDark ? 'text-slate-300' : 'text-slate-600'}`}>베팅 참여자</span>
+            <span className={`text-xs font-bold ${isDark ? 'text-slate-300' : 'text-slate-600'}`}>Bettors</span>
           </div>
           <div className="flex items-center gap-3 text-xs">
             <span className="font-black text-emerald-500">YES {stats.yesBettors}</span>
             <span className="font-black text-rose-500">NO {stats.noBettors}</span>
-            <span className={`font-black ${isDark ? 'text-white' : 'text-slate-900'}`}>총 {stats.totalBettors}명</span>
+            <span className={`font-black ${isDark ? 'text-white' : 'text-slate-900'}`}>Total {stats.totalBettors}</span>
           </div>
         </div>
 
@@ -111,7 +111,7 @@ export default function BettingOverviewPanel({ question, betDistribution, activi
         <div className={`p-3 rounded-xl flex items-center justify-between ${statBg}`}>
           <div className="flex items-center gap-2">
             <BarChart3 size={14} className="text-purple-500" />
-            <span className={`text-xs font-bold ${isDark ? 'text-slate-300' : 'text-slate-600'}`}>평균 베팅</span>
+            <span className={`text-xs font-bold ${isDark ? 'text-slate-300' : 'text-slate-600'}`}>Avg Bet</span>
           </div>
           <div className="flex items-center gap-3 text-xs">
             <span className="font-bold text-emerald-500">{stats.avgYesBet.toLocaleString()}</span>
@@ -124,7 +124,7 @@ export default function BettingOverviewPanel({ question, betDistribution, activi
         <div className={`p-3 rounded-xl flex items-center justify-between ${statBg}`}>
           <div className="flex items-center gap-2">
             <Trophy size={14} className="text-amber-500" />
-            <span className={`text-xs font-bold ${isDark ? 'text-slate-300' : 'text-slate-600'}`}>최대 베팅</span>
+            <span className={`text-xs font-bold ${isDark ? 'text-slate-300' : 'text-slate-600'}`}>Max Bet</span>
           </div>
           <span className={`text-xs font-black ${isDark ? 'text-white' : 'text-slate-900'}`}>{'$'}{stats.maxBet.toLocaleString()}</span>
         </div>
@@ -133,11 +133,11 @@ export default function BettingOverviewPanel({ question, betDistribution, activi
         <div className={`p-3 rounded-xl flex items-center justify-between ${statBg}`}>
           <div className="flex items-center gap-2">
             <TrendingUp size={14} className="text-blue-500" />
-            <span className={`text-xs font-bold ${isDark ? 'text-slate-300' : 'text-slate-600'}`}>베팅 참여율</span>
+            <span className={`text-xs font-bold ${isDark ? 'text-slate-300' : 'text-slate-600'}`}>Betting Rate</span>
           </div>
           <div className="flex items-center gap-2">
             <span className={`text-xs font-black ${isDark ? 'text-white' : 'text-slate-900'}`}>{stats.participationRate}%</span>
-            <span className="text-[10px] text-slate-400">(투표 대비)</span>
+            <span className="text-[10px] text-slate-400">(vs votes)</span>
           </div>
         </div>
       </div>

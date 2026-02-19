@@ -24,7 +24,7 @@ class SportsResolutionAdapter : ResolutionAdapter {
         // 예: resolutionRule = "맨체스터 유나이티드가 승리할까?" → homeTeam.score > awayTeam.score
 
         val resolutionSource = question.resolutionSource
-            ?: throw IllegalArgumentException("스포츠 정산을 위한 resolutionSource가 없습니다.")
+            ?: throw IllegalArgumentException("resolutionSource is missing for sports settlement.")
 
         // resolveAt 체크: 경기 종료 시간이 지나지 않았으면 null 반환
         val resolveAt = question.resolveAt

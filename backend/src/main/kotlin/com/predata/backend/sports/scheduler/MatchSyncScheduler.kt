@@ -265,7 +265,7 @@ class MatchSyncScheduler(
                 Thread.sleep(400)
 
             } catch (e: Exception) {
-                logger.error("[MatchSync] 폴링 실패: {} vs {} - {}", match.homeTeam, match.awayTeam, e.message)
+                logger.error("[MatchSync] Polling failed: {} vs {} - {}", match.homeTeam, match.awayTeam, e.message)
             }
         }
 

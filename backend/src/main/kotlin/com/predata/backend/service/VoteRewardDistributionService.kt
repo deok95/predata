@@ -76,7 +76,7 @@ class VoteRewardDistributionService(
             logger.warn("No rewards to distribute for questionId=$questionId")
             return mapOf(
                 "success" to true,
-                "message" to "분배할 보상이 없습니다.",
+                "message" to "No rewards to distribute.",
                 "distributed" to 0,
                 "failed" to 0
             )
@@ -141,7 +141,7 @@ class VoteRewardDistributionService(
 
         return mapOf(
             "success" to true,
-            "message" to "보상 분배 완료",
+            "message" to "Reward distribution completed",
             "totalRewards" to summary.individualRewards.size,
             "distributed" to successCount,
             "failed" to failCount,
@@ -233,7 +233,7 @@ class VoteRewardDistributionService(
                 action = AuditAction.REWARD_FAILED,
                 entityType = "RewardDistribution",
                 entityId = distribution.id,
-                detail = "보상 분배 실패: questionId=$questionId, error=${e.message}"
+                detail = "Reward distribution failed: questionId=$questionId, error=${e.message}"
             )
 
             return DistributionExecutionResult.FAILED
@@ -257,7 +257,7 @@ class VoteRewardDistributionService(
         if (failedDistributions.isEmpty()) {
             return mapOf(
                 "success" to true,
-                "message" to "재시도할 실패 기록이 없습니다.",
+                "message" to "No failed records to retry.",
                 "retried" to 0,
                 "succeeded" to 0,
                 "failed" to 0
@@ -304,7 +304,7 @@ class VoteRewardDistributionService(
 
         return mapOf(
             "success" to true,
-            "message" to "재시도 완료",
+            "message" to "Retry completed",
             "retried" to failedDistributions.size,
             "succeeded" to successCount,
             "failed" to failCount

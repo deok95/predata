@@ -14,12 +14,12 @@ const COLORS = { yes: '#10B981', no: '#EF4444' };
 export default function VoteBetGapChart({ gapAnalysis, isDark }: VoteBetGapChartProps) {
   const comparisonData = [
     {
-      name: '투표 (Ticketer)',
+      name: 'Vote (Ticketer)',
       YES: gapAnalysis.voteDistribution.yesPercentage,
       NO: gapAnalysis.voteDistribution.noPercentage,
     },
     {
-      name: '베팅 (Bettor)',
+      name: 'Bet (Bettor)',
       YES: gapAnalysis.betDistribution.yesPercentage,
       NO: gapAnalysis.betDistribution.noPercentage,
     },
@@ -32,7 +32,7 @@ export default function VoteBetGapChart({ gapAnalysis, isDark }: VoteBetGapChart
     <div className={cardClass}>
       <div className="flex items-center gap-2 mb-2">
         <GitCompareArrows className="h-6 w-6 text-purple-500" />
-        <h2 className={`text-lg font-black ${isDark ? 'text-white' : 'text-slate-900'}`}>투표 vs 베팅 괴리율</h2>
+        <h2 className={`text-lg font-black ${isDark ? 'text-white' : 'text-slate-900'}`}>Vote vs Bet Gap</h2>
         <span className={`ml-auto text-sm font-black px-3 py-1 rounded-xl ${
           isGood
             ? isDark ? 'bg-emerald-950/30 text-emerald-400' : 'bg-emerald-50 text-emerald-600'
@@ -42,7 +42,7 @@ export default function VoteBetGapChart({ gapAnalysis, isDark }: VoteBetGapChart
         </span>
       </div>
       <p className="text-xs text-slate-400 mb-4">
-        투표와 베팅의 선택 분포를 비교하여 데이터 품질을 검증합니다.
+        Compare vote and bet choice distributions to verify data quality.
       </p>
 
       <ResponsiveContainer width="100%" height={240}>
@@ -73,12 +73,12 @@ export default function VoteBetGapChart({ gapAnalysis, isDark }: VoteBetGapChart
         {isGood ? (
           <>
             <CheckCircle size={18} className="text-emerald-500 shrink-0" />
-            <p className="font-black text-emerald-500 text-sm">우수한 데이터 품질 — 괴리율 {gapAnalysis.gapPercentage.toFixed(1)}%</p>
+            <p className="font-black text-emerald-500 text-sm">Excellent data quality — Gap rate {gapAnalysis.gapPercentage.toFixed(1)}%</p>
           </>
         ) : (
           <>
             <AlertCircle size={18} className="text-rose-500 shrink-0" />
-            <p className="font-black text-rose-500 text-sm">높은 괴리율 감지 — {gapAnalysis.gapPercentage.toFixed(1)}% (필터링 권장)</p>
+            <p className="font-black text-rose-500 text-sm">High gap detected — {gapAnalysis.gapPercentage.toFixed(1)}% (filtering recommended)</p>
           </>
         )}
       </div>

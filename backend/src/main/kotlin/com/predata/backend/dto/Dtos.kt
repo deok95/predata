@@ -8,43 +8,43 @@ import jakarta.validation.constraints.NotNull
 import jakarta.validation.constraints.NotBlank
 import jakarta.validation.constraints.Size
 
-// 투표 요청
+// Vote request
 data class VoteRequest(
-    @field:NotNull(message = "질문 ID는 필수입니다.")
-    @field:Min(value = 1, message = "유효하지 않은 질문 ID입니다.")
+    @field:NotNull(message = "Question ID is required.")
+    @field:Min(value = 1, message = "Invalid question ID.")
     val questionId: Long,
 
-    @field:NotNull(message = "선택(YES/NO)은 필수입니다.")
+    @field:NotNull(message = "Choice (YES/NO) is required.")
     val choice: Choice,
 
     val latencyMs: Int? = null
 )
 
-// 베팅 요청
+// Bet request
 data class BetRequest(
-    @field:NotNull(message = "질문 ID는 필수입니다.")
-    @field:Min(value = 1, message = "유효하지 않은 질문 ID입니다.")
+    @field:NotNull(message = "Question ID is required.")
+    @field:Min(value = 1, message = "Invalid question ID.")
     val questionId: Long,
 
-    @field:NotNull(message = "선택(YES/NO)은 필수입니다.")
+    @field:NotNull(message = "Choice (YES/NO) is required.")
     val choice: Choice,
 
-    @field:NotNull(message = "베팅 금액은 필수입니다.")
-    @field:Min(value = 1, message = "최소 베팅 금액은 1P입니다.")
-    @field:Max(value = 100, message = "최대 베팅 금액은 100P입니다.")
+    @field:NotNull(message = "Bet amount is required.")
+    @field:Min(value = 1, message = "Minimum bet amount is 1P.")
+    @field:Max(value = 100, message = "Maximum bet amount is 100P.")
     val amount: Long,
 
     val latencyMs: Int? = null
 )
 
-// 베팅 판매 요청
+// Bet sell request
 data class SellBetRequest(
-    @field:NotNull(message = "베팅 ID는 필수입니다.")
-    @field:Min(value = 1, message = "유효하지 않은 베팅 ID입니다.")
+    @field:NotNull(message = "Bet ID is required.")
+    @field:Min(value = 1, message = "Invalid bet ID.")
     val betId: Long
 )
 
-// 베팅 판매 응답
+// Bet sell response
 data class SellBetResponse(
     val success: Boolean,
     val message: String? = null,
@@ -57,7 +57,7 @@ data class SellBetResponse(
     val sellActivityId: Long? = null
 )
 
-// 활동 응답
+// Activity response
 data class ActivityResponse(
     val success: Boolean,
     val message: String? = null,
@@ -65,7 +65,7 @@ data class ActivityResponse(
     val remainingTickets: Int? = null
 )
 
-// 질문 조회 응답
+// Question response
 data class QuestionResponse(
     val id: Long,
     val title: String,
@@ -90,105 +90,98 @@ data class QuestionResponse(
     val matchId: Long? = null
 )
 
-// 티켓 현황 응답
+// Ticket status response
 data class TicketStatusResponse(
     val remainingCount: Int,
     val resetDate: String
 )
 
-// === 인증 요청 DTO ===
+// === Authentication request DTOs ===
 
-// Step 1: 이메일로 인증 코드 발송
+// Step 1: Send verification code to email
 data class SendCodeRequest(
     val email: String
 )
 
-// Step 2: 인증 코드 검증만 (회원 생성 안 함)
+// Step 2: Verify code only (does not create member)
 data class VerifyCodeRequest(
     val email: String,
     val code: String
 )
 
-// Step 3: 비밀번호 설정 및 회원 생성
+// Step 3: Set password and create member
+@com.fasterxml.jackson.annotation.JsonIgnoreProperties(ignoreUnknown = true)
 data class CompleteSignupRequest(
     val email: String,
     val code: String,
     val password: String,
     val passwordConfirm: String,
 
-    // 추가 정보 (필수)
-    @field:NotBlank(message = "국가 코드는 필수입니다.")
-    @field:Size(min = 2, max = 2, message = "국가 코드는 2자리여야 합니다.")
-    val countryCode: String,
-
-    @field:NotNull(message = "성별은 필수입니다.")
-    val gender: com.predata.backend.domain.Gender,
-
-    @field:NotBlank(message = "생년월일은 필수입니다.")
-    val birthDate: String, // ISO 8601 형식 (YYYY-MM-DD)
-
-    // 추가 정보 (선택)
+    // Additional information (optional - nullable with defaults)
+    val countryCode: String = "KR",
+    val gender: String? = null,
+    val birthDate: String? = null, // ISO 8601 format (YYYY-MM-DD)
     val jobCategory: String? = null,
     val ageGroup: Int? = null
 )
 
-// 로그인 요청
+// Login request
 data class LoginRequest(
     val email: String,
     val password: String
 )
 
-// === 어드민 질문 생성 DTO ===
+// === Admin question creation DTO ===
 
 @com.fasterxml.jackson.annotation.JsonIgnoreProperties(ignoreUnknown = true)
 data class AdminCreateQuestionRequest(
-    @field:NotNull(message = "질문 제목은 필수입니다.")
+    @field:NotNull(message = "Question title is required.")
     val title: String,
 
-    @field:NotNull(message = "질문 타입은 필수입니다.")
+    @field:NotNull(message = "Question type is required.")
     val type: com.predata.backend.domain.QuestionType,
 
-    @field:NotNull(message = "시장 타입은 필수입니다.")
+    @field:NotNull(message = "Market type is required.")
     val marketType: com.predata.backend.domain.MarketType = com.predata.backend.domain.MarketType.VERIFIABLE,
 
-    @field:NotBlank(message = "정산 규칙은 필수입니다.")
+    @field:NotBlank(message = "Resolution rule is required.")
     val resolutionRule: String,
 
     val resolutionSource: String? = null,
 
-    val resolveAt: String? = null, // ISO 8601 형식
+    val resolveAt: String? = null, // ISO 8601 format
 
-    val disputeUntil: String? = null, // ISO 8601 형식
+    val disputeUntil: String? = null, // ISO 8601 format
 
-    // OPINION 시장은 true 권장 (투표 결과로 베팅 승패 정산)
+    // Recommended true for OPINION markets (settle betting based on vote results)
     val voteResultSettlement: Boolean? = null,
 
     val category: String? = null,
 
-    @field:Min(value = 60, message = "투표 기간은 최소 60초입니다.")
-    val votingDuration: Long = 3600, // 기본 1시간 (초 단위)
+    @field:Min(value = 60, message = "Voting period must be at least 60 seconds.")
+    val votingDuration: Long = 3600, // Default 1 hour (in seconds)
 
-    @field:Min(value = 60, message = "베팅 기간은 최소 60초입니다.")
-    val bettingDuration: Long = 3600, // 기본 1시간 (초 단위)
+    @field:Min(value = 60, message = "Betting period must be at least 60 seconds.")
+    val bettingDuration: Long = 3600, // Default 1 hour (in seconds)
 
-    // AMM 실행 모델 설정
+    // AMM execution model configuration
     val executionModel: com.predata.backend.domain.ExecutionModel = com.predata.backend.domain.ExecutionModel.AMM_FPMM,
 
-    // AMM 시드 설정 (executionModel이 AMM_FPMM일 때 사용)
+    // AMM seed configuration (used when executionModel is AMM_FPMM)
     val seedUsdc: java.math.BigDecimal = java.math.BigDecimal("1000"),
 
-    val feeRate: java.math.BigDecimal = java.math.BigDecimal("0.01") // 1% 기본값
+    val feeRate: java.math.BigDecimal = java.math.BigDecimal("0.01") // Default 1%
 )
 
-// 관리자 결과 입력 요청
+// Admin result input request
 data class SetQuestionResultRequest(
-    @field:NotNull(message = "결과(YES/NO)는 필수입니다.")
+    @field:NotNull(message = "Result (YES/NO) is required.")
     val result: String // "YES" or "NO"
 )
 
-// 어드민 수동 정산 요청
+// Admin manual settlement request
 data class ManualSettleRequest(
-    @field:NotNull(message = "결과(YES/NO/DRAW)는 필수입니다.")
+    @field:NotNull(message = "Result (YES/NO/DRAW) is required.")
     val result: String // "YES", "NO", "DRAW"
 )
 
@@ -196,39 +189,36 @@ data class ManualSettleRequest(
 // Google OAuth DTOs
 // ============================================================
 
-// Google OAuth 로그인 요청
+// Google OAuth login request
 data class GoogleAuthRequest(
     @field:NotBlank(message = "Google token is required")
-    val googleToken: String,         // Google에서 받은 ID Token
-    val countryCode: String? = null, // 추가 정보 (선택)
+    val googleToken: String,         // ID Token received from Google
+    val countryCode: String? = null, // Additional information (optional)
     val jobCategory: String? = null,
     val ageGroup: Int? = null
 )
 
-// Google OAuth 로그인 응답
+// Google OAuth login response
 data class GoogleAuthResponse(
     val success: Boolean,
     val message: String,
-    val token: String? = null,           // JWT 토큰
+    val token: String? = null,           // JWT token
     val memberId: Long? = null,
-    val needsAdditionalInfo: Boolean = false  // 추가 정보 입력 필요 여부
+    val needsAdditionalInfo: Boolean = false  // Whether additional information is needed
 )
 
-// Google OAuth 회원가입 완료 요청 (추가 정보)
+// Google OAuth registration completion request (additional information)
+@com.fasterxml.jackson.annotation.JsonIgnoreProperties(ignoreUnknown = true)
 data class CompleteGoogleRegistrationRequest(
     @field:NotBlank(message = "Google ID is required")
     val googleId: String,
     @field:NotBlank(message = "Email is required")
     val email: String,
-    @field:NotBlank(message = "Country code is required")
-    val countryCode: String,
+
+    // Additional information (optional - nullable with defaults)
+    val countryCode: String = "KR",
+    val gender: String? = null,
+    val birthDate: String? = null, // ISO 8601 format (YYYY-MM-DD)
     val jobCategory: String? = null,
-    val ageGroup: Int? = null,
-
-    // 추가 필드
-    @field:NotNull(message = "Gender is required")
-    val gender: com.predata.backend.domain.Gender,
-
-    @field:NotBlank(message = "Birth date is required")
-    val birthDate: String // ISO 8601 형식 (YYYY-MM-DD)
+    val ageGroup: Int? = null
 )

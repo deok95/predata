@@ -7,6 +7,6 @@ if (!supabaseUrl || !supabaseAnonKey) {
   throw new Error('Missing Supabase environment variables. Please check your .env.local file.');
 }
 
-// 전역에서 사용할 Supabase 클라이언트
+// Global Supabase client
 export const supabase = createClient(supabaseUrl, supabaseAnonKey);
 

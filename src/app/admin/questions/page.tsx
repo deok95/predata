@@ -7,11 +7,12 @@ import LiveMatchesDashboard from '@/components/LiveMatchesDashboard';
 import MainLayout from '@/components/layout/MainLayout';
 import { useTheme } from '@/hooks/useTheme';
 import { useAuth } from '@/hooks/useAuth';
-import { GENERATOR_INTERVAL_OPTIONS, MARKET_DURATION_OPTIONS, QUESTION_CATEGORIES } from './constants';
+import { MARKET_DURATION_OPTIONS, QUESTION_CATEGORIES } from './constants';
 import { useAdminQuestions } from './useAdminQuestions';
 import AccessDenied from './components/AccessDenied';
 import AdminHeader from './components/AdminHeader';
 import AutoGeneratorPanel from './components/AutoGeneratorPanel';
+import BulkUploadPanel from './components/BulkUploadPanel';
 import CreateQuestionForm from './components/CreateQuestionForm';
 import QuestionStats from './components/QuestionStats';
 import QuestionsTable from './components/QuestionsTable';
@@ -65,14 +66,8 @@ function AdminQuestionContent() {
         generating={state.generating}
         generatorEnabled={state.generatorEnabled}
         generatorLoading={state.generatorLoading}
-        generatorInterval={state.generatorInterval}
-        generatorCategories={state.generatorCategories}
-        categories={QUESTION_CATEGORIES}
-        intervalOptions={GENERATOR_INTERVAL_OPTIONS}
         onGenerateNow={state.handleGenerateQuestion}
         onToggleGenerator={() => state.handleToggleGenerator(!state.generatorEnabled)}
-        onChangeInterval={state.handleIntervalChange}
-        onToggleCategory={state.handleCategoryToggle}
       />
 
       {state.showCreateForm && (
@@ -95,6 +90,10 @@ function AdminQuestionContent() {
           onCreate={state.handleCreate}
         />
       )}
+
+      <div className="mb-8">
+        <BulkUploadPanel />
+      </div>
 
       <QuestionStats isDark={isDark} questions={state.questions} />
 

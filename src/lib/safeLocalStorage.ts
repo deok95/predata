@@ -1,6 +1,6 @@
 /**
- * 브라우저 전용 localStorage 래퍼
- * SSR 환경에서 안전하게 사용 가능
+ * Browser-only localStorage wrapper
+ * Safe to use in SSR environment
  */
 
 export const safeLocalStorage = {

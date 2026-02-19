@@ -16,17 +16,17 @@ export default function BlockchainVerification({ questionId }: { questionId: num
     setError('')
 
     try {
-      // 백엔드에서 온체인 데이터 조회
+      // Fetch on-chain data from backend
       const response = await fetch(`${API_BASE_URL}/blockchain/question/${questionId}`)
-      
+
       if (response.ok) {
         const data = await response.json()
         setOnChainData(data)
       } else {
-        setError('온체인 데이터를 가져올 수 없습니다.')
+        setError('Unable to fetch on-chain data.')
       }
     } catch (err) {
-      setError('검증 중 오류가 발생했습니다.')
+      setError('An error occurred during verification.')
     } finally {
       setLoading(false)
     }
@@ -37,7 +37,7 @@ export default function BlockchainVerification({ questionId }: { questionId: num
       <div className="flex items-center justify-between mb-3">
         <h3 className="font-bold text-green-400 flex items-center gap-2">
           <CheckCircle size={20} />
-          블록체인 검증
+          Blockchain Verification
         </h3>
         <span className="text-xs text-green-500">Base L2</span>
       </div>
@@ -51,10 +51,10 @@ export default function BlockchainVerification({ questionId }: { questionId: num
           {loading ? (
             <>
               <Loader className="animate-spin" size={16} />
-              검증 중...
+              Verifying...
             </>
           ) : (
-            '온체인 데이터 확인'
+            'Check On-chain Data'
           )}
         </button>
       )}
@@ -98,7 +98,7 @@ export default function BlockchainVerification({ questionId }: { questionId: num
           <div className="bg-blue-900/20 p-3 rounded-lg">
             <p className="text-green-400 text-xs mb-2 flex items-center gap-1">
               <CheckCircle size={14} />
-              이 데이터는 Base L2 블록체인에 영구 기록되어 있습니다
+              This data is permanently recorded on the Base L2 blockchain
             </p>
             <a
               href={`${BASESCAN_URL}/address/${process.env.NEXT_PUBLIC_CONTRACT_ADDRESS}`}
@@ -106,7 +106,7 @@ export default function BlockchainVerification({ questionId }: { questionId: num
               rel="noopener noreferrer"
               className="text-blue-400 hover:text-blue-300 text-xs flex items-center gap-1"
             >
-              Basescan에서 확인하기
+              View on Basescan
               <ExternalLink size={12} />
             </a>
           </div>
@@ -116,13 +116,13 @@ export default function BlockchainVerification({ questionId }: { questionId: num
             disabled={loading}
             className="w-full px-3 py-1.5 bg-gray-700 text-gray-300 text-sm rounded hover:bg-gray-600 transition"
           >
-            새로고침
+            Refresh
           </button>
         </div>
       )}
 
       <p className="text-xs text-gray-500 mt-3 text-center">
-        💎 온체인 기록은 누구나 검증할 수 있지만, 개인 페르소나는 비공개입니다
+        💎 On-chain records are publicly verifiable, but personal personas remain private
       </p>
     </div>
   )

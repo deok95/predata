@@ -33,10 +33,10 @@ export function useUSDCPayment(): UseUSDCPaymentReturn {
     setError(null);
   }, []);
 
-  // USDC transfer 실행 → tx hash 반환
+  // Execute USDC transfer → return tx hash
   const sendUSDC = useCallback(async (amountUsdc: number): Promise<string> => {
     if (!isConnected || !address) {
-      throw new Error('지갑이 연결되지 않았습니다.');
+      throw new Error('Wallet is not connected.');
     }
 
     const amountRaw = toUSDCUnits(amountUsdc);
@@ -51,9 +51,9 @@ export function useUSDCPayment(): UseUSDCPaymentReturn {
     return hash;
   }, [isConnected, address, writeContractAsync]);
 
-  // tx receipt 대기
+  // Wait for tx receipt
   const waitForTx = useCallback(async (hash: string): Promise<void> => {
-    const maxAttempts = 60; // 60 * 2s = 120초 타임아웃
+    const maxAttempts = 60; // 60 * 2s = 120 second timeout
     for (let i = 0; i < maxAttempts; i++) {
       await new Promise(resolve => setTimeout(resolve, 2000));
       try {
@@ -72,19 +72,19 @@ export function useUSDCPayment(): UseUSDCPaymentReturn {
         );
         const data = await response.json();
         if (data.result && data.result.status === '0x1') {
-          return; // 성공
+          return; // Success
         }
         if (data.result && data.result.status === '0x0') {
-          throw new Error('트랜잭션이 실패했습니다.');
+          throw new Error('Transaction failed.');
         }
       } catch (e: any) {
-        if (e.message === '트랜잭션이 실패했습니다.') throw e;
+        if (e.message === 'Transaction failed.') throw e;
       }
     }
-    throw new Error('트랜잭션 확인 시간이 초과되었습니다.');
+    throw new Error('Transaction confirmation timed out.');
   }, []);
 
-  // 잔액 충전용 USDC 전송 + 백엔드 검증
+  // USDC transfer for balance deposit + backend verification
   const sendForDeposit = useCallback(async (amount: number) => {
     if (!user || !address) return;
     try {
@@ -103,7 +103,7 @@ export function useUSDCPayment(): UseUSDCPaymentReturn {
       await refreshUser();
       setStep('success');
     } catch (e: any) {
-      setError(e?.shortMessage || e?.message || '충전에 실패했습니다.');
+      setError(e?.shortMessage || e?.message || 'Deposit failed.');
       setStep('error');
     }
   }, [user, address, sendUSDC, waitForTx, refreshUser, reset]);

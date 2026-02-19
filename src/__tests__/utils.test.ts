@@ -5,31 +5,31 @@ function timeAgo(dateStr: string): string {
   const now = new Date();
   const date = new Date(dateStr);
   const diff = Math.floor((now.getTime() - date.getTime()) / 1000);
-  if (diff < 60) return '방금';
-  if (diff < 3600) return `${Math.floor(diff / 60)}분 전`;
-  if (diff < 86400) return `${Math.floor(diff / 3600)}시간 전`;
-  return `${Math.floor(diff / 86400)}일 전`;
+  if (diff < 60) return 'just now';
+  if (diff < 3600) return `${Math.floor(diff / 60)}m ago`;
+  if (diff < 86400) return `${Math.floor(diff / 3600)}h ago`;
+  return `${Math.floor(diff / 86400)}d ago`;
 }
 
 describe('timeAgo', () => {
-  it('should return "방금" for timestamps less than 60 seconds ago', () => {
+  it('should return "just now" for timestamps less than 60 seconds ago', () => {
     const now = new Date().toISOString();
-    expect(timeAgo(now)).toBe('방금');
+    expect(timeAgo(now)).toBe('just now');
   });
 
   it('should return minutes for timestamps less than 1 hour ago', () => {
     const date = new Date(Date.now() - 5 * 60 * 1000).toISOString();
-    expect(timeAgo(date)).toBe('5분 전');
+    expect(timeAgo(date)).toBe('5m ago');
   });
 
   it('should return hours for timestamps less than 1 day ago', () => {
     const date = new Date(Date.now() - 3 * 60 * 60 * 1000).toISOString();
-    expect(timeAgo(date)).toBe('3시간 전');
+    expect(timeAgo(date)).toBe('3h ago');
   });
 
   it('should return days for timestamps more than 1 day ago', () => {
     const date = new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString();
-    expect(timeAgo(date)).toBe('2일 전');
+    expect(timeAgo(date)).toBe('2d ago');
   });
 });
 

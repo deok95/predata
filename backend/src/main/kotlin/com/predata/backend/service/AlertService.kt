@@ -71,11 +71,11 @@ class AlertService(
             // 최근 분배 실패 건수 조회
             val failureCount = auditLogRepository.countByActionAndDetailContaining(
                 AuditAction.REWARD_FAILED,
-                "실패"
+                "failed"
             )
 
             if (failureCount >= DISTRIBUTION_FAILURE_THRESHOLD) {
-                logger.error("ALERT: 보상 분배 실패가 ${failureCount}건 발생했습니다.")
+                logger.error("ALERT: ${failureCount} reward distribution failures occurred.")
 
                 // AuditLog에 ALERT 기록 (SYSTEM_ALERT 액션이 없으면 일반 로그만)
                 try {
@@ -84,7 +84,7 @@ class AlertService(
                         action = AuditAction.REWARD_FAILED,  // 관련 액션
                         entityType = "ALERT",
                         entityId = null,
-                        detail = "ALERT: 보상 분배 실패 ${failureCount}건 발생"
+                        detail = "ALERT: ${failureCount} reward distribution failures occurred"
                     )
                 } catch (e: Exception) {
                     logger.error("Failed to log distribution failure alert", e)
@@ -140,8 +140,8 @@ class AlertService(
                 // 미리빌율이 50% 이상이면 경고
                 if (unrevealedRate >= REVEAL_RATE_THRESHOLD) {
                     logger.warn(
-                        "ALERT: 질문 ${question.id}의 미리빌 투표가 ${(unrevealedRate * 100).toInt()}%입니다. " +
-                                "(미리빌: $committedCount, 공개: $revealedCount, 총: $totalVotes)"
+                        "ALERT: Question ${question.id} has ${(unrevealedRate * 100).toInt()}% unrevealed votes. " +
+                                "(Unrevealed: $committedCount, Revealed: $revealedCount, Total: $totalVotes)"
                     )
 
                     // 알림 기록
@@ -151,7 +151,7 @@ class AlertService(
                             action = AuditAction.VOTE_REVEAL,
                             entityType = "ALERT",
                             entityId = question.id,
-                            detail = "ALERT: 미리빌율 ${(unrevealedRate * 100).toInt()}% (미리빌: $committedCount/${totalVotes})"
+                            detail = "ALERT: Unrevealed rate ${(unrevealedRate * 100).toInt()}% (Unrevealed: $committedCount/${totalVotes})"
                         )
                     } catch (e: Exception) {
                         logger.error("Failed to log unrevealed votes alert", e)

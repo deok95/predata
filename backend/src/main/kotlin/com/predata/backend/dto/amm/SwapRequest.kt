@@ -8,8 +8,8 @@ data class SwapRequest(
     val questionId: Long,
     val action: SwapAction,
     val outcome: ShareOutcome,
-    val usdcIn: BigDecimal? = null,      // BUY 시 필수
-    val sharesIn: BigDecimal? = null,    // SELL 시 필수
-    val minSharesOut: BigDecimal? = null, // BUY 시 슬리피지 보호
-    val minUsdcOut: BigDecimal? = null    // SELL 시 슬리피지 보호
+    val usdcIn: BigDecimal? = null,      // Required for BUY
+    val sharesIn: BigDecimal? = null,    // Required for SELL
+    val minSharesOut: BigDecimal? = null, // Slippage protection for BUY
+    val minUsdcOut: BigDecimal? = null    // Slippage protection for SELL
 )

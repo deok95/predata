@@ -71,9 +71,9 @@ export default function VoteTrendChart({ activities, isDark }: VoteTrendChartPro
     <div className={cardClass}>
       <div className="flex items-center gap-2 mb-2">
         <TrendingUp className="h-6 w-6 text-indigo-600" />
-        <h2 className={`text-lg font-black ${isDark ? 'text-white' : 'text-slate-900'}`}>투표 추이</h2>
+        <h2 className={`text-lg font-black ${isDark ? 'text-white' : 'text-slate-900'}`}>Vote Trend</h2>
       </div>
-      <p className="text-xs text-slate-400 mb-4">시간대별 누적 투표 및 YES 비율 추이</p>
+      <p className="text-xs text-slate-400 mb-4">Cumulative votes and YES percentage trend by time period</p>
 
       {hasEnoughData ? (
         <ResponsiveContainer width="100%" height={300}>
@@ -97,7 +97,7 @@ export default function VoteTrendChart({ activities, isDark }: VoteTrendChartPro
             <YAxis
               yAxisId="left"
               tick={{ fill: isDark ? '#94a3b8' : '#64748b', fontSize: 11 }}
-              label={{ value: '누적 투표', angle: -90, position: 'insideLeft', style: { fill: isDark ? '#64748b' : '#94a3b8', fontSize: 11 } }}
+              label={{ value: 'Cumulative Votes', angle: -90, position: 'insideLeft', style: { fill: isDark ? '#64748b' : '#94a3b8', fontSize: 11 } }}
             />
             <YAxis
               yAxisId="right"
@@ -123,7 +123,7 @@ export default function VoteTrendChart({ activities, isDark }: VoteTrendChartPro
               stroke="#10B981"
               fill="url(#yesGradient)"
               strokeWidth={2}
-              name="누적 YES"
+              name="Cumulative YES"
             />
             <Area
               yAxisId="left"
@@ -132,7 +132,7 @@ export default function VoteTrendChart({ activities, isDark }: VoteTrendChartPro
               stroke="#EF4444"
               fill="url(#noGradient)"
               strokeWidth={2}
-              name="누적 NO"
+              name="Cumulative NO"
             />
             <Area
               yAxisId="right"
@@ -150,9 +150,9 @@ export default function VoteTrendChart({ activities, isDark }: VoteTrendChartPro
         <div className={`flex flex-col items-center justify-center py-12 rounded-2xl ${isDark ? 'bg-slate-800/50' : 'bg-slate-50'}`}>
           <Info className="h-8 w-8 text-slate-400 mb-3" />
           <p className={`text-sm font-bold ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
-            활동 데이터가 부족하여 트렌드를 표시할 수 없습니다
+            Insufficient activity data to display trend
           </p>
-          <p className="text-xs text-slate-400 mt-1">최소 3개의 시간 구간 데이터가 필요합니다</p>
+          <p className="text-xs text-slate-400 mt-1">At least 3 time intervals of data required</p>
         </div>
       )}
     </div>

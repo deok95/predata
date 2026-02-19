@@ -2,20 +2,20 @@ package com.predata.backend.dto
 
 import com.predata.backend.domain.Choice
 
-// 가중치 적용 투표 결과
+// Weighted vote result
 data class WeightedVoteResult(
-    val rawYesPercentage: Double,      // 원본 비율
-    val weightedYesPercentage: Double, // 가중치 적용 비율
+    val rawYesPercentage: Double,      // Original percentage
+    val weightedYesPercentage: Double, // Weighted percentage
     val totalVotes: Int,
-    val effectiveVotes: Double          // 가중치 적용된 유효 투표수
+    val effectiveVotes: Double          // Effective vote count with weights applied
 )
 
-// 의심 그룹
+// Suspicious group
 data class SuspiciousGroup(
     val criteria: String,              // "country=KR"
-    val voteYesPercentage: Double,     
-    val betYesPercentage: Double,      
-    val gapIndex: Double,              // 괴리율
+    val voteYesPercentage: Double,
+    val betYesPercentage: Double,
+    val gapIndex: Double,              // Discrepancy rate
     val memberCount: Int,
     val riskLevel: RiskLevel
 )
@@ -27,7 +27,7 @@ enum class RiskLevel {
     CRITICAL  // > 50%
 }
 
-// 어뷰징 리포트
+// Abusing report
 data class AbusingReport(
     val questionId: Long,
     val suspiciousGroups: List<SuspiciousGroup>,
@@ -37,20 +37,20 @@ data class AbusingReport(
     val recommendation: String
 )
 
-// 프리미엄 데이터
+// Premium data
 data class PremiumDataResponse(
     val questionId: Long,
     val rawVoteCount: Int,
     val cleanedVoteCount: Int,
     val weightedResult: WeightedVoteResult,
-    val qualityScore: Double,          // 0-100점
-    val gapReduction: Double           // 필터링 전후 괴리율 차이
+    val qualityScore: Double,          // 0-100 score
+    val gapReduction: Double           // Discrepancy rate difference before/after filtering
 )
 
-// 필터링 옵션
+// Filtering options
 data class FilterOptions(
-    val minLatencyMs: Int = 2000,      // 최소 응답 시간
-    val onlyBettors: Boolean = false,  // 베팅 경험자만
-    val minTierWeight: Double = 1.0,   // 최소 티어 가중치
+    val minLatencyMs: Int = 2000,      // Minimum response time
+    val onlyBettors: Boolean = false,  // Only bettors
+    val minTierWeight: Double = 1.0,   // Minimum tier weight
     val excludeCountries: List<String> = emptyList()
 )

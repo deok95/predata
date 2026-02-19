@@ -236,7 +236,7 @@ export default function ProbabilityChart({
           <>
             {/* AMM Liquidity & Volume */}
             <div className={`p-4 rounded-2xl ${isDark ? 'bg-indigo-950/20' : 'bg-indigo-50'}`}>
-              <p className="text-xs font-bold text-indigo-500 mb-1">총 유동성</p>
+              <p className="text-xs font-bold text-indigo-500 mb-1">Total Liquidity</p>
               <p className={`text-lg font-black ${isDark ? 'text-white' : 'text-slate-900'}`}>
                 {'$'}{ammPool.collateralLocked.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
               </p>
@@ -245,7 +245,7 @@ export default function ProbabilityChart({
               </p>
             </div>
             <div className={`p-4 rounded-2xl ${isDark ? 'bg-purple-950/20' : 'bg-purple-50'}`}>
-              <p className="text-xs font-bold text-purple-500 mb-1">거래량</p>
+              <p className="text-xs font-bold text-purple-500 mb-1">Volume</p>
               <p className={`text-lg font-black ${isDark ? 'text-white' : 'text-slate-900'}`}>
                 {'$'}{ammPool.totalVolumeUsdc.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
               </p>

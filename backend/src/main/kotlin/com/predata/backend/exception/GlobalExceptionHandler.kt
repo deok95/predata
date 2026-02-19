@@ -17,11 +17,11 @@ class GlobalExceptionHandler {
 
     private val logger = LoggerFactory.getLogger(GlobalExceptionHandler::class.java)
 
-    // === 비즈니스 예외 ===
+    // === Business exceptions ===
 
     @ExceptionHandler(BusinessException::class)
     fun handleBusinessException(ex: BusinessException): ResponseEntity<ErrorResponse> {
-        // 401, 403은 warning, 나머지는 info 레벨 로깅
+        // 401, 403 use warning level, others use info level logging
         if (ex.httpStatus in 401..403) {
             logger.warn("Business exception: ${ex.code} - ${ex.message}")
         } else {
@@ -43,7 +43,7 @@ class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(
             ErrorResponse(
                 code = "BAD_REQUEST",
-                message = ex.message ?: "잘못된 요청입니다.",
+                message = ex.message ?: "Invalid request.",
                 status = 400
             )
         )
@@ -55,7 +55,7 @@ class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.CONFLICT).body(
             ErrorResponse(
                 code = "CONFLICT",
-                message = ex.message ?: "요청을 처리할 수 없는 상태입니다.",
+                message = ex.message ?: "Request cannot be processed in current state.",
                 status = 409
             )
         )
@@ -66,13 +66,13 @@ class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.NOT_FOUND).body(
             ErrorResponse(
                 code = "NOT_FOUND",
-                message = ex.message ?: "리소스를 찾을 수 없습니다.",
+                message = ex.message ?: "Resource not found.",
                 status = 404
             )
         )
     }
 
-    // === 입력 검증 예외 ===
+    // === Input validation exceptions ===
 
     @ExceptionHandler(MethodArgumentNotValidException::class)
     fun handleValidation(ex: MethodArgumentNotValidException): ResponseEntity<ErrorResponse> {
@@ -81,7 +81,7 @@ class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(
             ErrorResponse(
                 code = "VALIDATION_FAILED",
-                message = "입력값 검증에 실패했습니다.",
+                message = "Input validation failed.",
                 status = 400,
                 details = errors
             )
@@ -94,7 +94,7 @@ class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(
             ErrorResponse(
                 code = "INVALID_REQUEST_BODY",
-                message = "요청 본문을 파싱할 수 없습니다.",
+                message = "Unable to parse request body.",
                 status = 400
             )
         )
@@ -105,7 +105,7 @@ class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(
             ErrorResponse(
                 code = "MISSING_PARAMETER",
-                message = "필수 파라미터 '${ex.parameterName}'가 누락되었습니다.",
+                message = "Required parameter '${ex.parameterName}' is missing.",
                 status = 400
             )
         )
@@ -116,21 +116,21 @@ class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(
             ErrorResponse(
                 code = "TYPE_MISMATCH",
-                message = "파라미터 '${ex.name}'의 타입이 올바르지 않습니다.",
+                message = "Parameter '${ex.name}' has invalid type.",
                 status = 400
             )
         )
     }
 
-    // === 데이터 무결성 예외 (중복 키 등) ===
+    // === Data integrity exceptions (duplicate keys, etc.) ===
 
     @ExceptionHandler(DataIntegrityViolationException::class)
     fun handleDataIntegrity(ex: DataIntegrityViolationException): ResponseEntity<ErrorResponse> {
         logger.warn("Data integrity violation: ${ex.message}")
         val message = when {
-            ex.message?.contains("uk_member_question_type") == true -> "이미 동일한 활동이 존재합니다."
-            ex.message?.contains("Duplicate entry") == true -> "중복된 데이터입니다."
-            else -> "데이터 무결성 위반입니다."
+            ex.message?.contains("uk_member_question_type") == true -> "Activity already exists."
+            ex.message?.contains("Duplicate entry") == true -> "Duplicate data."
+            else -> "Data integrity violation."
         }
         return ResponseEntity.status(HttpStatus.CONFLICT).body(
             ErrorResponse(
@@ -141,7 +141,7 @@ class GlobalExceptionHandler {
         )
     }
 
-    // === 예상치 못한 예외 ===
+    // === Unexpected exceptions ===
 
     @ExceptionHandler(Exception::class)
     fun handleUnexpected(ex: Exception): ResponseEntity<ErrorResponse> {
@@ -149,7 +149,7 @@ class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(
             ErrorResponse(
                 code = "INTERNAL_ERROR",
-                message = "서버 내부 오류가 발생했습니다.",
+                message = "Internal server error occurred.",
                 status = 500
             )
         )

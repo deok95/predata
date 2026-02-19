@@ -4,8 +4,8 @@ import { mapMember } from './mappers';
 
 export const memberApi = {
   /**
-   * ❌ REMOVED: getByEmail - 백엔드 엔드포인트 제거됨 (보안상 위험)
-   * 대안: /api/members/me 사용 (JWT 인증 필요)
+   * ❌ REMOVED: getByEmail - Backend endpoint removed (security risk)
+   * Alternative: Use /api/members/me (requires JWT authentication)
    */
 
   getByWallet: async (address: string): Promise<ApiResponse<Member>> => {
@@ -53,10 +53,22 @@ export const authApi = {
       body: JSON.stringify({ email, code }),
     }),
 
-  completeSignup: (email: string, code: string, password: string, passwordConfirm: string) =>
+  completeSignup: (
+    email: string,
+    code: string,
+    password: string,
+    passwordConfirm: string,
+    additionalInfo: {
+      countryCode: string;
+      gender: 'MALE' | 'FEMALE' | 'OTHER';
+      birthDate: string;
+      jobCategory?: string;
+      ageGroup?: number;
+    }
+  ) =>
     apiRequest<{ success: boolean; message: string; token?: string; memberId?: number }>('/api/auth/complete-signup', {
       method: 'POST',
-      body: JSON.stringify({ email, code, password, passwordConfirm }),
+      body: JSON.stringify({ email, code, password, passwordConfirm, ...additionalInfo }),
     }),
 
   login: (email: string, password: string) =>
@@ -86,6 +98,8 @@ export const authApi = {
     googleId: string;
     email: string;
     countryCode: string;
+    gender: 'MALE' | 'FEMALE' | 'OTHER';
+    birthDate: string;
     jobCategory?: string;
     ageGroup?: number;
   }) =>

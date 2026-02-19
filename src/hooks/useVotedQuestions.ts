@@ -9,7 +9,7 @@ interface VotedInfo {
 }
 
 /**
- * 사용자가 투표한 질문 ID와 선택을 추적하는 훅
+ * Hook for tracking question IDs and choices that user has voted on
  */
 export function useVotedQuestions(memberId: number | undefined) {
   const [votedMap, setVotedMap] = useState<Map<number, 'YES' | 'NO'>>(new Map());
@@ -28,7 +28,7 @@ export function useVotedQuestions(memberId: number | undefined) {
         setVotedMap(map);
       }
     } catch {
-      // 실패 시 무시
+      // Ignore on failure
     } finally {
       setLoading(false);
     }

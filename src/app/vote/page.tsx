@@ -25,7 +25,7 @@ function VoteContent() {
   const fetchQuestions = useCallback(() => {
     questionApi.getAll().then(res => {
       if (res.success && res.data) {
-        // VOTING 상태이면서 투표 종료 시간이 지나지 않은 질문만 필터링
+        // Filter questions with VOTING status and voting period not ended
         const now = new Date();
         const votingQuestions = res.data.filter(q =>
           q.status === 'VOTING' && new Date(q.votingEndAt) > now
@@ -37,19 +37,19 @@ function VoteContent() {
     }).finally(() => setLoading(false));
   }, []);
 
-  // 티켓 상태 조회
+  // Fetch ticket status
   const fetchTicketStatus = useCallback(() => {
     if (!user) return;
     ticketApi.getStatus().then(setTicketStatus).catch(() => setTicketStatus(null));
   }, [user]);
 
-  // 초기 로드
+  // Initial load
   useEffect(() => {
     fetchQuestions();
     fetchTicketStatus();
   }, [fetchQuestions, fetchTicketStatus]);
 
-  // 5초마다 자동 리프레시
+  // Auto-refresh every 5 seconds
   useEffect(() => {
     const interval = setInterval(() => {
       fetchQuestions();
@@ -86,9 +86,9 @@ function VoteContent() {
       <div className="mb-8">
         <div className="flex items-center gap-3 mb-2">
           <VoteIcon className={`w-8 h-8 ${isDark ? 'text-indigo-400' : 'text-indigo-600'}`} />
-          <h1 className={`text-3xl font-black ${isDark ? 'text-white' : 'text-slate-900'}`}>투표</h1>
+          <h1 className={`text-3xl font-black ${isDark ? 'text-white' : 'text-slate-900'}`}>Vote</h1>
         </div>
-        <p className="text-slate-400">VOTING 상태의 질문에 투표하세요 (하루 5개 제한)</p>
+        <p className="text-slate-400">Vote on VOTING status questions (5 per day limit)</p>
 
         {user && !user.hasVotingPass ? (
           <div className={`mt-4 p-4 rounded-xl flex items-center gap-3 ${
@@ -97,7 +97,7 @@ function VoteContent() {
             <AlertCircle className="w-5 h-5 text-amber-500" />
             <div className="flex-1">
               <p className={`font-bold ${isDark ? 'text-amber-300' : 'text-amber-700'}`}>
-                투표 패스가 필요합니다. 마이페이지에서 구매해주세요.
+                Voting Pass required. Please purchase in My Page.
               </p>
             </div>
           </div>
@@ -112,16 +112,16 @@ function VoteContent() {
                 <AlertCircle className="w-5 h-5 text-red-500" />
                 <div className="flex-1">
                   <p className={`font-bold ${isDark ? 'text-red-400' : 'text-red-600'}`}>
-                    오늘 투표 가능 횟수를 모두 사용했습니다
+                    You've used all votes for today
                   </p>
-                  <p className="text-sm text-slate-400">내일 다시 투표하실 수 있습니다</p>
+                  <p className="text-sm text-slate-400">You can vote again tomorrow</p>
                 </div>
               </>
             ) : (
               <>
                 <Ticket className={`w-5 h-5 ${isDark ? 'text-indigo-400' : 'text-indigo-600'}`} />
                 <p className={`font-bold ${isDark ? 'text-indigo-400' : 'text-indigo-600'}`}>
-                  남은 투표권: {ticketStatus.remainingTickets}/{ticketStatus.maxTickets}
+                  Remaining Votes: {ticketStatus.remainingTickets}/{ticketStatus.maxTickets}
                 </p>
               </>
             )}
@@ -141,7 +141,7 @@ function VoteContent() {
                 : isDark ? 'text-slate-400 hover:bg-slate-800' : 'text-slate-500 hover:bg-slate-100'
             }`}
           >
-            조회순
+            Most Viewed
           </button>
           <button
             onClick={() => setSortBy('recent')}
@@ -151,7 +151,7 @@ function VoteContent() {
                 : isDark ? 'text-slate-400 hover:bg-slate-800' : 'text-slate-500 hover:bg-slate-100'
             }`}
           >
-            최신순
+            Latest
           </button>
         </div>
       </div>
@@ -160,7 +160,7 @@ function VoteContent() {
         <div className="text-center py-20">
           <VoteIcon className={`w-16 h-16 mx-auto mb-4 ${isDark ? 'text-slate-700' : 'text-slate-300'}`} />
           <p className="text-slate-400 text-lg">
-            {questions.length === 0 ? '현재 투표 가능한 질문이 없습니다.' : '해당 카테고리에 투표 가능한 질문이 없습니다.'}
+            {questions.length === 0 ? 'No questions available for voting.' : 'No votable questions in this category.'}
           </p>
         </div>
       ) : (

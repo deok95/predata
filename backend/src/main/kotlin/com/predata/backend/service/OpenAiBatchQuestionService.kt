@@ -100,7 +100,7 @@ class OpenAiBatchQuestionService(
             logger.info("[QuestionGen] OpenAI 생성 완료 - batchId={}, subcategory={}, count={}", batchId, request.subcategory, generated.size)
             generated
         } catch (e: Exception) {
-            logger.error("[QuestionGen] OpenAI 호출 실패 - fallback 전환: {}", e.message)
+            logger.error("[QuestionGen] OpenAI call failed - switching to fallback: {}", e.message)
             fallbackQuestions(request)
         }
     }

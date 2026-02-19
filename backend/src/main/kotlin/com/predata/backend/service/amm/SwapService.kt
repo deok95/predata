@@ -72,7 +72,7 @@ class SwapService(
     }
 
     private fun executeBuy(member: Member, pool: MarketPool, request: SwapRequest): SwapResponse {
-        val usdcIn = request.usdcIn ?: throw IllegalArgumentException("BUY 시 usdcIn은 필수입니다.")
+        val usdcIn = request.usdcIn ?: throw IllegalArgumentException("usdcIn is required for BUY.")
 
         require(usdcIn >= MIN_AMOUNT) {
             "최소 거래 금액은 $MIN_AMOUNT USDC입니다."
@@ -185,7 +185,7 @@ class SwapService(
     }
 
     private fun executeSell(member: Member, pool: MarketPool, request: SwapRequest): SwapResponse {
-        val sharesIn = request.sharesIn ?: throw IllegalArgumentException("SELL 시 sharesIn은 필수입니다.")
+        val sharesIn = request.sharesIn ?: throw IllegalArgumentException("sharesIn is required for SELL.")
 
         require(sharesIn >= MIN_AMOUNT) {
             "최소 거래 금액은 $MIN_AMOUNT shares입니다."
@@ -456,7 +456,7 @@ class SwapService(
         // 이미 풀이 있는지 확인
         val existingPool = marketPoolRepository.findById(request.questionId)
         if (existingPool.isPresent) {
-            throw IllegalStateException("해당 질문에 이미 마켓 풀이 존재합니다.")
+            throw IllegalStateException("Market pool already exists for this question.")
         }
 
         val question = questionRepository.findById(request.questionId).orElseThrow {
@@ -551,6 +551,72 @@ class SwapService(
     }
 
     /**
+     * 공개 스왑 내역 조회 (이메일 마스킹)
+     */
+    @Transactional(readOnly = true)
+    fun getSwapHistory(questionId: Long, limit: Int = 20): List<SwapHistoryResponse> {
+        val pageable = PageRequest.of(0, limit.coerceIn(1, 100))
+        return swapHistoryRepository.findByQuestionIdOrderByCreatedAtDesc(questionId, pageable)
+            .content
+            .map { history ->
+                val usdcAmount = if (history.action == SwapAction.BUY) history.usdcIn else history.usdcOut
+                val sharesAmount = if (history.action == SwapAction.BUY) history.sharesOut else history.sharesIn
+                val effectivePrice = if (sharesAmount > ZERO) {
+                    usdcAmount.divide(sharesAmount, 6, RoundingMode.HALF_UP)
+                } else {
+                    BigDecimal.ZERO.setScale(6, RoundingMode.HALF_UP)
+                }
+
+                SwapHistoryResponse(
+                    swapId = history.id ?: 0L,
+                    memberId = history.memberId,
+                    memberEmail = maskEmail(history.member?.email),
+                    action = history.action,
+                    outcome = history.outcome,
+                    usdcAmount = usdcAmount,
+                    sharesAmount = sharesAmount,
+                    effectivePrice = effectivePrice,
+                    feeUsdc = history.feeUsdc,
+                    priceAfterYes = history.priceAfterYes,
+                    createdAt = history.createdAt
+                )
+            }
+    }
+
+    /**
+     * 내 스왑 내역 조회
+     */
+    @Transactional(readOnly = true)
+    fun getMySwapHistory(memberId: Long, questionId: Long, limit: Int = 50): List<SwapHistoryResponse> {
+        val pageable = PageRequest.of(0, limit.coerceIn(1, 100))
+        return swapHistoryRepository.findByMemberIdAndQuestionIdOrderByCreatedAtDesc(memberId, questionId, pageable)
+            .content
+            .map { history ->
+                val usdcAmount = if (history.action == SwapAction.BUY) history.usdcIn else history.usdcOut
+                val sharesAmount = if (history.action == SwapAction.BUY) history.sharesOut else history.sharesIn
+                val effectivePrice = if (sharesAmount > ZERO) {
+                    usdcAmount.divide(sharesAmount, 6, RoundingMode.HALF_UP)
+                } else {
+                    BigDecimal.ZERO.setScale(6, RoundingMode.HALF_UP)
+                }
+
+                SwapHistoryResponse(
+                    swapId = history.id ?: 0L,
+                    memberId = history.memberId,
+                    memberEmail = history.member?.email,
+                    action = history.action,
+                    outcome = history.outcome,
+                    usdcAmount = usdcAmount,
+                    sharesAmount = sharesAmount,
+                    effectivePrice = effectivePrice,
+                    feeUsdc = history.feeUsdc,
+                    priceAfterYes = history.priceAfterYes,
+                    createdAt = history.createdAt
+                )
+            }
+    }
+
+    /**
      * 가격 히스토리 조회
      * swap_history에서 가격 변동 데이터를 가져옴
      */
@@ -594,5 +660,16 @@ class SwapService(
         }
 
         return pricePoints
+    }
+
+    private fun maskEmail(email: String?): String? {
+        if (email.isNullOrBlank() || !email.contains("@")) return null
+        val parts = email.split("@")
+        if (parts.size != 2) return null
+        val local = parts[0]
+        val domain = parts[1]
+        if (local.isBlank()) return "***@$domain"
+        if (local.length <= 2) return "${local.first()}***@$domain"
+        return "${local.take(2)}***@$domain"
     }
 }

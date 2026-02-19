@@ -21,12 +21,19 @@ import com.predata.backend.repository.QuestionGenerationBatchRepository
 import com.predata.backend.repository.QuestionGenerationItemRepository
 import com.predata.backend.repository.QuestionRepository
 import org.slf4j.LoggerFactory
+import org.springframework.beans.factory.annotation.Value
+import org.springframework.http.HttpEntity
+import org.springframework.http.HttpHeaders
+import org.springframework.http.HttpMethod
+import org.springframework.http.MediaType
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
+import org.springframework.web.client.RestTemplate
 import java.math.BigDecimal
 import java.time.LocalDate
 import java.time.LocalDateTime
 import java.time.ZoneOffset
+import java.time.format.DateTimeFormatter
 import java.util.UUID
 import java.util.concurrent.TimeUnit
 
@@ -40,17 +47,113 @@ class AutoQuestionGenerationService(
     private val itemRepository: QuestionGenerationItemRepository,
     private val questionRepository: QuestionRepository,
     private val blockchainService: BlockchainService,
-    private val swapService: com.predata.backend.service.amm.SwapService
+    private val swapService: com.predata.backend.service.amm.SwapService,
+    @Value("\${anthropic.api.key:}") private val anthropicApiKey: String,
+    @Value("\${gemini.api.key:}") private val geminiApiKey: String,
+    @Value("\${gemini.api.model:gemini-1.5-flash}") private val geminiModel: String,
+    @Value("\${app.questiongen.daily-trend-geo:US}") private val dailyTrendGeo: String,
+    @Value("\${app.questiongen.max-generation-attempts:3}") private val maxGenerationAttempts: Int
 ) {
 
     private val logger = LoggerFactory.getLogger(AutoQuestionGenerationService::class.java)
     private val objectMapper = ObjectMapper()
+    private val restTemplate = RestTemplate()
 
     companion object {
+        private const val ANTHROPIC_URL = "https://api.anthropic.com/v1/messages"
+        private const val ANTHROPIC_MODEL = "claude-sonnet-4-20250514"
+        private const val ANTHROPIC_VERSION = "2023-06-01"
+        private const val GEMINI_URL = "https://generativelanguage.googleapis.com/v1beta/models"
+
         const val STATUS_DRAFT = "DRAFT"
         const val STATUS_REJECTED = "REJECTED"
         const val STATUS_PUBLISHED = "PUBLISHED"
         const val STATUS_FAILED = "FAILED"
+    }
+
+    @Transactional
+    fun generateDailyTrendQuestion(): com.predata.backend.dto.QuestionGenerationResponse {
+        val trendKeyword = fetchTopGoogleTrend() ?: run {
+            logger.warn("[DailyTrend] Google Trends unavailable. Falling back to static keyword.")
+            "US macro economy"
+        }
+
+        if (anthropicApiKey.isBlank() && geminiApiKey.isBlank()) {
+            val demoQuestion = buildDemoTrendQuestion(trendKeyword)
+            return createAndSeedTrendQuestion(
+                generatedTitle = demoQuestion.title,
+                generatedResolutionRule = demoQuestion.resolutionRule,
+                generatedDuration = demoQuestion.bettingDuration,
+                trendKeyword = trendKeyword,
+                isDemoMode = true
+            )
+        }
+
+        val attempts = maxGenerationAttempts.coerceAtLeast(1)
+        repeat(attempts) { attempt ->
+            val generated = generateQuestionFromTrend(trendKeyword)
+            if (generated == null) {
+                logger.warn("[DailyTrend] generation failed on attempt {}/{}", attempt + 1, attempts)
+                return@repeat
+            }
+
+            val validation = validateQuestionQuality(generated.title, generated.resolutionRule)
+            if (!validation.valid) {
+                logger.warn(
+                    "[DailyTrend] validation failed on attempt {}/{}: {}",
+                    attempt + 1,
+                    attempts,
+                    validation.reason
+                )
+                return@repeat
+            }
+
+            val temporalValidation = validateTemporalSanity(generated.title)
+            if (!temporalValidation.valid) {
+                logger.warn(
+                    "[DailyTrend] temporal validation failed on attempt {}/{}: {}",
+                    attempt + 1,
+                    attempts,
+                    temporalValidation.reason
+                )
+                return@repeat
+            }
+
+            val eventValidation = validateEventDrivenQuestion(generated.title, generated.resolutionRule)
+            if (!eventValidation.valid) {
+                logger.warn(
+                    "[DailyTrend] event validation failed on attempt {}/{}: {}",
+                    attempt + 1,
+                    attempts,
+                    eventValidation.reason
+                )
+                return@repeat
+            }
+
+            val recentDup = questionRepository.findByCreatedAtAfter(LocalDateTime.now(ZoneOffset.UTC).minusDays(7))
+                .any { it.title.equals(generated.title, ignoreCase = true) }
+            if (recentDup) {
+                logger.warn("[DailyTrend] duplicate title skipped: {}", generated.title)
+                return@repeat
+            }
+
+            return createAndSeedTrendQuestion(
+                generatedTitle = generated.title,
+                generatedResolutionRule = generated.resolutionRule,
+                generatedDuration = generated.bettingDuration,
+                trendKeyword = trendKeyword,
+                isDemoMode = false
+            )
+        }
+
+        val demoQuestion = buildDemoTrendQuestion(trendKeyword)
+        return createAndSeedTrendQuestion(
+            generatedTitle = demoQuestion.title,
+            generatedResolutionRule = demoQuestion.resolutionRule,
+            generatedDuration = demoQuestion.bettingDuration,
+            trendKeyword = trendKeyword,
+            isDemoMode = true
+        )
     }
 
     @Transactional
@@ -65,12 +168,12 @@ class AutoQuestionGenerationService(
         if (existing != null && !request.dryRun) {
             // 이미 게시된 배치
             if (existing.status == STATUS_PUBLISHED) {
-                return toResponse(existing, itemRepository.findByBatchId(existing.batchId), "이미 생성/게시된 배치입니다.")
+                return toResponse(existing, itemRepository.findByBatchId(existing.batchId), "Batch already created/published.")
             }
             // 기존 배치에 아이템이 이미 있으면 재생성 거부 (멱등성 보장)
             val existingItems = itemRepository.findByBatchId(existing.batchId)
             if (existingItems.isNotEmpty()) {
-                throw IllegalStateException("이미 생성된 배치입니다. retry를 사용하세요 (batchId: ${existing.batchId})")
+                throw IllegalStateException("Batch already created. Use retry (batchId: ${existing.batchId})")
             }
         }
 
@@ -126,7 +229,7 @@ class AutoQuestionGenerationService(
             } else {
                 // 검증 실패: 게시 차단
                 batch.status = "VALIDATION_FAILED"
-                batch.message = "검증 실패: 필요 ${requiredTotal}개(OPINION ${requiredOpinion}, VERIFIABLE ${requiredVerifiable}), 실제 ${acceptedCount}개(OPINION ${opinionCount}, VERIFIABLE ${verifiableCount})"
+                batch.message = "Validation failed: Need ${requiredTotal} (OPINION ${requiredOpinion}, VERIFIABLE ${requiredVerifiable}), got ${acceptedCount} (OPINION ${opinionCount}, VERIFIABLE ${verifiableCount})"
                 if (!request.dryRun) {
                     batchRepository.save(batch)
                 }
@@ -141,7 +244,7 @@ class AutoQuestionGenerationService(
             return toResponse(
                 batch,
                 persistSummary.items,
-                "dryRun 모드: DB 저장 없이 초안만 생성"
+                "dryRun mode: Drafts created without DB save"
             )
         }
 
@@ -151,14 +254,14 @@ class AutoQuestionGenerationService(
         return toResponse(
             refreshed,
             items,
-            publishMessage ?: "배치 생성 완료"
+            publishMessage ?: "Batch creation completed"
         )
     }
 
     @Transactional(readOnly = true)
     fun getBatch(batchId: String): BatchGenerateQuestionsResponse {
         val batch = batchRepository.findByBatchId(batchId)
-            ?: throw IllegalArgumentException("배치를 찾을 수 없습니다: $batchId")
+            ?: throw IllegalArgumentException("Batch not found: $batchId")
         val items = itemRepository.findByBatchId(batchId)
         return toResponse(batch, items, batch.message)
     }
@@ -166,7 +269,7 @@ class AutoQuestionGenerationService(
     @Transactional
     fun publishBatch(batchId: String, request: PublishGeneratedBatchRequest): PublishResultResponse {
         val batch = batchRepository.findByBatchId(batchId)
-            ?: throw IllegalArgumentException("배치를 찾을 수 없습니다: $batchId")
+            ?: throw IllegalArgumentException("Batch not found: $batchId")
 
         // 수동 publish API 부분 게시 차단: VERIFIABLE 2개 + OPINION 1개 = 3개 필수
         val settings = settingsService.get()
@@ -184,9 +287,9 @@ class AutoQuestionGenerationService(
         // 검증 실패: 개수 미충족
         if (totalCount != requiredTotal || opinionCount != requiredOpinion || verifiableCount != requiredVerifiable) {
             batch.status = "VALIDATION_FAILED"
-            batch.message = "게시 조건 미충족: VERIFIABLE ${requiredVerifiable}개 + OPINION ${requiredOpinion}개 필요, 실제 VERIFIABLE ${verifiableCount}개 + OPINION ${opinionCount}개"
+            batch.message = "Publishing requirements not met: Need VERIFIABLE ${requiredVerifiable} + OPINION ${requiredOpinion}, got VERIFIABLE ${verifiableCount} + OPINION ${opinionCount}"
             batchRepository.save(batch)
-            throw IllegalArgumentException("게시 조건 미충족: VERIFIABLE ${requiredVerifiable}개 + OPINION ${requiredOpinion}개 필요")
+            throw IllegalArgumentException("Publishing requirements not met: Need VERIFIABLE ${requiredVerifiable} + OPINION ${requiredOpinion}")
         }
 
         return publishBatchInternal(batchId, request.publishDraftIds)
@@ -195,11 +298,11 @@ class AutoQuestionGenerationService(
     @Transactional
     fun retryBatch(batchId: String, request: RetryFailedGenerationRequest): BatchGenerateQuestionsResponse {
         val batch = batchRepository.findByBatchId(batchId)
-            ?: throw IllegalArgumentException("배치를 찾을 수 없습니다: $batchId")
+            ?: throw IllegalArgumentException("Batch not found: $batchId")
 
         val rejected = itemRepository.findByBatchIdAndStatus(batchId, STATUS_REJECTED)
         if (rejected.isEmpty() && !request.force) {
-            return toResponse(batch, itemRepository.findByBatchId(batchId), "재시도 대상이 없습니다")
+            return toResponse(batch, itemRepository.findByBatchId(batchId), "No items to retry")
         }
 
         // 재시도 멱등성 강화: 기존 아이템 삭제 후 새로 생성
@@ -222,7 +325,7 @@ class AutoQuestionGenerationService(
         }
 
         val refreshed = batchRepository.findByBatchId(batchId)!!
-        return toResponse(refreshed, itemRepository.findByBatchId(batchId), "재시도 완료")
+        return toResponse(refreshed, itemRepository.findByBatchId(batchId), "Retry completed")
     }
 
     private fun generateDrafts(
@@ -354,7 +457,7 @@ class AutoQuestionGenerationService(
             else -> STATUS_FAILED
         }
         batch.message = if (validationOutput.validation.errors.isEmpty()) {
-            "생성 완료"
+            "Generation completed"
         } else {
             validationOutput.validation.errors.joinToString(" | ")
         }
@@ -376,7 +479,7 @@ class AutoQuestionGenerationService(
 
     private fun publishBatchInternal(batchId: String, draftIds: List<String>): PublishResultResponse {
         val batch = batchRepository.findByBatchId(batchId)
-            ?: throw IllegalArgumentException("배치를 찾을 수 없습니다: $batchId")
+            ?: throw IllegalArgumentException("Batch not found: $batchId")
 
         val drafts = itemRepository.findByBatchIdAndDraftIdIn(batchId, draftIds)
             .filter { it.status == STATUS_DRAFT }
@@ -390,7 +493,7 @@ class AutoQuestionGenerationService(
                 // 신규 draft는 먼저 DB 저장해서 questionId 확보 후 온체인 게시
                 val targetQuestion = if (draft.publishedQuestionId != null) {
                     questionRepository.findById(draft.publishedQuestionId!!).orElse(null)
-                        ?: throw IllegalStateException("기존 질문을 찾을 수 없습니다: ${draft.publishedQuestionId}")
+                        ?: throw IllegalStateException("Existing question not found: ${draft.publishedQuestionId}")
                 } else {
                     val newQuestion = questionRepository.save(buildQuestionFromDraft(draft))
 
@@ -403,9 +506,9 @@ class AutoQuestionGenerationService(
                                 feeRate = BigDecimal("0.01")   // 1% 수수료
                             )
                         )
-                        logger.info("[AutoQuestionGeneration] 풀 시드 성공 - questionId: ${newQuestion.id}")
+                        logger.info("[AutoQuestionGeneration] Pool seed successful - questionId: ${newQuestion.id}")
                     } catch (e: Exception) {
-                        logger.warn("[AutoQuestionGeneration] 풀 시드 실패 (질문은 생성됨) - questionId: ${newQuestion.id}, error: ${e.message}")
+                        logger.warn("[AutoQuestionGeneration] Pool seed failed (question created) - questionId: ${newQuestion.id}, error: ${e.message}")
                     }
 
                     newQuestion
@@ -417,19 +520,19 @@ class AutoQuestionGenerationService(
                         blockchainService.createQuestionOnChain(targetQuestion)
                             .get(30, TimeUnit.SECONDS)
                     } catch (e: Exception) {
-                        throw RuntimeException("블록체인 게시 실패: ${e.message}", e)
+                        throw RuntimeException("Blockchain publishing failed: ${e.message}", e)
                     }
 
                     // txHash가 null이면 블록체인 트랜잭션 실패로 처리
                     if (txHash == null) {
                         targetQuestion.status = QuestionStatus.CANCELLED
                         questionRepository.save(targetQuestion)
-                        throw RuntimeException("블록체인 트랜잭션 실패: txHash가 null입니다")
+                        throw RuntimeException("Blockchain transaction failed: txHash is null")
                     }
-                    logger.debug("[AutoQuestionGeneration] 블록체인 게시 성공 - draftId: ${draft.draftId}, txHash: $txHash")
+                    logger.debug("[AutoQuestionGeneration] Blockchain publishing successful - draftId: ${draft.draftId}, txHash: $txHash")
                 } else {
                     logger.info(
-                        "[AutoQuestionGeneration] 블록체인 비활성화 모드 - 오프체인 게시 처리 (draftId={})",
+                        "[AutoQuestionGeneration] Blockchain disabled mode - Offchain publishing (draftId={})",
                         draft.draftId
                     )
                 }
@@ -442,16 +545,16 @@ class AutoQuestionGenerationService(
             } catch (e: Exception) {
                 // 블록체인 실패 시: draft를 FAILED로 마킹, DB question은 저장하지 않음
                 draft.status = STATUS_FAILED
-                draft.rejectReason = "블록체인 게시 실패: ${e.message}"
+                draft.rejectReason = "Blockchain publishing failed: ${e.message}"
                 draft.updatedAt = LocalDateTime.now(ZoneOffset.UTC)
                 itemRepository.save(draft)
                 failed++
-                logger.error("[AutoQuestionGeneration] 블록체인 게시 실패 - draftId: ${draft.draftId}, error: ${e.message}", e)
+                logger.error("[AutoQuestionGeneration] Blockchain publishing failed - draftId: ${draft.draftId}, error: ${e.message}", e)
             }
         }
 
         batch.status = if (failed == 0) STATUS_PUBLISHED else STATUS_DRAFT
-        batch.message = "게시 완료: $published, 실패: $failed"
+        batch.message = "Publishing complete: $published published, $failed failed"
         batch.updatedAt = LocalDateTime.now(ZoneOffset.UTC)
         batchRepository.save(batch)
 
@@ -562,6 +665,430 @@ class AutoQuestionGenerationService(
     private fun normalizeCategory(subcategory: String): String {
         return subcategory.substringBefore(":").substringBefore("/").uppercase()
     }
+
+    private fun createAndSeedTrendQuestion(
+        generatedTitle: String,
+        generatedResolutionRule: String,
+        generatedDuration: String?,
+        trendKeyword: String,
+        isDemoMode: Boolean
+    ): com.predata.backend.dto.QuestionGenerationResponse {
+        val bettingDuration = parseDuration(generatedDuration)
+        val now = LocalDateTime.now(ZoneOffset.UTC)
+        val votingDuration = java.time.Duration.ofHours(24)
+        val breakDuration = java.time.Duration.ofMinutes(5)
+
+        val votingEndAt = now.plus(votingDuration)
+        val bettingStartAt = votingEndAt.plus(breakDuration)
+        val bettingEndAt = bettingStartAt.plus(bettingDuration)
+
+        val question = Question(
+            title = generatedTitle,
+            category = "TRENDING",
+            categoryWeight = BigDecimal.ONE,
+            status = QuestionStatus.VOTING,
+            type = QuestionType.VERIFIABLE,
+            marketType = MarketType.VERIFIABLE,
+            resolutionRule = generatedResolutionRule,
+            resolutionSource = "GOOGLE_TRENDS_RSS",
+            resolveAt = bettingEndAt,
+            disputeUntil = bettingEndAt.plusHours(24),
+            voteResultSettlement = false,
+            votingEndAt = votingEndAt,
+            bettingStartAt = bettingStartAt,
+            bettingEndAt = bettingEndAt,
+            totalBetPool = 0,
+            yesBetPool = 0,
+            noBetPool = 0,
+            finalResult = FinalResult.PENDING,
+            sourceUrl = "https://trends.google.com/trending/rss?geo=$dailyTrendGeo",
+            expiredAt = bettingEndAt,
+            createdAt = now,
+            executionModel = ExecutionModel.AMM_FPMM
+        )
+
+        val saved = questionRepository.save(question)
+
+        try {
+            swapService.seedPool(
+                SeedPoolRequest(
+                    questionId = saved.id!!,
+                    seedUsdc = BigDecimal("1000"),
+                    feeRate = BigDecimal("0.01")
+                )
+            )
+        } catch (e: Exception) {
+            logger.warn("[DailyTrend] seed pool failed for questionId={} : {}", saved.id, e.message)
+        }
+
+        logger.info("[DailyTrend] created questionId={}, trend={}", saved.id, trendKeyword)
+        return com.predata.backend.dto.QuestionGenerationResponse(
+            success = true,
+            questionId = saved.id,
+            title = saved.title,
+            category = saved.category,
+            message = "Daily trend question created.",
+            isDemoMode = isDemoMode
+        )
+    }
+
+    private fun fetchTopGoogleTrend(): String? {
+        val url = "https://trends.google.com/trending/rss?geo=$dailyTrendGeo"
+        return try {
+            val headers = HttpHeaders().apply {
+                set("User-Agent", "Mozilla/5.0")
+                set("Accept", "application/rss+xml, application/xml, text/xml;q=0.9, */*;q=0.8")
+            }
+            val response = restTemplate.exchange(url, HttpMethod.GET, HttpEntity<String>(headers), String::class.java)
+            val xml = response.body.orEmpty()
+            if (xml.isBlank()) return null
+
+            // Try multiple title formats:
+            // 1) <title><![CDATA[...]]></title>
+            // 2) <title>...</title>
+            val cdataMatch = Regex(
+                "<item[^>]*>.*?<title>\\s*<!\\[CDATA\\[(.*?)]]>\\s*</title>",
+                setOf(RegexOption.DOT_MATCHES_ALL, RegexOption.IGNORE_CASE)
+            ).find(xml)?.groupValues?.getOrNull(1)?.trim()
+
+            if (!cdataMatch.isNullOrBlank()) {
+                return cdataMatch
+            }
+
+            val plainMatch = Regex(
+                "<item[^>]*>.*?<title>\\s*([^<]+?)\\s*</title>",
+                setOf(RegexOption.DOT_MATCHES_ALL, RegexOption.IGNORE_CASE)
+            ).find(xml)?.groupValues?.getOrNull(1)?.trim()
+
+            plainMatch?.takeIf { it.isNotBlank() }
+        } catch (e: Exception) {
+            logger.warn("[DailyTrend] failed to fetch RSS: {}", e.message)
+            null
+        }
+    }
+
+    private fun generateQuestionFromTrend(keyword: String): DailyTrendGeneratedQuestion? {
+        val today = LocalDate.now(ZoneOffset.UTC)
+        val minDate = today.plusDays(7)
+        val maxDate = today.plusDays(14)
+        val prompt = """
+            Today's #1 Google Trends topic in $dailyTrendGeo is: "$keyword"
+            Today (UTC): ${today.format(DateTimeFormatter.ISO_DATE)}
+
+            Create exactly ONE English prediction market question.
+
+            Rules:
+            - The title must be in English only.
+            - It must be a clear YES/NO question.
+            - It must be specific, verifiable, and resolvable.
+            - It must be EVENT-DRIVEN and interesting for traders.
+            - Do NOT ask whether this keyword stays/appears in Google Trends, search ranking, or Top N lists.
+            - Do NOT ask generic "remain popular" style questions.
+            - Include one concrete measurable condition (e.g., announce/release/win/reach/exceed/at least).
+            - Include one clear evidence source in resolutionRule (official announcement, Reuters/AP/BBC, exchange/price API, sports official result).
+            - The resolution date must be between ${minDate.format(DateTimeFormatter.ISO_DATE)} and ${maxDate.format(DateTimeFormatter.ISO_DATE)}.
+            - Never use any past date or past year.
+            - Include a concrete resolution rule in English.
+
+            Return JSON only:
+            {"title":"Will ...?","bettingDuration":"7d","resolutionRule":"Resolve YES if ... otherwise NO."}
+        """.trimIndent()
+
+        return try {
+            val rawText = callLlm(prompt) ?: return null
+            if (rawText.isBlank()) return null
+
+            val jsonText = extractJson(rawText) ?: return null
+            val parsed = objectMapper.readTree(jsonText)
+            val title = parsed.path("title").asText("").trim()
+            val bettingDuration = parsed.path("bettingDuration").asText("7d").trim()
+            val resolutionRule = parsed.path("resolutionRule").asText("").trim()
+            if (title.isBlank() || resolutionRule.isBlank()) return null
+            DailyTrendGeneratedQuestion(
+                title = title,
+                bettingDuration = bettingDuration,
+                resolutionRule = resolutionRule
+            )
+        } catch (e: Exception) {
+            logger.warn("[DailyTrend] LLM call failed: {}", e.message)
+            null
+        }
+    }
+
+    private fun validateQuestionQuality(title: String, resolutionRule: String): DailyTrendValidationResult {
+        val today = LocalDate.now(ZoneOffset.UTC)
+        val prompt = """
+            Evaluate this prediction market question.
+            Today (UTC): ${today.format(DateTimeFormatter.ISO_DATE)}
+
+            title: "$title"
+            resolutionRule: "$resolutionRule"
+
+            Validate all conditions:
+            1) English-only title.
+            2) Clear YES/NO framing.
+            3) Verifiable with public information.
+            4) Not trivial/self-evident.
+            5) Appropriate content.
+            6) Any date/year in the title must not be in the past.
+            7) Not about Google Trends/search ranking/top keywords itself.
+            8) Must include event + measurable condition.
+
+            Return JSON only:
+            {"valid":true,"reason":"ok"}
+        """.trimIndent()
+
+        return try {
+            val rawText = callLlm(prompt) ?: return DailyTrendValidationResult(false, "Empty validation response")
+            val jsonText = extractJson(rawText)
+                ?: return DailyTrendValidationResult(false, "Invalid validation JSON")
+            val parsed = objectMapper.readTree(jsonText)
+            DailyTrendValidationResult(
+                valid = parsed.path("valid").asBoolean(false),
+                reason = parsed.path("reason").asText("Invalid question")
+            )
+        } catch (e: Exception) {
+            logger.warn("[DailyTrend] validation call failed: {}", e.message)
+            DailyTrendValidationResult(false, "Validation call failed")
+        }
+    }
+
+    private fun validateTemporalSanity(title: String): DailyTrendValidationResult {
+        val nowDate = LocalDate.now(ZoneOffset.UTC)
+
+        val datePatterns = listOf(
+            Regex("""\b(20\d{2})-(\d{1,2})-(\d{1,2})\b"""),
+            Regex("""\b(20\d{2})/(\d{1,2})/(\d{1,2})\b"""),
+            Regex("""\b(20\d{2})\.(\d{1,2})\.(\d{1,2})\b""")
+        )
+
+        for (pattern in datePatterns) {
+            pattern.findAll(title).forEach { m ->
+                val y = m.groupValues[1].toIntOrNull() ?: return@forEach
+                val mo = m.groupValues[2].toIntOrNull() ?: return@forEach
+                val d = m.groupValues[3].toIntOrNull() ?: return@forEach
+                val parsed = runCatching { LocalDate.of(y, mo, d) }.getOrNull() ?: return@forEach
+                if (parsed.isBefore(nowDate)) {
+                    return DailyTrendValidationResult(false, "Title contains a past date: $parsed")
+                }
+            }
+        }
+
+        val yearPattern = Regex("""\b(20\d{2})\b""")
+        yearPattern.findAll(title).forEach { m ->
+            val y = m.groupValues[1].toIntOrNull() ?: return@forEach
+            if (y < nowDate.year) {
+                return DailyTrendValidationResult(false, "Title contains a past year: $y")
+            }
+        }
+
+        return DailyTrendValidationResult(true, "ok")
+    }
+
+    private fun validateEventDrivenQuestion(title: String, resolutionRule: String): DailyTrendValidationResult {
+        val lowerTitle = title.lowercase()
+        val lowerRule = resolutionRule.lowercase()
+
+        val bannedTitlePatterns = listOf(
+            "google trends",
+            "trending topic",
+            "top google trends",
+            "top 25",
+            "search ranking",
+            "appear in google trends",
+            "remain among",
+            "stay in trends",
+            "daily trend"
+        )
+        if (bannedTitlePatterns.any { lowerTitle.contains(it) }) {
+            return DailyTrendValidationResult(false, "Title is trend-ranking meta question, not event-driven")
+        }
+
+        val measurableSignalKeywords = listOf(
+            "announce", "announcement", "release", "launch", "win", "beat",
+            "reach", "exceed", "above", "below", "at least", "more than", "less than",
+            "price", "views", "downloads", "score", "goals", "vote", "approve", "approval",
+            "file", "publish", "report", "official"
+        )
+        val hasMeasurableSignal = measurableSignalKeywords.any { lowerTitle.contains(it) || lowerRule.contains(it) }
+        if (!hasMeasurableSignal) {
+            return DailyTrendValidationResult(false, "Missing measurable event condition")
+        }
+
+        val hasIsoDate = Regex("""\b20\d{2}-\d{2}-\d{2}\b""").containsMatchIn(title)
+        if (!hasIsoDate) {
+            return DailyTrendValidationResult(false, "Title must include explicit ISO date (YYYY-MM-DD)")
+        }
+
+        val hasSourceHint = lowerRule.contains("source") ||
+            lowerRule.contains("official") ||
+            lowerRule.contains("reuters") ||
+            lowerRule.contains("ap ") ||
+            lowerRule.contains("bbc") ||
+            lowerRule.contains("coingecko") ||
+            lowerRule.contains("football-data") ||
+            lowerRule.contains("http")
+        if (!hasSourceHint) {
+            return DailyTrendValidationResult(false, "Resolution rule must include a concrete source")
+        }
+
+        return DailyTrendValidationResult(true, "ok")
+    }
+
+    private fun parseDuration(raw: String?): java.time.Duration {
+        if (raw.isNullOrBlank()) return java.time.Duration.ofDays(7)
+        val candidate = raw.trim().lowercase()
+        val match = Regex("""^(\d+)([hdm])$""").matchEntire(candidate) ?: return java.time.Duration.ofDays(7)
+        val value = match.groupValues[1].toLong()
+        val unit = match.groupValues[2]
+        val parsed = when (unit) {
+            "h" -> java.time.Duration.ofHours(value)
+            "d" -> java.time.Duration.ofDays(value)
+            "m" -> java.time.Duration.ofMinutes(value)
+            else -> java.time.Duration.ofDays(7)
+        }
+        val minDuration = java.time.Duration.ofDays(7)
+        val maxDuration = java.time.Duration.ofDays(14)
+        return when {
+            parsed < minDuration -> minDuration
+            parsed > maxDuration -> maxDuration
+            else -> parsed
+        }
+    }
+
+    private fun extractJson(raw: String): String? {
+        val start = raw.indexOf('{')
+        val end = raw.lastIndexOf('}')
+        if (start == -1 || end == -1 || end <= start) return null
+        return raw.substring(start, end + 1)
+    }
+
+    private fun callLlm(prompt: String): String? {
+        if (anthropicApiKey.isNotBlank()) {
+            callAnthropic(prompt)?.let { return it }
+        }
+        if (geminiApiKey.isNotBlank()) {
+            callGemini(prompt)?.let { return it }
+        }
+        return null
+    }
+
+    private fun callAnthropic(prompt: String): String? {
+        return try {
+            val payload = mapOf(
+                "model" to ANTHROPIC_MODEL,
+                "max_tokens" to 500,
+                "messages" to listOf(mapOf("role" to "user", "content" to prompt))
+            )
+            val headers = HttpHeaders().apply {
+                contentType = MediaType.APPLICATION_JSON
+                set("x-api-key", anthropicApiKey)
+                set("anthropic-version", ANTHROPIC_VERSION)
+            }
+            val response = restTemplate.exchange(
+                ANTHROPIC_URL,
+                HttpMethod.POST,
+                HttpEntity(objectMapper.writeValueAsString(payload), headers),
+                String::class.java
+            )
+            val root = objectMapper.readTree(response.body.orEmpty())
+            val contentArray = root.path("content")
+            if (!contentArray.isArray || contentArray.isEmpty) return null
+            contentArray[0].path("text").asText("")
+        } catch (e: Exception) {
+            logger.warn("[DailyTrend] Anthropic call failed: {}", e.message)
+            null
+        }
+    }
+
+    private fun callGemini(prompt: String): String? {
+        val modelCandidates = linkedSetOf(
+            geminiModel,
+            "gemini-1.5-flash-latest",
+            "gemini-1.5-pro-latest",
+            "gemini-2.0-flash"
+        )
+
+        val payload = mapOf(
+            "contents" to listOf(
+                mapOf(
+                    "parts" to listOf(
+                        mapOf("text" to prompt)
+                    )
+                )
+            ),
+            "generationConfig" to mapOf(
+                "temperature" to 0.2
+            )
+        )
+        val headers = HttpHeaders().apply {
+            contentType = MediaType.APPLICATION_JSON
+        }
+
+        for (model in modelCandidates) {
+            try {
+                val url = "$GEMINI_URL/$model:generateContent?key=$geminiApiKey"
+                val response = restTemplate.exchange(
+                    url,
+                    HttpMethod.POST,
+                    HttpEntity(objectMapper.writeValueAsString(payload), headers),
+                    String::class.java
+                )
+                val root = objectMapper.readTree(response.body.orEmpty())
+                val text = root.path("candidates")
+                    .takeIf { it.isArray && it.size() > 0 }
+                    ?.get(0)
+                    ?.path("content")
+                    ?.path("parts")
+                    ?.takeIf { it.isArray && it.size() > 0 }
+                    ?.get(0)
+                    ?.path("text")
+                    ?.asText()
+                    ?.takeIf { it.isNotBlank() }
+
+                if (!text.isNullOrBlank()) {
+                    logger.info("[DailyTrend] Gemini generation succeeded with model={}", model)
+                    return text
+                }
+            } catch (e: Exception) {
+                logger.warn("[DailyTrend] Gemini call failed for model={} : {}", model, e.message)
+            }
+        }
+
+        return null
+    }
+
+    private fun buildDemoTrendQuestion(rawKeyword: String): DemoTrendQuestion {
+        val keyword = normalizeKeyword(rawKeyword)
+        val resolveDate = LocalDate.now(ZoneOffset.UTC).plusDays(7)
+        val dateText = resolveDate.toString()
+
+        val title = "Will \"$keyword\" have an official major announcement reported by Reuters or AP by $dateText?"
+        val resolutionRule = """
+            Resolve YES if Reuters or AP publishes at least one report by $dateText (UTC) confirming a major official event related to "$keyword" (e.g., announcement, release, filing, contract, or election decision). 
+            Otherwise resolve NO. Source: Reuters/AP public reports.
+        """.trimIndent().replace("\n", " ")
+
+        return DemoTrendQuestion(
+            title = title,
+            resolutionRule = resolutionRule,
+            bettingDuration = "7d"
+        )
+    }
+
+    private fun normalizeKeyword(raw: String): String {
+        val trimmed = raw.trim().replace(Regex("\\s+"), " ")
+        if (trimmed.isBlank()) return "Top US Trend Topic"
+
+        // Keep acronyms as-is, otherwise title-case tokens for readability.
+        return trimmed.split(" ").joinToString(" ") { token ->
+            if (token.length <= 3 && token.all { it.isUpperCase() }) {
+                token
+            } else {
+                token.lowercase().replaceFirstChar { ch -> ch.uppercase() }
+            }
+        }
+    }
 }
 
 data class PersistSummary(
@@ -571,4 +1098,21 @@ data class PersistSummary(
     val items: List<QuestionGenerationItem> = emptyList(),
     val opinionCount: Int = 0,
     val verifiableCount: Int = 0
+)
+
+data class DailyTrendGeneratedQuestion(
+    val title: String,
+    val bettingDuration: String,
+    val resolutionRule: String
+)
+
+data class DailyTrendValidationResult(
+    val valid: Boolean,
+    val reason: String
+)
+
+data class DemoTrendQuestion(
+    val title: String,
+    val resolutionRule: String,
+    val bettingDuration: String
 )

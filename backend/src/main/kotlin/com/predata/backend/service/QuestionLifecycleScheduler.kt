@@ -96,7 +96,7 @@ class QuestionLifecycleScheduler(
                     logger.info("[Lifecycle] 질문 #{} '{}' → BREAK (투표 마감)", locked.id, locked.title)
                 }
             } catch (e: Exception) {
-                logger.error("[Lifecycle] 질문 #{} BREAK 전환 실패: {}", question.id, e.message)
+                logger.error("[Lifecycle] Question #{} BREAK transition failed: {}", question.id, e.message)
             }
         }
     }
@@ -133,11 +133,11 @@ class QuestionLifecycleScheduler(
                         marketMakerService.seedOrderBookIfNeeded(locked.id!!)
                         logger.info("[Lifecycle] 질문 #{} 마켓메이커 시딩 완료", locked.id)
                     } catch (seedError: Exception) {
-                        logger.error("[Lifecycle] 질문 #{} 마켓메이커 시딩 실패 (계속 진행): {}", locked.id, seedError.message)
+                        logger.error("[Lifecycle] Question #{} market maker seeding failed (continuing): {}", locked.id, seedError.message)
                     }
                 }
             } catch (e: Exception) {
-                logger.error("[Lifecycle] 질문 #{} BETTING 전환 실패: {}", question.id, e.message)
+                logger.error("[Lifecycle] Question #{} BETTING transition failed: {}", question.id, e.message)
             }
         }
     }
@@ -196,7 +196,7 @@ class QuestionLifecycleScheduler(
                     }
                 }
             } catch (e: Exception) {
-                logger.error("[Lifecycle] 질문 #{} SETTLED 전환 실패: {}", question.id, e.message)
+                logger.error("[Lifecycle] Question #{} SETTLED transition failed: {}", question.id, e.message)
             }
         }
     }
@@ -212,7 +212,7 @@ class QuestionLifecycleScheduler(
                 val result = settlementService.finalizeSettlement(question.id!!)
                 logger.info("[Lifecycle] 질문 #{} 자동 정산 확정 (배당: {}P)", question.id, result.totalPayout)
             } catch (e: Exception) {
-                logger.error("[Lifecycle] 질문 #{} 자동 정산 실패: {}", question.id, e.message)
+                logger.error("[Lifecycle] Question #{} auto-settlement failed: {}", question.id, e.message)
             }
         }
     }
@@ -297,7 +297,7 @@ class QuestionLifecycleScheduler(
                 noVotes,
                 result
             )
-            logger.info("[Lifecycle] 정산 메시지: {}", settlementResult.message)
+            logger.info("[Lifecycle] Settlement message: {}", settlementResult.message)
 
             // 즉시 배당금 지급
             val finalResult = settlementService.finalizeSettlement(
@@ -306,7 +306,7 @@ class QuestionLifecycleScheduler(
             )
             logger.info("[Lifecycle] 배당금 지급 완료: 승자 {}명, 총 배당금 {}P", finalResult.totalWinners, finalResult.totalPayout)
         } catch (e: Exception) {
-            logger.error("[Lifecycle] VERIFIABLE 질문 #{} 정산 실패: {}", question.id, e.message)
+            logger.error("[Lifecycle] VERIFIABLE question #{} settlement failed: {}", question.id, e.message)
         }
     }
 
@@ -320,7 +320,7 @@ class QuestionLifecycleScheduler(
                 finalResult = result,
                 sourceUrl = sourceUrl
             )
-            logger.info("[Lifecycle] 정산 메시지: {}", settlementResult.message)
+            logger.info("[Lifecycle] Settlement message: {}", settlementResult.message)
 
             // 즉시 배당금 지급
             val finalResult = settlementService.finalizeSettlement(
@@ -329,7 +329,7 @@ class QuestionLifecycleScheduler(
             )
             logger.info("[Lifecycle] 배당금 지급 완료: 승자 {}명, 총 배당금 {}P", finalResult.totalWinners, finalResult.totalPayout)
         } catch (e: Exception) {
-            logger.error("[Lifecycle] 질문 #{} 자동 정산 실패: {}", question.id, e.message)
+            logger.error("[Lifecycle] Question #{} auto-settlement failed: {}", question.id, e.message)
         }
     }
 
@@ -374,7 +374,7 @@ class QuestionLifecycleScheduler(
             }
 
         } catch (e: Exception) {
-            logger.error("[Lifecycle] Claude API 호출 실패: ${e.message}")
+            logger.error("[Lifecycle] Claude API call failed: ${e.message}")
             return "UNKNOWN"
         }
     }

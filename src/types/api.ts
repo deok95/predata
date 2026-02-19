@@ -57,6 +57,12 @@ export interface Question {
   createdAt: string;
   viewCount?: number;
   matchId?: number;
+  // NEW: Sponsor fields for BRANDED category
+  sponsorName?: string;
+  sponsorLogo?: string;
+  // NEW: Auto-resolution fields
+  resolutionType?: 'MANUAL' | 'AUTO';
+  resolutionSource?: string;
 }
 
 export interface CreateQuestionRequest {
@@ -225,7 +231,15 @@ export interface RewardSummary {
 }
 
 // Category type
-export type QuestionCategory = 'ALL' | 'ECONOMY' | 'SPORTS' | 'POLITICS' | 'TECH' | 'CULTURE';
+export type QuestionCategory =
+  | 'ALL'
+  | 'ECONOMY'
+  | 'SPORTS'
+  | 'POLITICS'
+  | 'TECH'
+  | 'CULTURE'
+  | 'TRENDING'  // NEW: Real-time trending issues (auto-generated from Google Trends)
+  | 'BRANDED';  // NEW: Sponsored/branded event questions
 
 // Data Center / Quality Dashboard Types
 export interface QualityDashboard {

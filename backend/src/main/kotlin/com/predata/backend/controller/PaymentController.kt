@@ -30,7 +30,7 @@ class PaymentController(
     ): ResponseEntity<Any> {
         return try {
             val authenticatedMemberId = httpRequest.getAttribute(JwtAuthInterceptor.ATTR_MEMBER_ID) as? Long
-                ?: throw IllegalArgumentException("인증 정보를 찾을 수 없습니다.")
+                ?: throw IllegalArgumentException("Authentication information not found.")
 
             log.info("충전 검증 요청: memberId=$authenticatedMemberId, txHash=${request.txHash}, amount=${request.amount}, fromAddress=${request.fromAddress}")
             val result = paymentVerificationService.verifyDeposit(
@@ -41,11 +41,11 @@ class PaymentController(
             )
             ResponseEntity.ok(result)
         } catch (e: IllegalArgumentException) {
-            log.warn("충전 검증 실패: ${e.message}")
+            log.warn("Deposit verification failed: ${e.message}")
             ResponseEntity.badRequest().body(mapOf("success" to false, "message" to e.message))
         } catch (e: Exception) {
             log.error("충전 검증 오류", e)
-            ResponseEntity.internalServerError().body(mapOf("success" to false, "message" to "서버 오류가 발생했습니다."))
+            ResponseEntity.internalServerError().body(mapOf("success" to false, "message" to "Server error occurred."))
         }
     }
 
@@ -60,7 +60,7 @@ class PaymentController(
     ): ResponseEntity<Any> {
         return try {
             val authenticatedMemberId = httpRequest.getAttribute(JwtAuthInterceptor.ATTR_MEMBER_ID) as? Long
-                ?: throw IllegalArgumentException("인증 정보를 찾을 수 없습니다.")
+                ?: throw IllegalArgumentException("Authentication information not found.")
 
             log.info("출금 요청: memberId=$authenticatedMemberId, amount=${request.amount}, wallet=${request.walletAddress}")
             val result = withdrawalService.withdraw(
@@ -70,11 +70,11 @@ class PaymentController(
             )
             ResponseEntity.ok(result)
         } catch (e: IllegalArgumentException) {
-            log.warn("출금 실패: ${e.message}")
+            log.warn("Withdrawal failed: ${e.message}")
             ResponseEntity.badRequest().body(
                 WithdrawResponse(
                     success = false,
-                    message = e.message ?: "출금에 실패했습니다."
+                    message = e.message ?: "Withdrawal failed."
                 )
             )
         } catch (e: Exception) {
@@ -82,7 +82,7 @@ class PaymentController(
             ResponseEntity.internalServerError().body(
                 WithdrawResponse(
                     success = false,
-                    message = "서버 오류가 발생했습니다."
+                    message = "Server error occurred."
                 )
             )
         }

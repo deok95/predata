@@ -32,7 +32,7 @@ export default function SettlementModal({
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
       <div className={`rounded-2xl shadow-2xl p-8 max-w-lg w-full mx-4 ${isDark ? 'bg-slate-800' : 'bg-white'}`}>
         <div className="flex items-center justify-between mb-6">
-          <h3 className={`text-xl font-black ${isDark ? 'text-white' : 'text-slate-800'}`}>정산 시작</h3>
+          <h3 className={`text-xl font-black ${isDark ? 'text-white' : 'text-slate-800'}`}>Start Settlement</h3>
           <button onClick={onClose} className={isDark ? 'text-slate-400 hover:text-slate-300' : 'text-slate-400 hover:text-slate-600'}>
             <X size={20} />
           </button>
@@ -43,7 +43,7 @@ export default function SettlementModal({
         </p>
 
         <div className="mb-4">
-          <label className={`block text-sm font-semibold mb-2 ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>최종 결과</label>
+          <label className={`block text-sm font-semibold mb-2 ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>Final Result</label>
           <div className="grid grid-cols-2 gap-3">
             <button
               onClick={() => onChangeFinalResult('YES')}
@@ -74,7 +74,7 @@ export default function SettlementModal({
 
         <div className="mb-6">
           <label className={`block text-sm font-semibold mb-2 ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>
-            정산 근거 URL (선택)
+            Source URL (Optional)
           </label>
           <input
             type="url"
@@ -86,7 +86,7 @@ export default function SettlementModal({
             } border`}
           />
           <p className={`text-xs mt-1 ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>
-            결과 판정의 근거가 되는 뉴스/기사 링크를 입력하세요
+            Enter a news/article link that supports the result decision
           </p>
         </div>
 
@@ -94,7 +94,7 @@ export default function SettlementModal({
           <div className="flex items-start gap-2">
             <AlertTriangle size={16} className="text-amber-500 mt-0.5 flex-shrink-0" />
             <p className={`text-xs ${isDark ? 'text-amber-300' : 'text-amber-700'}`}>
-              정산을 시작하면 24시간 이의 제기 기간이 시작됩니다. 이 기간 동안 배당금은 분배되지 않으며, &quot;확정&quot; 버튼을 눌러야 최종 정산됩니다.
+              Starting settlement initiates a 24-hour dispute period. During this time, dividends are not distributed, and you must press the &quot;Finalize&quot; button to complete the settlement.
             </p>
           </div>
         </div>
@@ -106,14 +106,14 @@ export default function SettlementModal({
               isDark ? 'bg-slate-700 text-slate-300 hover:bg-slate-600' : 'bg-slate-200 text-slate-800 hover:bg-slate-300'
             }`}
           >
-            취소
+            Cancel
           </button>
           <button
             onClick={onSubmit}
             disabled={loading}
             className="flex-1 py-3 bg-amber-600 text-white rounded-lg hover:bg-amber-700 transition font-bold disabled:opacity-50"
           >
-            {loading ? '처리 중...' : '정산 시작'}
+            {loading ? 'Processing...' : 'Start Settlement'}
           </button>
         </div>
       </div>

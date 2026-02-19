@@ -21,15 +21,15 @@ class VotingPassService(
             .orElseThrow { IllegalArgumentException("회원을 찾을 수 없습니다.") }
 
         if (member.isBanned) {
-            throw IllegalArgumentException("계정이 정지되었습니다.")
+            throw IllegalArgumentException("Account has been suspended.")
         }
 
         if (member.hasVotingPass) {
-            throw IllegalArgumentException("이미 투표 패스를 보유하고 있습니다.")
+            throw IllegalArgumentException("Already have voting pass.")
         }
 
         if (member.usdcBalance < VOTING_PASS_PRICE) {
-            throw IllegalArgumentException("잔액이 부족합니다. (필요: \$${VOTING_PASS_PRICE}, 보유: \$${member.usdcBalance})")
+            throw IllegalArgumentException("Insufficient balance. (required: \$${VOTING_PASS_PRICE}, balance: \$${member.usdcBalance})")
         }
 
         member.usdcBalance = member.usdcBalance.subtract(VOTING_PASS_PRICE)
@@ -48,7 +48,7 @@ class VotingPassService(
             success = true,
             hasVotingPass = true,
             remainingBalance = member.usdcBalance.toDouble(),
-            message = "투표 패스를 구매했습니다."
+            message = "Voting pass purchased successfully."
         )
     }
 }

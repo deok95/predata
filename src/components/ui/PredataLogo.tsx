@@ -36,7 +36,7 @@ export default function PredataLogo({
           <span className={`text-xl font-black tracking-tighter ${isDark ? 'text-white' : 'text-slate-900'}`}>
             PRE<span className="text-indigo-600">(</span>D<span className="text-indigo-600">)</span>ATA
           </span>
-          <span className="text-[8px] font-bold text-slate-400 tracking-[0.2em] uppercase mt-1">지능형 예측 오라클</span>
+          <span className="text-[8px] font-bold text-slate-400 tracking-[0.2em] uppercase mt-1">Intelligent Prediction Oracle</span>
         </div>
       )}
     </div>

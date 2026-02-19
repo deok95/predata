@@ -58,7 +58,7 @@ class PaymentVerificationService(
                 retries--
                 if (retries == 0) {
                     log.error("낙관적 락 재시도 실패: memberId=$memberId", e)
-                    throw IllegalArgumentException("잔액 업데이트에 실패했습니다. 다시 시도해주세요.")
+                    throw IllegalArgumentException("Failed to update balance. Please try again.")
                 }
                 log.warn("낙관적 락 충돌 발생, 재시도 중... (남은 시도: $retries)")
                 Thread.sleep(100)
@@ -66,13 +66,13 @@ class PaymentVerificationService(
                 retries--
                 if (retries == 0) {
                     log.error("낙관적 락 재시도 실패: memberId=$memberId", e)
-                    throw IllegalArgumentException("잔액 업데이트에 실패했습니다. 다시 시도해주세요.")
+                    throw IllegalArgumentException("Failed to update balance. Please try again.")
                 }
                 log.warn("낙관적 락 충돌 발생, 재시도 중... (남은 시도: $retries)")
                 Thread.sleep(100)
             }
         }
-        throw IllegalArgumentException("충전 처리에 실패했습니다.")
+        throw IllegalArgumentException("Deposit processing failed.")
     }
 
     @Transactional
@@ -83,26 +83,26 @@ class PaymentVerificationService(
 
         // 2. fromAddress 필수 검증
         if (fromAddress.isNullOrBlank()) {
-            throw IllegalArgumentException("발신 지갑 주소(fromAddress)는 필수입니다.")
+            throw IllegalArgumentException("Sender wallet address (fromAddress) is required.")
         }
 
         // 3. DB에 등록된 지갑 주소 확인
         if (member.walletAddress == null) {
-            throw IllegalArgumentException("등록된 지갑 주소가 없습니다. 마이페이지에서 지갑을 먼저 연결해주세요.")
+            throw IllegalArgumentException("No registered wallet address. Please connect your wallet in My Page first.")
         }
 
         // 4. 지갑 주소 검증 (DB에 등록된 지갑 주소와 일치해야 함)
         if (!fromAddress.equals(member.walletAddress, ignoreCase = true)) {
-            throw IllegalArgumentException("등록된 지갑 주소와 일치하지 않습니다. (등록: ${member.walletAddress}, 요청: $fromAddress)")
+            throw IllegalArgumentException("Wallet address does not match registered address. (registered: ${member.walletAddress}, requested: $fromAddress)")
         }
 
         // 5. 중복 검증 방지
         if (paymentTransactionRepository.existsByTxHash(txHash)) {
-            throw IllegalArgumentException("이미 처리된 트랜잭션입니다: $txHash")
+            throw IllegalArgumentException("Transaction already processed: $txHash")
         }
 
         if (amount < BigDecimal.ONE) {
-            throw IllegalArgumentException("충전 가능 금액은 \$1 이상이어야 합니다.")
+            throw IllegalArgumentException("Deposit amount must be at least \$1.")
         }
 
         val expectedAmountRaw = amount.multiply(BigDecimal.TEN.pow(USDC_DECIMALS)).toBigInteger()
@@ -140,7 +140,7 @@ class PaymentVerificationService(
             txHash = txHash,
             amount = amount.toDouble(),
             newBalance = member.usdcBalance.toDouble(),
-            message = "\$${amount}가 충전되었습니다."
+            message = "\$${amount} has been deposited."
         )
     }
 
@@ -151,19 +151,19 @@ class PaymentVerificationService(
         val receipt = web3j.ethGetTransactionReceipt(txHash).send()
 
         if (receipt.transactionReceipt.isEmpty) {
-            throw IllegalArgumentException("트랜잭션을 찾을 수 없습니다. 아직 확인되지 않았을 수 있습니다: $txHash")
+            throw IllegalArgumentException("Transaction not found. It may not be confirmed yet: $txHash")
         }
 
         val txReceipt = receipt.transactionReceipt.get()
 
         // 트랜잭션 성공 여부 확인
         if (txReceipt.status != "0x1") {
-            throw IllegalArgumentException("트랜잭션이 실패했습니다: $txHash")
+            throw IllegalArgumentException("Transaction failed: $txHash")
         }
 
         // USDC 컨트랙트로의 트랜잭션인지 확인
         if (!txReceipt.to.equals(usdcContract, ignoreCase = true)) {
-            throw IllegalArgumentException("USDC 컨트랙트로의 트랜잭션이 아닙니다.")
+            throw IllegalArgumentException("Not a transaction to USDC contract.")
         }
 
         // Transfer 이벤트 로그 파싱
@@ -172,7 +172,7 @@ class PaymentVerificationService(
         }
 
         if (transferLogs.isEmpty()) {
-            throw IllegalArgumentException("Transfer 이벤트를 찾을 수 없습니다.")
+            throw IllegalArgumentException("Transfer event not found.")
         }
 
         // 발신자, 수신자, 금액 검증
@@ -187,21 +187,21 @@ class PaymentVerificationService(
                 // 발신 주소 검증
                 if (!fromAddress.equals(expectedFromAddress, ignoreCase = true)) {
                     throw IllegalArgumentException(
-                        "온체인 발신 주소가 일치하지 않습니다. (예상: $expectedFromAddress, 실제: $fromAddress)"
+                        "On-chain sender address mismatch. (expected: $expectedFromAddress, actual: $fromAddress)"
                     )
                 }
 
                 // 금액 검증
                 if (transferValue < expectedAmountRaw) {
                     throw IllegalArgumentException(
-                        "전송 금액이 부족합니다. (필요: $expectedAmountRaw, 실제: $transferValue)"
+                        "Insufficient transfer amount. (required: $expectedAmountRaw, actual: $transferValue)"
                     )
                 }
                 return transferValue
             }
         }
 
-        throw IllegalArgumentException("수신 지갑으로의 USDC 전송을 찾을 수 없습니다.")
+        throw IllegalArgumentException("USDC transfer to receiver wallet not found.")
     }
 }
 

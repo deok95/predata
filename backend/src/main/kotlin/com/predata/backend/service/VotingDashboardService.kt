@@ -115,7 +115,7 @@ class VotingDashboardService(
         val question = questionRepository.findById(questionId).orElse(null)
             ?: return mapOf(
                 "success" to false,
-                "message" to "질문을 찾을 수 없습니다."
+                "message" to "Question not found."
             )
 
         // 투표 통계

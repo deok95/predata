@@ -6,30 +6,36 @@ import { Loader2, Globe, Briefcase, Users } from 'lucide-react';
 import { authApi } from '@/lib/api';
 
 const COUNTRIES = [
-  { code: 'KR', name: '대한민국' },
-  { code: 'US', name: '미국' },
-  { code: 'JP', name: '일본' },
-  { code: 'CN', name: '중국' },
-  { code: 'GB', name: '영국' },
-  { code: 'OTHER', name: '기타' },
+  { code: 'KR', name: 'South Korea' },
+  { code: 'US', name: 'United States' },
+  { code: 'JP', name: 'Japan' },
+  { code: 'CN', name: 'China' },
+  { code: 'GB', name: 'United Kingdom' },
+  { code: 'OT', name: 'Other' },
 ];
 
 const JOB_CATEGORIES = [
-  '학생',
-  '직장인',
-  '프리랜서',
-  '자영업',
-  '무직',
-  '기타',
+  'Student',
+  'Employee',
+  'Freelancer',
+  'Self-Employed',
+  'Unemployed',
+  'Other',
 ];
 
 const AGE_GROUPS = [
-  { value: 10, label: '10대' },
-  { value: 20, label: '20대' },
-  { value: 30, label: '30대' },
-  { value: 40, label: '40대' },
-  { value: 50, label: '50대 이상' },
+  { value: 10, label: '10s' },
+  { value: 20, label: '20s' },
+  { value: 30, label: '30s' },
+  { value: 40, label: '40s' },
+  { value: 50, label: '50s+' },
 ];
+
+const GENDERS = [
+  { value: 'MALE', label: 'Male' },
+  { value: 'FEMALE', label: 'Female' },
+  { value: 'OTHER', label: 'Other' },
+] as const;
 
 function GoogleCompleteContent() {
   const router = useRouter();
@@ -40,6 +46,8 @@ function GoogleCompleteContent() {
   const [name, setName] = useState<string | null>(null);
 
   const [countryCode, setCountryCode] = useState('KR');
+  const [gender, setGender] = useState<'MALE' | 'FEMALE' | 'OTHER'>('OTHER');
+  const [birthDate, setBirthDate] = useState('');
   const [jobCategory, setJobCategory] = useState('');
   const [ageGroup, setAgeGroup] = useState(20);
 
@@ -47,13 +55,13 @@ function GoogleCompleteContent() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    // URL에서 파라미터 추출
+    // Extract parameters from URL
     const googleIdParam = searchParams.get('googleId');
     const emailParam = searchParams.get('email');
     const nameParam = searchParams.get('name');
 
     if (!googleIdParam || !emailParam) {
-      setError('잘못된 접근입니다.');
+      setError('Invalid access.');
       return;
     }
 
@@ -64,12 +72,17 @@ function GoogleCompleteContent() {
 
   const handleSubmit = async () => {
     if (!googleId || !email) {
-      setError('필수 정보가 누락되었습니다.');
+      setError('Required information is missing.');
       return;
     }
 
     if (!countryCode) {
-      setError('국가를 선택해주세요.');
+      setError('Please select a country.');
+      return;
+    }
+
+    if (!birthDate) {
+      setError('Please enter your birth date.');
       return;
     }
 
@@ -81,22 +94,24 @@ function GoogleCompleteContent() {
         googleId,
         email,
         countryCode,
+        gender,
+        birthDate,
         jobCategory: jobCategory || undefined,
         ageGroup,
       });
 
       if (result.success && result.token && result.memberId) {
-        // 토큰과 memberId를 localStorage에 저장
+        // Save token and memberId to localStorage
         localStorage.setItem('token', result.token);
         localStorage.setItem('memberId', result.memberId.toString());
 
-        // callback 페이지로 redirect — replace로 complete URL을 히스토리에서 제거
+        // Redirect to callback page — remove complete URL from history with replace
         router.replace(`/auth/google/callback?token=${result.token}&memberId=${result.memberId}`);
       } else {
-        setError(result.message || '회원가입에 실패했습니다.');
+        setError(result.message || 'Registration failed.');
       }
     } catch (err: any) {
-      setError(err?.data?.message || err?.message || '회원가입 중 오류가 발생했습니다.');
+      setError(err?.data?.message || err?.message || 'An error occurred during registration.');
     } finally {
       setLoading(false);
     }
@@ -110,7 +125,7 @@ function GoogleCompleteContent() {
             <span className="text-3xl">❌</span>
           </div>
           <h1 className="text-2xl font-black text-slate-900 dark:text-white mb-4">
-            오류
+            Error
           </h1>
           <p className="text-slate-600 dark:text-slate-400 mb-8">
             {error}
@@ -119,7 +134,7 @@ function GoogleCompleteContent() {
             onClick={() => router.push('/')}
             className="w-full py-3 rounded-xl bg-indigo-600 text-white font-bold hover:bg-indigo-700 transition"
           >
-            홈으로 돌아가기
+            Return to Home
           </button>
         </div>
       </div>
@@ -134,19 +149,19 @@ function GoogleCompleteContent() {
             <span className="text-3xl">✨</span>
           </div>
           <h1 className="text-2xl font-black text-slate-900 dark:text-white mb-2">
-            추가 정보 입력
+            Additional Information
           </h1>
           <p className="text-slate-600 dark:text-slate-400 text-sm">
-            {name && `${name}님, `}회원가입을 완료하기 위해 추가 정보를 입력해주세요.
+            {name && `${name}, `}Please enter additional information to complete your registration.
           </p>
         </div>
 
         <div className="space-y-4">
-          {/* 국가 선택 */}
+          {/* Country selection */}
           <div>
             <label className="flex items-center gap-2 text-sm font-bold text-slate-900 dark:text-white mb-2">
               <Globe size={16} />
-              국가 <span className="text-rose-500">*</span>
+              Country <span className="text-rose-500">*</span>
             </label>
             <select
               value={countryCode}
@@ -161,18 +176,52 @@ function GoogleCompleteContent() {
             </select>
           </div>
 
-          {/* 직업 선택 */}
+          <div>
+            <label className="flex items-center gap-2 text-sm font-bold text-slate-900 dark:text-white mb-2">
+              Gender <span className="text-rose-500">*</span>
+            </label>
+            <div className="grid grid-cols-3 gap-2">
+              {GENDERS.map((item) => (
+                <button
+                  key={item.value}
+                  type="button"
+                  onClick={() => setGender(item.value)}
+                  className={`py-2 rounded-xl text-sm font-bold border transition ${
+                    gender === item.value
+                      ? 'bg-indigo-600 text-white border-indigo-600'
+                      : 'border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300'
+                  }`}
+                >
+                  {item.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div>
+            <label className="flex items-center gap-2 text-sm font-bold text-slate-900 dark:text-white mb-2">
+              Birth Date <span className="text-rose-500">*</span>
+            </label>
+            <input
+              type="date"
+              value={birthDate}
+              onChange={(e) => setBirthDate(e.target.value)}
+              className="w-full p-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white font-medium focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            />
+          </div>
+
+          {/* Job selection */}
           <div>
             <label className="flex items-center gap-2 text-sm font-bold text-slate-900 dark:text-white mb-2">
               <Briefcase size={16} />
-              직업 (선택)
+              Occupation (Optional)
             </label>
             <select
               value={jobCategory}
               onChange={(e) => setJobCategory(e.target.value)}
               className="w-full p-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white font-medium focus:outline-none focus:ring-2 focus:ring-indigo-500"
             >
-              <option value="">선택 안 함</option>
+              <option value="">Not Selected</option>
               {JOB_CATEGORIES.map((job) => (
                 <option key={job} value={job}>
                   {job}
@@ -181,11 +230,11 @@ function GoogleCompleteContent() {
             </select>
           </div>
 
-          {/* 연령대 선택 */}
+          {/* Age group selection */}
           <div>
             <label className="flex items-center gap-2 text-sm font-bold text-slate-900 dark:text-white mb-2">
               <Users size={16} />
-              연령대 (선택)
+              Age Group (Optional)
             </label>
             <select
               value={ageGroup}
@@ -209,16 +258,16 @@ function GoogleCompleteContent() {
 
         <button
           onClick={handleSubmit}
-          disabled={loading || !countryCode}
+          disabled={loading || !countryCode || !birthDate}
           className="w-full mt-6 py-4 rounded-xl bg-indigo-600 text-white font-bold hover:bg-indigo-700 transition-all active:scale-95 disabled:opacity-50 flex items-center justify-center gap-2"
         >
           {loading ? (
             <>
               <Loader2 size={20} className="animate-spin" />
-              <span>처리 중...</span>
+              <span>Processing...</span>
             </>
           ) : (
-            <span>회원가입 완료</span>
+            <span>Complete Registration</span>
           )}
         </button>
       </div>

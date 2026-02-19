@@ -1,13 +1,13 @@
 /**
- * Commit-Reveal 투표 유틸리티
+ * Commit-Reveal voting utility
  *
- * 보안 정책: salt는 클라이언트에서만 생성하고 보관
- * - 서버는 commitHash만 저장
- * - reveal 시 클라이언트가 salt를 제공하여 검증
+ * Security policy: salt is generated and stored only on client
+ * - Server stores only commitHash
+ * - Client provides salt during reveal for verification
  */
 
 /**
- * 랜덤 salt 생성 (32바이트 hex)
+ * Generate random salt (32-byte hex)
  */
 export function generateSalt(): string {
   const bytes = new Uint8Array(16);
@@ -18,8 +18,8 @@ export function generateSalt(): string {
 }
 
 /**
- * SHA-256 해시 생성
- * 형식: SHA-256(questionId:memberId:choice:salt)
+ * Generate SHA-256 hash
+ * Format: SHA-256(questionId:memberId:choice:salt)
  */
 export async function generateCommitHash(
   questionId: number,
@@ -36,7 +36,7 @@ export async function generateCommitHash(
 }
 
 /**
- * localStorage에 salt 저장
+ * Save salt to localStorage
  */
 export function saveSaltToStorage(questionId: number, salt: string): void {
   try {
@@ -47,7 +47,7 @@ export function saveSaltToStorage(questionId: number, salt: string): void {
 }
 
 /**
- * localStorage에서 salt 조회
+ * Retrieve salt from localStorage
  */
 export function getSaltFromStorage(questionId: number): string | null {
   try {
@@ -59,7 +59,7 @@ export function getSaltFromStorage(questionId: number): string | null {
 }
 
 /**
- * localStorage에서 salt 삭제
+ * Delete salt from localStorage
  */
 export function removeSaltFromStorage(questionId: number): void {
   try {
@@ -70,7 +70,7 @@ export function removeSaltFromStorage(questionId: number): void {
 }
 
 /**
- * salt 유무 확인
+ * Check if salt exists
  */
 export function hasSaltInStorage(questionId: number): boolean {
   return getSaltFromStorage(questionId) !== null;

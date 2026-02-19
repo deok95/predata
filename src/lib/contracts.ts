@@ -1,28 +1,28 @@
 // USDC Contract Configuration for Polygon
-// 메인넷 전환 시 NEXT_PUBLIC_POLYGON_CHAIN_ID=137 로 변경
+// Change NEXT_PUBLIC_POLYGON_CHAIN_ID=137 when switching to mainnet
 
 export const USDC_DECIMALS = 6;
 
-// USDC 컨트랙트 주소
+// USDC contract addresses
 export const USDC_ADDRESS: Record<number, `0x${string}`> = {
-  137: '0x3c499c542cEF5E3811e1192ce70d8cC03d5c3359',   // Polygon 메인넷 (Native USDC)
+  137: '0x3c499c542cEF5E3811e1192ce70d8cC03d5c3359',   // Polygon Mainnet (Native USDC)
   80002: (process.env.NEXT_PUBLIC_USDC_ADDRESS_AMOY ||
-    '0x41E94Eb019C0762f9Bfcf9Fb1E58725BfB0e7582') as `0x${string}`, // Polygon Amoy 테스트넷
+    '0x41E94Eb019C0762f9Bfcf9Fb1E58725BfB0e7582') as `0x${string}`, // Polygon Amoy Testnet
 };
 
-// USDC 수신 지갑 주소
+// USDC receiver wallet address
 export const RECEIVER_WALLET = (process.env.NEXT_PUBLIC_RECEIVER_WALLET ||
   '0x0000000000000000000000000000000000000000') as `0x${string}`;
 
-// 현재 활성 체인 ID
+// Currently active chain ID
 export const ACTIVE_CHAIN_ID = Number(
   process.env.NEXT_PUBLIC_POLYGON_CHAIN_ID || '80002'
 );
 
-// 현재 체인의 USDC 주소
+// USDC address for current chain
 export const ACTIVE_USDC_ADDRESS = USDC_ADDRESS[ACTIVE_CHAIN_ID] || USDC_ADDRESS[80002];
 
-// ERC-20 transfer ABI (USDC 전송에 필요한 최소 ABI)
+// ERC-20 transfer ABI (minimal ABI required for USDC transfer)
 export const ERC20_ABI = [
   {
     name: 'transfer',
@@ -63,17 +63,17 @@ export const ERC20_ABI = [
   },
 ] as const;
 
-// 가격 정책
-export const VOTING_PASS_PRICE = 10; // 투표 패스 $10
-export const BET_MIN_USDC = 1;       // 최소 베팅 금액
-export const BET_MAX_USDC = 100;     // 최대 베팅 금액
+// Pricing policy
+export const VOTING_PASS_PRICE = 10; // Voting pass $10
+export const BET_MIN_USDC = 1;       // Minimum bet amount
+export const BET_MAX_USDC = 100;     // Maximum bet amount
 
-// USDC 금액을 온체인 단위(6 decimals)로 변환
+// Convert USDC amount to on-chain units (6 decimals)
 export function toUSDCUnits(amount: number): bigint {
   return BigInt(Math.round(amount * 10 ** USDC_DECIMALS));
 }
 
-// 온체인 단위를 USDC 금액으로 변환
+// Convert on-chain units to USDC amount
 export function fromUSDCUnits(units: bigint): number {
   return Number(units) / 10 ** USDC_DECIMALS;
 }

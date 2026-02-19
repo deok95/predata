@@ -51,14 +51,14 @@ export default function DemographicsPieChart({ title, icon: Icon, iconColor, dat
               }}
               formatter={(value, _name, props) => {
                 const entry = (props as any).payload;
-                return [`${Number(value).toLocaleString()}표 (YES ${entry.yesPercentage.toFixed(1)}%)`, entry.name];
+                return [`${Number(value).toLocaleString()} votes (YES ${entry.yesPercentage.toFixed(1)}%)`, entry.name];
               }}
             />
           </PieChart>
         </ResponsiveContainer>
         <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
           <p className={`text-lg font-black ${isDark ? 'text-white' : 'text-slate-900'}`}>{totalVotes.toLocaleString()}</p>
-          <p className="text-[10px] font-bold text-slate-400">총 투표</p>
+          <p className="text-[10px] font-bold text-slate-400">Total Votes</p>
         </div>
       </div>
 

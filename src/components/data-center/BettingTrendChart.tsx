@@ -66,9 +66,9 @@ export default function BettingTrendChart({ activities, isDark }: BettingTrendCh
     <div className={cardClass}>
       <div className="flex items-center gap-2 mb-2">
         <TrendingUp className="h-6 w-6 text-indigo-600" />
-        <h2 className={`text-lg font-black ${isDark ? 'text-white' : 'text-slate-900'}`}>베팅 금액 추이</h2>
+        <h2 className={`text-lg font-black ${isDark ? 'text-white' : 'text-slate-900'}`}>Betting Amount Trend</h2>
       </div>
-      <p className="text-xs text-slate-400 mb-4">시간대별 누적 베팅 금액 — YES/NO 흐름을 한눈에 파악</p>
+      <p className="text-xs text-slate-400 mb-4">Cumulative betting amount by time period — Visualize YES/NO flow at a glance</p>
 
       {hasData ? (
         <ResponsiveContainer width="100%" height={320}>
@@ -110,7 +110,7 @@ export default function BettingTrendChart({ activities, isDark }: BettingTrendCh
               stroke="#10B981"
               fill="url(#betYesGrad)"
               strokeWidth={2.5}
-              name="YES 누적"
+              name="YES Cumulative"
             />
             <Area
               type="monotone"
@@ -118,7 +118,7 @@ export default function BettingTrendChart({ activities, isDark }: BettingTrendCh
               stroke="#EF4444"
               fill="url(#betNoGrad)"
               strokeWidth={2.5}
-              name="NO 누적"
+              name="NO Cumulative"
             />
           </AreaChart>
         </ResponsiveContainer>
@@ -126,9 +126,9 @@ export default function BettingTrendChart({ activities, isDark }: BettingTrendCh
         <div className={`flex flex-col items-center justify-center py-12 rounded-2xl ${isDark ? 'bg-slate-800/50' : 'bg-slate-50'}`}>
           <Info className="h-8 w-8 text-slate-400 mb-3" />
           <p className={`text-sm font-bold ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
-            베팅 데이터가 부족하여 추이를 표시할 수 없습니다
+            Insufficient betting data to display trend
           </p>
-          <p className="text-xs text-slate-400 mt-1">최소 2개의 시간 구간 데이터가 필요합니다</p>
+          <p className="text-xs text-slate-400 mt-1">At least 2 time intervals of data required</p>
         </div>
       )}
     </div>

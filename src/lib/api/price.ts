@@ -1,7 +1,7 @@
 import { apiRequest } from './core';
 
 /**
- * 가격 이력 데이터
+ * Price history data
  */
 export interface PriceHistoryData {
   timestamp: string;
@@ -11,7 +11,7 @@ export interface PriceHistoryData {
 }
 
 /**
- * 가격 이력 조회
+ * Fetch price history
  * GET /api/questions/{id}/price-history?interval=1m&limit=100
  */
 export async function getPriceHistory(

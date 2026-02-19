@@ -113,7 +113,7 @@ class RateLimitInterceptor(
 
             val error = ErrorResponse(
                 code = "RATE_LIMIT_EXCEEDED",
-                message = "요청이 너무 많습니다. ${remaining}초 후 다시 시도해주세요.",
+                message = "Too many requests. Please try again in ${remaining} seconds.",
                 status = 429
             )
             response.writer.write(objectMapper.writeValueAsString(error))

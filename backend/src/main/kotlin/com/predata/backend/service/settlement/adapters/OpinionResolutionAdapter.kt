@@ -22,11 +22,11 @@ class OpinionResolutionAdapter(
 
     override fun resolve(question: Question): ResolutionResult {
         if (!question.voteResultSettlement) {
-            throw IllegalStateException("OPINION 질문은 voteResultSettlement=true 이어야 합니다.")
+            throw IllegalStateException("OPINION questions must have voteResultSettlement=true.")
         }
 
         val questionId = question.id
-            ?: throw IllegalArgumentException("Question ID가 없습니다.")
+            ?: throw IllegalArgumentException("Question ID is missing.")
 
         // 투표 활동 조회
         val votes = activityRepository.findByQuestionId(questionId)

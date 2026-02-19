@@ -53,17 +53,20 @@ class JwtAuthInterceptor(
         if (request.method == "GET" && request.requestURI.matches(Regex("^/api/swap/price-history/\\d+$"))) {
             return true
         }
+        if (request.method == "GET" && request.requestURI.matches(Regex("^/api/swap/history/\\d+$"))) {
+            return true
+        }
 
         val authHeader = request.getHeader("Authorization")
         if (authHeader == null || !authHeader.startsWith("Bearer ")) {
-            writeError(response, HttpStatus.UNAUTHORIZED, "UNAUTHORIZED", "인증이 필요합니다.")
+            writeError(response, HttpStatus.UNAUTHORIZED, "UNAUTHORIZED", "Authentication required.")
             return false
         }
 
         val token = authHeader.substring(7)
         val claims = jwtUtil.validateAndParse(token)
         if (claims == null) {
-            writeError(response, HttpStatus.UNAUTHORIZED, "INVALID_TOKEN", "유효하지 않거나 만료된 토큰입니다.")
+            writeError(response, HttpStatus.UNAUTHORIZED, "INVALID_TOKEN", "Invalid or expired token.")
             return false
         }
 
@@ -78,7 +81,7 @@ class JwtAuthInterceptor(
             request.setAttribute(ATTR_ROLE, role)
         } catch (e: Exception) {
             // Handle malformed JWT (missing subject, email, or role claims)
-            writeError(response, HttpStatus.UNAUTHORIZED, "INVALID_TOKEN", "토큰 형식이 올바르지 않습니다.")
+            writeError(response, HttpStatus.UNAUTHORIZED, "INVALID_TOKEN", "Invalid token format.")
             return false
         }
 

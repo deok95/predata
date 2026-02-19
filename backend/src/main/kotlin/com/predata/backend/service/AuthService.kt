@@ -24,21 +24,21 @@ class AuthService(
         private const val MAX_ATTEMPTS = 5
     }
 
-    // 임시 저장소 (프로덕션에서는 Redis 등 사용)
+    // Temporary storage (use Redis in production)
     private val verifiedEmails = mutableMapOf<String, String>() // email -> code (verified)
 
     /**
-     * Step 1: 이메일로 인증 코드 발송
+     * Step 1: Send verification code to email
      */
     @Transactional
     fun sendVerificationCode(email: String): Map<String, Any> {
         val normalizedEmail = email.trim().lowercase()
 
-        // 이미 가입된 이메일 체크
+        // Check if email is already registered
         if (memberRepository.existsByEmail(normalizedEmail)) {
             return mapOf(
                 "success" to false,
-                "message" to "이미 가입된 이메일입니다."
+                "message" to "Email already registered."
             )
         }
 
@@ -51,18 +51,18 @@ class AuthService(
         )
         emailVerificationRepository.save(verification)
 
-        // 이메일 발송
+        // Send email
         emailService.sendVerificationCode(normalizedEmail, code)
 
         return mapOf(
             "success" to true,
-            "message" to "인증 코드가 이메일로 발송되었습니다. (${CODE_EXPIRY_MINUTES}분 이내 입력)",
+            "message" to "Verification code sent to email. (Enter within ${CODE_EXPIRY_MINUTES} minutes)",
             "expiresInSeconds" to CODE_EXPIRY_MINUTES * 60
         )
     }
 
     /**
-     * Step 2: 인증 코드 검증 (회원 생성 안 함)
+     * Step 2: Verify code (does not create member)
      */
     @Transactional
     fun verifyCode(email: String, code: String): Map<String, Any> {
@@ -73,27 +73,27 @@ class AuthService(
             .orElse(null)
             ?: return mapOf(
                 "success" to false,
-                "message" to "인증 코드를 찾을 수 없습니다."
+                "message" to "Verification code not found."
             )
 
         if (verification.verified) {
             return mapOf(
                 "success" to false,
-                "message" to "이미 사용된 인증 코드입니다."
+                "message" to "Verification code already used."
             )
         }
 
         if (verification.expiresAt.isBefore(LocalDateTime.now())) {
             return mapOf(
                 "success" to false,
-                "message" to "인증 코드가 만료되었습니다."
+                "message" to "Verification code expired."
             )
         }
 
         if (verification.attempts >= MAX_ATTEMPTS) {
             return mapOf(
                 "success" to false,
-                "message" to "인증 시도 횟수를 초과했습니다."
+                "message" to "Verification attempt limit exceeded."
             )
         }
 
@@ -104,87 +104,103 @@ class AuthService(
             val remaining = MAX_ATTEMPTS - verification.attempts
             return mapOf(
                 "success" to false,
-                "message" to "인증 코드가 일치하지 않습니다. (${remaining}회 남음)"
+                "message" to "Verification code does not match. (${remaining} attempts remaining)"
             )
         }
 
-        // 인증 성공 - verified 플래그 설정하고 임시 저장
+        // Verification success - set verified flag and store temporarily
         verification.verified = true
         emailVerificationRepository.save(verification)
         verifiedEmails[normalizedEmail] = code
 
         return mapOf(
             "success" to true,
-            "message" to "인증 코드가 확인되었습니다."
+            "message" to "Verification code confirmed."
         )
     }
 
     /**
-     * Step 3: 비밀번호 설정 및 회원 생성
+     * Step 3: Set password and create member
      */
     @Transactional
     fun completeSignup(
         email: String,
         code: String,
         password: String,
-        countryCode: String,
-        gender: com.predata.backend.domain.Gender,
-        birthDate: String,
+        countryCode: String = "KR",
+        gender: String? = null,
+        birthDate: String? = null,
         jobCategory: String? = null,
         ageGroup: Int? = null
     ): Map<String, Any> {
         val normalizedEmail = email.trim().lowercase()
 
-        // 인증된 이메일인지 확인 (DB에서 직접 확인)
+        // Check if email is verified (check from DB)
         val verification = emailVerificationRepository
             .findTopByEmailOrderByCreatedAtDesc(normalizedEmail)
             .orElse(null)
             ?: return mapOf(
                 "success" to false,
-                "message" to "인증 코드를 찾을 수 없습니다."
+                "message" to "Verification code not found."
             )
 
-        // 인증 완료 여부 확인
+        // Check if verification is complete
         if (!verification.verified) {
             return mapOf(
                 "success" to false,
-                "message" to "인증되지 않은 이메일입니다. 인증 코드를 먼저 확인해주세요."
+                "message" to "Email not verified. Please verify code first."
             )
         }
 
-        // 코드 일치 여부 확인
+        // Check code match
         if (verification.code != code) {
             return mapOf(
                 "success" to false,
-                "message" to "인증 코드가 일치하지 않습니다."
+                "message" to "Verification code does not match."
             )
         }
 
-        // 만료 확인
+        // Check expiration
         if (verification.expiresAt.isBefore(LocalDateTime.now())) {
             return mapOf(
                 "success" to false,
-                "message" to "인증 코드가 만료되었습니다. 다시 시도해주세요."
+                "message" to "Verification code expired. Please try again."
             )
         }
 
-        // 이미 가입된 이메일 체크 (이중 확인)
+        // Check if email is already registered (double check)
         if (memberRepository.existsByEmail(normalizedEmail)) {
             verifiedEmails.remove(normalizedEmail)
             return mapOf(
                 "success" to false,
-                "message" to "이미 가입된 이메일입니다."
+                "message" to "Email already registered."
             )
         }
 
-        // 회원 생성
+        // Parse optional fields
+        val genderEnum = gender?.let {
+            try {
+                com.predata.backend.domain.Gender.valueOf(it.uppercase())
+            } catch (e: IllegalArgumentException) {
+                null
+            }
+        }
+
+        val birthDateParsed = birthDate?.let {
+            try {
+                java.time.LocalDate.parse(it)
+            } catch (e: Exception) {
+                null
+            }
+        }
+
+        // Create member
         val passwordHash = passwordEncoder.encode(password)
-        val birthDateParsed = java.time.LocalDate.parse(birthDate) // ISO 8601 파싱
         val member = Member(
             email = normalizedEmail,
             passwordHash = passwordHash,
             countryCode = countryCode,
-            gender = gender,
+            gender = genderEnum,
             birthDate = birthDateParsed,
             jobCategory = jobCategory,
             ageGroup = ageGroup,
@@ -192,22 +208,22 @@ class AuthService(
         )
         val savedMember = memberRepository.save(member)
 
-        // 임시 저장소에서 제거 (있다면)
+        // Remove from temporary storage (if exists)
         verifiedEmails.remove(normalizedEmail)
 
-        // JWT 토큰 발급 (자동 로그인)
+        // Issue JWT token (auto login)
         val token = jwtUtil.generateToken(savedMember.id!!, savedMember.email, savedMember.role)
 
         return mapOf(
             "success" to true,
-            "message" to "회원가입이 완료되었습니다.",
+            "message" to "Registration completed.",
             "token" to token,
             "memberId" to savedMember.id
         )
     }
 
     /**
-     * 로그인
+     * Login
      */
     @Transactional(readOnly = true)
     fun login(email: String, password: String): Map<String, Any> {
@@ -216,39 +232,39 @@ class AuthService(
         val member = memberRepository.findByEmail(normalizedEmail).orElse(null)
             ?: return mapOf(
                 "success" to false,
-                "message" to "이메일 또는 비밀번호가 일치하지 않습니다."
+                "message" to "Email or password does not match."
             )
 
-        // 비밀번호 해시 존재 여부 확인
+        // Check if password hash exists
         if (member.passwordHash == null) {
             return mapOf(
                 "success" to false,
-                "message" to "비밀번호가 설정되지 않은 계정입니다. 지갑으로 로그인하거나 비밀번호를 재설정하세요."
+                "message" to "Account without password. Please login with wallet or reset password."
             )
         }
 
-        // 비밀번호 검증
+        // Verify password
         if (!passwordEncoder.matches(password, member.passwordHash)) {
             return mapOf(
                 "success" to false,
-                "message" to "이메일 또는 비밀번호가 일치하지 않습니다."
+                "message" to "Email or password does not match."
             )
         }
 
-        // 밴 체크
+        // Check ban status
         if (member.isBanned) {
             return mapOf(
                 "success" to false,
-                "message" to "정지된 계정입니다. 사유: ${member.banReason ?: "관리자에게 문의하세요."}"
+                "message" to "Account suspended. Reason: ${member.banReason ?: "Please contact administrator."}"
             )
         }
 
-        // JWT 토큰 발급
+        // Issue JWT token
         val token = jwtUtil.generateToken(member.id!!, member.email, member.role)
 
         return mapOf(
             "success" to true,
-            "message" to "로그인 성공",
+            "message" to "Login successful",
             "token" to token,
             "memberId" to member.id
         )

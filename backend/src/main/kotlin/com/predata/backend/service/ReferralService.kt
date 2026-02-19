@@ -135,13 +135,13 @@ class ReferralService(
             memberId = referrer.id!!,
             type = "REFERRAL_REWARD",
             title = "새로운 추천 보상",
-            message = "새 회원이 가입했습니다! +${REFERRER_REWARD}P 보상이 지급되었습니다."
+            message = "A new member has joined! +${REFERRER_REWARD}P reward has been credited."
         )
         notificationService.createNotification(
             memberId = refereeId,
             type = "REFERRAL_REWARD",
             title = "추천 가입 보상",
-            message = "추천 코드로 가입 보상 +${REFEREE_REWARD}P가 지급되었습니다."
+            message = "Referral sign-up bonus +${REFEREE_REWARD}P has been credited."
         )
 
         logger.info("Referral applied: referrer=${referrer.id}, referee=$refereeId, code=$referralCode")
@@ -151,7 +151,7 @@ class ReferralService(
 
         return ReferralResult(
             success = true,
-            message = "추천이 완료되었습니다!",
+            message = "Referral completed successfully!",
             referrerReward = REFERRER_REWARD,
             refereeReward = REFEREE_REWARD
         )

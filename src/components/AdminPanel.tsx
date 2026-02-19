@@ -19,7 +19,7 @@ export default function AdminPanel({ questionId, questionTitle, onClose, onSettl
 
   const handleSettle = async () => {
     if (!selectedResult) {
-      alert('결과를 선택해주세요.');
+      alert('Please select a result.');
       return;
     }
 
@@ -35,15 +35,15 @@ export default function AdminPanel({ questionId, questionTitle, onClose, onSettl
         setSuccess(true);
         const data = response.data as { totalBets: number; totalWinners: number; totalPayout: number };
         alert(
-          `✅ 정산 완료!\n\n` +
-          `총 베팅: ${data.totalBets}건\n` +
-          `승자: ${data.totalWinners}명\n` +
-          `총 배당금: $${data.totalPayout.toLocaleString()}`
+          `✅ Settlement Complete!\n\n` +
+          `Total Bets: ${data.totalBets}\n` +
+          `Winners: ${data.totalWinners}\n` +
+          `Total Payout: $${data.totalPayout.toLocaleString()}`
         );
         onSettled();
         setTimeout(() => onClose(), 2000);
       } else {
-        setError((response.message as string) || '정산에 실패했습니다.');
+        setError((response.message as string) || 'Settlement failed.');
       }
     } catch (err) {
       if (process.env.NODE_ENV === 'development') {
@@ -52,7 +52,7 @@ export default function AdminPanel({ questionId, questionTitle, onClose, onSettl
       if (err instanceof ApiError) {
         setError(err.message);
       } else {
-        setError('서버와 통신 중 오류가 발생했습니다.');
+        setError('An error occurred while communicating with the server.');
       }
     } finally {
       setLoading(false);
@@ -64,16 +64,16 @@ export default function AdminPanel({ questionId, questionTitle, onClose, onSettl
       <div className="bg-white rounded-lg shadow-xl p-8 w-full max-w-md">
         <div className="flex items-center gap-2 mb-6">
           <Shield className="text-blue-600" size={24} />
-          <h2 className="text-2xl font-bold">관리자 패널</h2>
+          <h2 className="text-2xl font-bold">Admin Panel</h2>
         </div>
 
         <div className="mb-6">
-          <h3 className="text-sm font-semibold text-slate-700 mb-2">질문</h3>
+          <h3 className="text-sm font-semibold text-slate-700 mb-2">Question</h3>
           <p className="text-sm text-slate-600 bg-slate-50 p-3 rounded">{questionTitle}</p>
         </div>
 
         <div className="mb-6">
-          <h3 className="text-sm font-semibold text-slate-700 mb-3">최종 결과 선택</h3>
+          <h3 className="text-sm font-semibold text-slate-700 mb-3">Select Final Result</h3>
           <div className="flex gap-3">
             <button
               onClick={() => setSelectedResult('YES')}
@@ -107,7 +107,7 @@ export default function AdminPanel({ questionId, questionTitle, onClose, onSettl
         {success && (
           <div className="mb-4 p-3 bg-green-50 border border-green-200 rounded text-green-600 text-sm flex items-center gap-2">
             <CheckCircle size={16} />
-            정산이 완료되었습니다!
+            Settlement completed!
           </div>
         )}
 
@@ -117,7 +117,7 @@ export default function AdminPanel({ questionId, questionTitle, onClose, onSettl
             className="flex-1 py-3 px-4 bg-slate-200 text-slate-800 rounded-md hover:bg-slate-300 transition font-semibold"
             disabled={loading}
           >
-            취소
+            Cancel
           </button>
           <button
             onClick={handleSettle}
@@ -125,7 +125,7 @@ export default function AdminPanel({ questionId, questionTitle, onClose, onSettl
             disabled={loading || !selectedResult || success}
           >
             {loading && <Loader2 className="animate-spin mr-2" size={20} />}
-            정산 실행
+            Execute Settlement
           </button>
         </div>
       </div>

@@ -4,7 +4,7 @@ import java.math.BigDecimal
 import java.time.LocalDateTime
 
 /**
- * 가격 이력 응답 DTO
+ * Price history response DTO
  */
 data class PriceHistoryResponse(
     val timestamp: LocalDateTime,

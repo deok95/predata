@@ -25,7 +25,7 @@ class QuestionLifecycleService(
     @Transactional
     fun transitionTo(questionId: Long, newPhase: VotingPhase): Boolean {
         val question = questionRepository.findById(questionId).orElse(null)
-            ?: throw IllegalArgumentException("질문을 찾을 수 없습니다.")
+            ?: throw IllegalArgumentException("Question not found.")
 
         val currentPhase = question.votingPhase
 

@@ -3,7 +3,7 @@ package com.predata.backend.dto
 import jakarta.validation.constraints.Min
 import jakarta.validation.constraints.NotEmpty
 
-// ===== 설정 관련 DTOs =====
+// ===== Settings related DTOs =====
 
 data class QuestionGeneratorSettingsResponse(
     val enabled: Boolean,
@@ -23,33 +23,33 @@ data class QuestionGeneratorSettingsResponse(
 data class UpdateQuestionGeneratorSettingsRequest(
     val enabled: Boolean? = null,
 
-    @field:Min(value = 60, message = "최소 간격은 60초입니다.")
+    @field:Min(value = 60, message = "Minimum interval is 60 seconds.")
     val intervalSeconds: Long? = null,
 
     val categories: List<String>? = null,
 
     val region: String? = null,
 
-    @field:Min(value = 1, message = "하루 생성 수는 최소 1이어야 합니다.")
+    @field:Min(value = 1, message = "Daily generation count must be at least 1.")
     val dailyCount: Int? = null,
 
-    @field:Min(value = 1, message = "의견형 생성 수는 최소 1이어야 합니다.")
+    @field:Min(value = 1, message = "Opinion generation count must be at least 1.")
     val opinionCount: Int? = null,
 
-    @field:Min(value = 1, message = "투표 시간은 최소 1시간이어야 합니다.")
+    @field:Min(value = 1, message = "Voting time must be at least 1 hour.")
     val votingHours: Int? = null,
 
-    @field:Min(value = 1, message = "베팅 시간은 최소 1시간이어야 합니다.")
+    @field:Min(value = 1, message = "Betting time must be at least 1 hour.")
     val bettingHours: Int? = null,
 
-    @field:Min(value = 0, message = "브레이크 시간은 0분 이상이어야 합니다.")
+    @field:Min(value = 0, message = "Break time must be 0 minutes or more.")
     val breakMinutes: Int? = null,
 
-    @field:Min(value = 1, message = "리빌 시간은 최소 1분이어야 합니다.")
+    @field:Min(value = 1, message = "Reveal time must be at least 1 minute.")
     val revealMinutes: Int? = null
 )
 
-// ===== 질문 생성 관련 DTOs =====
+// ===== Question generation related DTOs =====
 
 data class ManualGenerateQuestionRequest(
     val category: String? = null
@@ -64,7 +64,7 @@ data class QuestionGenerationResponse(
     val isDemoMode: Boolean = false
 )
 
-// ===== Claude API 내부용 DTOs =====
+// ===== Claude API internal DTOs =====
 
 data class ClaudeApiRequest(
     val model: String,

@@ -17,8 +17,8 @@ const queryClient = new QueryClient({
   },
 });
 
-// 클라이언트 컴포넌트이므로 metadata를 직접 export할 수 없습니다
-// 대신 Head를 사용하거나 별도의 서버 컴포넌트로 분리해야 합니다
+// Cannot export metadata directly in client component
+// Must use Head or separate server component instead
 
 export default function RootLayout({
   children,
@@ -26,10 +26,10 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="ko">
+    <html lang="en">
       <head>
-        <title>Predata - Web3 예측 시장</title>
-        <meta name="description" content="투명하고 공정한 예측 시장 플랫폼" />
+        <title>Predata - Web3 Prediction Market</title>
+        <meta name="description" content="Transparent and fair prediction market platform" />
       </head>
       <body
         className="antialiased"

@@ -44,11 +44,11 @@ export default function WithdrawModal({ isOpen, onClose }: WithdrawModalProps) {
         await refreshUser();
         setStep('success');
       } else {
-        setError(result.message || '출금에 실패했습니다.');
+        setError(result.message || 'Withdrawal failed.');
         setStep('error');
       }
     } catch (e: any) {
-      setError(e?.message || '출금에 실패했습니다.');
+      setError(e?.message || 'Withdrawal failed.');
       setStep('error');
     }
   };
@@ -74,8 +74,8 @@ export default function WithdrawModal({ isOpen, onClose }: WithdrawModalProps) {
             <ArrowUpRight size={24} className="text-white" />
           </div>
           <div>
-            <h2 className={`text-xl font-black ${isDark ? 'text-white' : 'text-slate-900'}`}>출금하기</h2>
-            <p className="text-xs text-slate-400">잔액에서 USDC로 지갑 전송</p>
+            <h2 className={`text-xl font-black ${isDark ? 'text-white' : 'text-slate-900'}`}>Withdraw</h2>
+            <p className="text-xs text-slate-400">Transfer USDC to wallet</p>
           </div>
         </div>
 
@@ -84,7 +84,7 @@ export default function WithdrawModal({ isOpen, onClose }: WithdrawModalProps) {
             {!isConnected ? (
               <div className="text-center py-6">
                 <p className={`text-sm mb-4 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
-                  출금하려면 지갑을 연결해야 합니다.
+                  Please connect your wallet to withdraw.
                 </p>
                 <div className="flex justify-center">
                   <ConnectButton />
@@ -94,11 +94,11 @@ export default function WithdrawModal({ isOpen, onClose }: WithdrawModalProps) {
               <>
                 <div className={`rounded-xl p-4 mb-4 ${isDark ? 'bg-slate-800' : 'bg-slate-50'}`}>
                   <div className="flex justify-between items-center mb-2">
-                    <span className="text-xs text-slate-400">보유 잔액</span>
+                    <span className="text-xs text-slate-400">Balance</span>
                     <span className="text-sm font-bold text-indigo-600">{'$'}{(user.usdcBalance ?? 0).toLocaleString()}</span>
                   </div>
                   <div className="flex justify-between items-center">
-                    <span className="text-xs text-slate-400">출금 지갑</span>
+                    <span className="text-xs text-slate-400">Withdraw to</span>
                     <span className="text-xs font-mono">{address?.slice(0, 6)}...{address?.slice(-4)}</span>
                   </div>
                 </div>
@@ -108,7 +108,7 @@ export default function WithdrawModal({ isOpen, onClose }: WithdrawModalProps) {
                     type="number"
                     value={amount}
                     onChange={(e) => setAmount(e.target.value)}
-                    placeholder="출금 금액"
+                    placeholder="Withdrawal amount"
                     min={BET_MIN_USDC}
                     max={Math.min(BET_MAX_USDC, user.usdcBalance ?? 0)}
                     className={`w-full px-4 py-3.5 rounded-xl border text-lg font-bold pr-12 ${isDark ? 'bg-slate-800 border-slate-700 text-white' : 'bg-slate-50 border-slate-200 text-slate-900'}`}
@@ -139,12 +139,12 @@ export default function WithdrawModal({ isOpen, onClose }: WithdrawModalProps) {
                   className="w-full py-4 rounded-2xl font-black text-lg bg-rose-600 text-white hover:bg-rose-700 transition-all active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                 >
                   <ArrowUpRight size={20} />
-                  {'$'}{amount || '0'} 출금하기
+                  Withdraw {'$'}{amount || '0'}
                 </button>
 
                 {numAmount > 0 && !isValidAmount && (
                   <p className="text-xs text-rose-400 mt-2 text-center">
-                    {numAmount > (user.usdcBalance ?? 0) ? '잔액이 부족합니다.' : `$${BET_MIN_USDC}~$${BET_MAX_USDC} 범위에서 출금 가능합니다.`}
+                    {numAmount > (user.usdcBalance ?? 0) ? 'Insufficient balance.' : `Withdrawal range: $${BET_MIN_USDC}~$${BET_MAX_USDC}`}
                   </p>
                 )}
               </>
@@ -155,16 +155,16 @@ export default function WithdrawModal({ isOpen, onClose }: WithdrawModalProps) {
         {step === 'processing' && (
           <div className="text-center py-8">
             <Loader2 size={48} className="mx-auto mb-4 text-rose-600 animate-spin" />
-            <p className={`font-bold mb-2 ${isDark ? 'text-white' : 'text-slate-900'}`}>출금 처리 중...</p>
-            <p className="text-xs text-slate-400">USDC를 지갑으로 전송하고 있습니다.</p>
+            <p className={`font-bold mb-2 ${isDark ? 'text-white' : 'text-slate-900'}`}>Processing withdrawal...</p>
+            <p className="text-xs text-slate-400">Transferring USDC to your wallet.</p>
           </div>
         )}
 
         {step === 'success' && (
           <div className="text-center py-8">
             <CheckCircle size={48} className="mx-auto mb-4 text-emerald-500" />
-            <p className={`font-black text-lg mb-2 ${isDark ? 'text-white' : 'text-slate-900'}`}>출금 완료!</p>
-            <p className="text-sm text-slate-400">{'$'}{amount}가 지갑으로 전송되었습니다.</p>
+            <p className={`font-black text-lg mb-2 ${isDark ? 'text-white' : 'text-slate-900'}`}>Withdrawal Complete!</p>
+            <p className="text-sm text-slate-400">{'$'}{amount} has been transferred to your wallet.</p>
             {txHash && (
               <p className="text-xs text-slate-400 font-mono mt-2 break-all">
                 TX: {txHash.slice(0, 10)}...{txHash.slice(-8)}
@@ -174,7 +174,7 @@ export default function WithdrawModal({ isOpen, onClose }: WithdrawModalProps) {
               onClick={handleClose}
               className="mt-6 px-8 py-3 rounded-2xl font-bold bg-indigo-600 text-white hover:bg-indigo-700 transition-all"
             >
-              확인
+              Confirm
             </button>
           </div>
         )}
@@ -182,13 +182,13 @@ export default function WithdrawModal({ isOpen, onClose }: WithdrawModalProps) {
         {step === 'error' && (
           <div className="text-center py-8">
             <AlertCircle size={48} className="mx-auto mb-4 text-rose-500" />
-            <p className={`font-bold mb-2 ${isDark ? 'text-white' : 'text-slate-900'}`}>출금 실패</p>
+            <p className={`font-bold mb-2 ${isDark ? 'text-white' : 'text-slate-900'}`}>Withdrawal Failed</p>
             <p className="text-sm text-rose-400 mb-6">{error}</p>
             <button
               onClick={() => setStep('idle')}
               className="px-8 py-3 rounded-2xl font-bold bg-indigo-600 text-white hover:bg-indigo-700 transition-all"
             >
-              다시 시도
+              Retry
             </button>
           </div>
         )}

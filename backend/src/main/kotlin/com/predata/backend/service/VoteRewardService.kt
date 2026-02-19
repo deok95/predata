@@ -152,7 +152,7 @@ class VoteRewardService(
         // 6. 캡: 총 분배액 <= 리워드 풀 잔액 검증
         if (totalDistributed > rewardPool) {
             logger.error("Total distributed ($totalDistributed) exceeds reward pool ($rewardPool) for questionId=$questionId")
-            throw IllegalStateException("보상 총액이 리워드 풀 잔액을 초과했습니다.")
+            throw IllegalStateException("Total rewards exceed reward pool balance.")
         }
 
         logger.info("Reward calculation complete: questionId=$questionId, pool=$rewardPool, distributed=$totalDistributed, truncated=$totalTruncated, participants=${individualRewards.size}")

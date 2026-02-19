@@ -61,7 +61,7 @@ class SettlementService(
     @Transactional
     fun autoSettleWithVerification(questionId: Long): SettlementResult? {
         val question = questionRepository.findByIdWithLock(questionId)
-            ?: throw IllegalArgumentException("질문을 찾을 수 없습니다.")
+            ?: throw IllegalArgumentException("Question not found.")
 
         // 1. marketType == VERIFIABLE 체크
         if (question.marketType != com.predata.backend.domain.MarketType.VERIFIABLE) {
@@ -73,7 +73,7 @@ class SettlementService(
         val resolutionResult = try {
             resolutionAdapterRegistry.resolve(question)
         } catch (e: Exception) {
-            logger.error("[AutoSettle] 질문 #{} 결과 조회 실패: {}", questionId, e.message)
+            logger.error("[AutoSettle] Question #{} result fetch failed: {}", questionId, e.message)
             return null
         }
 
@@ -127,13 +127,13 @@ class SettlementService(
     @Transactional
     fun initiateSettlementAuto(questionId: Long): SettlementResult {
         val question = questionRepository.findByIdWithLock(questionId)
-            ?: throw IllegalArgumentException("질문을 찾을 수 없습니다.")
+            ?: throw IllegalArgumentException("Question not found.")
 
         if (question.status == QuestionStatus.SETTLED) {
-            throw IllegalStateException("이미 정산된 질문입니다.")
+            throw IllegalStateException("Question already settled.")
         }
         if (question.status != QuestionStatus.VOTING && question.status != QuestionStatus.BETTING && question.status != QuestionStatus.BREAK) {
-            throw IllegalStateException("정산 가능한 상태가 아닙니다. (현재: ${question.status})")
+            throw IllegalStateException("Question status is not eligible for settlement. (current: ${question.status})")
         }
 
         // ResolutionAdapter를 통해 자동 정산
@@ -141,9 +141,9 @@ class SettlementService(
 
         // 결과가 미확정이면 정산 시작 불가
         val finalResult = resolutionResult.result
-            ?: throw IllegalStateException("정산 결과가 아직 확정되지 않았습니다.")
+            ?: throw IllegalStateException("Settlement result not yet confirmed.")
         if (finalResult == FinalResult.PENDING) {
-            throw IllegalStateException("정산 결과가 아직 확정되지 않았습니다.")
+            throw IllegalStateException("Settlement result not yet confirmed.")
         }
 
         // 기존 메서드 재사용
@@ -158,13 +158,13 @@ class SettlementService(
     @Transactional
     fun initiateSettlement(questionId: Long, finalResult: FinalResult, sourceUrl: String?): SettlementResult {
         val question = questionRepository.findByIdWithLock(questionId)
-            ?: throw IllegalArgumentException("질문을 찾을 수 없습니다.")
+            ?: throw IllegalArgumentException("Question not found.")
 
         if (question.status == QuestionStatus.SETTLED) {
-            throw IllegalStateException("이미 정산된 질문입니다.")
+            throw IllegalStateException("Question already settled.")
         }
         if (question.status != QuestionStatus.VOTING && question.status != QuestionStatus.BETTING && question.status != QuestionStatus.BREAK) {
-            throw IllegalStateException("정산 가능한 상태가 아닙니다. (현재: ${question.status})")
+            throw IllegalStateException("Question status is not eligible for settlement. (current: ${question.status})")
         }
 
         question.status = QuestionStatus.SETTLED
@@ -192,7 +192,7 @@ class SettlementService(
             ExecutionModel.ORDERBOOK_LEGACY -> {
                 val positions = positionService.getPositionsByQuestionId(questionId)
                 if (positions.isEmpty()) {
-                    throw IllegalStateException("정산 대상 포지션이 없습니다.")
+                    throw IllegalStateException("No positions to settle.")
                 }
                 positions.size
             }
@@ -211,7 +211,7 @@ class SettlementService(
             totalWinners = 0,
             totalPayout = 0,
             voterRewards = 0,
-            message = "정산이 시작되었습니다. ${DISPUTE_HOURS}시간 이의 제기 기간 후 확정됩니다."
+            message = "Settlement initiated. Will be finalized after ${DISPUTE_HOURS} hour(s) dispute period."
         )
     }
 
@@ -226,19 +226,19 @@ class SettlementService(
     @Transactional
     fun finalizeSettlement(questionId: Long, skipDeadlineCheck: Boolean = false): SettlementResult {
         val question = questionRepository.findByIdWithLock(questionId)
-            ?: throw IllegalArgumentException("질문을 찾을 수 없습니다.")
+            ?: throw IllegalArgumentException("Question not found.")
 
         if (question.status != QuestionStatus.SETTLED) {
-            throw IllegalStateException("정산 대기 상태의 질문만 확정할 수 있습니다. (현재: ${question.status})")
+            throw IllegalStateException("Only pending settlement questions can be finalized. (current: ${question.status})")
         }
 
         // 이중 정산 방지: disputeDeadline이 null이면 이미 finalize 완료된 질문
         if (question.disputeDeadline == null) {
-            throw IllegalStateException("이미 정산 확정된 질문입니다.")
+            throw IllegalStateException("Settlement already finalized.")
         }
 
         if (!skipDeadlineCheck && LocalDateTime.now().isBefore(question.disputeDeadline)) {
-            throw IllegalStateException("이의 제기 기간이 아직 종료되지 않았습니다. (기한: ${question.disputeDeadline})")
+            throw IllegalStateException("Dispute period has not ended yet. (deadline: ${question.disputeDeadline})")
         }
 
         // execution_model에 따라 분기
@@ -258,7 +258,7 @@ class SettlementService(
         val finalResult = question.finalResult
 
         if (finalResult == FinalResult.PENDING) {
-            throw IllegalStateException("최종 결과가 확정되지 않아 정산을 확정할 수 없습니다.")
+            throw IllegalStateException("Cannot finalize settlement without confirmed final result.")
         }
 
         // 1) 결과 확인 - ShareOutcome으로 변환
@@ -268,7 +268,7 @@ class SettlementService(
             // TODO: FinalResult enum에 DRAW, CANCELLED 추가 후 구현
             // FinalResult.DRAW -> null
             // FinalResult.CANCELLED -> null
-            else -> throw IllegalStateException("지원하지 않는 결과입니다: $finalResult")
+            else -> throw IllegalStateException("Unsupported result: $finalResult")
         }
 
         // 2) 해당 question의 모든 user_shares 조회
@@ -346,7 +346,7 @@ class SettlementService(
             val newLocked = pool.collateralLocked.subtract(totalPayout)
                 .setScale(18, RoundingMode.DOWN)
             require(newLocked >= BigDecimal.ZERO) {
-                "인솔벤시 오류: payout=$totalPayout > collateralLocked=${pool.collateralLocked}"
+                "Insolvency error: payout=$totalPayout > collateralLocked=${pool.collateralLocked}"
             }
             pool.collateralLocked = newLocked
             pool.status = PoolStatus.SETTLED
@@ -368,7 +368,7 @@ class SettlementService(
             totalWinners = totalWinners,
             totalPayout = totalPayout.setScale(0, RoundingMode.DOWN).toLong(),
             voterRewards = 0, // AMM은 voter rewards 없음
-            message = "AMM 정산이 확정되었습니다."
+            message = "AMM settlement finalized."
         )
     }
 
@@ -382,7 +382,7 @@ class SettlementService(
 
         val finalResult = question.finalResult
         if (finalResult == FinalResult.PENDING) {
-            throw IllegalStateException("최종 결과가 확정되지 않아 정산을 확정할 수 없습니다.")
+            throw IllegalStateException("Cannot finalize settlement without confirmed final result.")
         }
         val policy = settlementPolicyFactory.getPolicy(question.type)
         val winningChoice = policy.determineWinningChoice(finalResult)
@@ -488,8 +488,8 @@ class SettlementService(
                 val distributionResult = voteRewardDistributionService.distributeRewards(questionId)
                 logger.info("[Settlement] Reward distribution completed: questionId={}, result={}", questionId, distributionResult)
             } catch (e: Exception) {
-                logger.error("[Settlement] 보상 분배 실패 (수동 재시도 필요) questionId={}: {}", questionId, e.message, e)
-                // 분배 실패해도 정산 자체는 성공 처리 (관리자가 /api/admin/rewards/retry로 재시도 가능)
+                logger.error("[Settlement] Reward distribution failed (manual retry required) questionId={}: {}", questionId, e.message, e)
+                // Settlement itself succeeds even if distribution fails (admin can retry via /api/admin/rewards/retry)
             }
 
             // @Deprecated: 레거시 티어 가중치 기반 보상 분배 로직 제거됨
@@ -517,7 +517,7 @@ class SettlementService(
                 badgeService.onSettlement(position.memberId, isWinner, payoutRatio)
                 badgeService.onPointsChange(position.memberId, member.usdcBalance.toLong())
             } catch (e: Exception) {
-                logger.warn("[Settlement] Badge 업데이트 실패 member={}: {}", position.memberId, e.message)
+                logger.warn("[Settlement] Badge update failed member={}: {}", position.memberId, e.message)
             }
         }
 
@@ -527,7 +527,7 @@ class SettlementService(
                 val member = membersMap[vote.memberId] ?: return@forEach
                 badgeService.onTierChange(vote.memberId, member.tier)
             } catch (e: Exception) {
-                logger.warn("[Settlement] Tier Badge 업데이트 실패 member={}: {}", vote.memberId, e.message)
+                logger.warn("[Settlement] Tier Badge update failed member={}: {}", vote.memberId, e.message)
             }
         }
 
@@ -538,7 +538,7 @@ class SettlementService(
             totalWinners = totalWinners,
             totalPayout = totalPayout.setScale(0, RoundingMode.DOWN).toLong(),
             voterRewards = totalRewardPool,
-            message = "정산이 확정되었습니다. (보상: ${totalRewardPool}P 분배)"
+            message = "Settlement finalized. (rewards: ${totalRewardPool}P distributed)"
         )
     }
 
@@ -549,10 +549,10 @@ class SettlementService(
     @Transactional
     fun cancelPendingSettlement(questionId: Long): SettlementResult {
         val question = questionRepository.findByIdWithLock(questionId)
-            ?: throw IllegalArgumentException("질문을 찾을 수 없습니다.")
+            ?: throw IllegalArgumentException("Question not found.")
 
         if (question.status != QuestionStatus.SETTLED) {
-            throw IllegalStateException("정산 대기 상태의 질문만 취소할 수 있습니다. (현재: ${question.status})")
+            throw IllegalStateException("Only pending settlement questions can be cancelled. (current: ${question.status})")
         }
 
         // 만료일 체크: 이미 만료된 질문은 SETTLED로, 아니면 BETTING으로 복원
@@ -581,9 +581,9 @@ class SettlementService(
             totalPayout = 0,
             voterRewards = 0,
             message = if (newStatus == QuestionStatus.SETTLED)
-                "정산이 취소되었습니다. 질문이 만료되어 SETTLED 상태로 전환되었습니다."
+                "Settlement cancelled. Question has expired and transitioned to SETTLED status."
             else
-                "정산이 취소되었습니다. 질문이 다시 BETTING 상태로 전환되었습니다."
+                "Settlement cancelled. Question has been restored to BETTING status."
         )
     }
 

@@ -23,7 +23,7 @@ export default function DemographicsSection({ demographics, isDark }: Demographi
   }));
 
   const ageData = demographics.byAge.map(a => ({
-    name: `${a.ageGroup}대`,
+    name: `${a.ageGroup}s`,
     value: a.total,
     yesPercentage: a.yesPercentage,
   }));
@@ -31,21 +31,21 @@ export default function DemographicsSection({ demographics, isDark }: Demographi
   return (
     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
       <DemographicsPieChart
-        title="국가별 분포"
+        title="By Country"
         icon={Globe}
         iconColor="text-blue-500"
         data={countryData}
         isDark={isDark}
       />
       <DemographicsPieChart
-        title="직업별 분포"
+        title="By Occupation"
         icon={Briefcase}
         iconColor="text-purple-500"
         data={jobData}
         isDark={isDark}
       />
       <DemographicsPieChart
-        title="연령별 분포"
+        title="By Age"
         icon={Calendar}
         iconColor="text-amber-500"
         data={ageData}

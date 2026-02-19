@@ -35,7 +35,7 @@ class SwapController(
             ?: return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(
                 mapOf(
                     "success" to false,
-                    "message" to "인증이 필요합니다."
+                    "message" to "Authentication required."
                 )
             )
 
@@ -51,28 +51,28 @@ class SwapController(
             ResponseEntity.status(HttpStatus.CONFLICT).body(
                 mapOf(
                     "success" to false,
-                    "message" to "거래가 혼잡합니다. 잠시 후 다시 시도해주세요."
+                    "message" to "Trading is congested. Please try again later."
                 )
             )
         } catch (e: ObjectOptimisticLockingFailureException) {
             ResponseEntity.status(HttpStatus.CONFLICT).body(
                 mapOf(
                     "success" to false,
-                    "message" to "거래가 혼잡합니다. 잠시 후 다시 시도해주세요."
+                    "message" to "Trading is congested. Please try again later."
                 )
             )
         } catch (e: IllegalArgumentException) {
             ResponseEntity.badRequest().body(
                 mapOf(
                     "success" to false,
-                    "message" to (e.message ?: "잘못된 요청입니다.")
+                    "message" to (e.message ?: "Invalid request.")
                 )
             )
         } catch (e: Exception) {
             ResponseEntity.internalServerError().body(
                 mapOf(
                     "success" to false,
-                    "message" to "서버 오류가 발생했습니다."
+                    "message" to "Server error occurred."
                 )
             )
         }
@@ -101,14 +101,14 @@ class SwapController(
             ResponseEntity.badRequest().body(
                 mapOf(
                     "success" to false,
-                    "message" to (e.message ?: "잘못된 요청입니다.")
+                    "message" to (e.message ?: "Invalid request.")
                 )
             )
         } catch (e: Exception) {
             ResponseEntity.internalServerError().body(
                 mapOf(
                     "success" to false,
-                    "message" to "서버 오류가 발생했습니다."
+                    "message" to "Server error occurred."
                 )
             )
         }
@@ -134,14 +134,14 @@ class SwapController(
             ResponseEntity.status(HttpStatus.NOT_FOUND).body(
                 mapOf(
                     "success" to false,
-                    "message" to (e.message ?: "마켓 풀을 찾을 수 없습니다.")
+                    "message" to (e.message ?: "Market pool not found.")
                 )
             )
         } catch (e: Exception) {
             ResponseEntity.internalServerError().body(
                 mapOf(
                     "success" to false,
-                    "message" to "서버 오류가 발생했습니다."
+                    "message" to "Server error occurred."
                 )
             )
         }
@@ -161,7 +161,7 @@ class SwapController(
             ?: return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(
                 mapOf(
                     "success" to false,
-                    "message" to "인증이 필요합니다."
+                    "message" to "Authentication required."
                 )
             )
 
@@ -177,7 +177,7 @@ class SwapController(
             ResponseEntity.internalServerError().body(
                 mapOf(
                     "success" to false,
-                    "message" to "서버 오류가 발생했습니다."
+                    "message" to "Server error occurred."
                 )
             )
         }
@@ -204,14 +204,77 @@ class SwapController(
             ResponseEntity.status(HttpStatus.NOT_FOUND).body(
                 mapOf(
                     "success" to false,
-                    "message" to (e.message ?: "질문을 찾을 수 없습니다.")
+                    "message" to (e.message ?: "Question not found.")
                 )
             )
         } catch (e: Exception) {
             ResponseEntity.internalServerError().body(
                 mapOf(
                     "success" to false,
-                    "message" to "서버 오류가 발생했습니다."
+                    "message" to "Server error occurred."
+                )
+            )
+        }
+    }
+
+    /**
+     * 공개 스왑 내역 조회
+     * 인증 불필요
+     */
+    @GetMapping("/swap/history/{questionId}")
+    fun getSwapHistory(
+        @PathVariable questionId: Long,
+        @RequestParam(defaultValue = "20") limit: Int
+    ): ResponseEntity<Map<String, Any>> {
+        return try {
+            val response = swapService.getSwapHistory(questionId, limit)
+            ResponseEntity.ok(
+                mapOf(
+                    "success" to true,
+                    "data" to response
+                )
+            )
+        } catch (e: Exception) {
+            ResponseEntity.internalServerError().body(
+                mapOf(
+                    "success" to false,
+                    "message" to "Server error occurred."
+                )
+            )
+        }
+    }
+
+    /**
+     * 내 스왑 내역 조회
+     * 인증 필수
+     */
+    @GetMapping("/swap/my-history/{questionId}")
+    fun getMySwapHistory(
+        @PathVariable questionId: Long,
+        @RequestParam(defaultValue = "50") limit: Int,
+        httpRequest: HttpServletRequest
+    ): ResponseEntity<Map<String, Any>> {
+        val memberId = httpRequest.getAttribute(JwtAuthInterceptor.ATTR_MEMBER_ID) as? Long
+            ?: return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(
+                mapOf(
+                    "success" to false,
+                    "message" to "Authentication required."
+                )
+            )
+
+        return try {
+            val response = swapService.getMySwapHistory(memberId, questionId, limit)
+            ResponseEntity.ok(
+                mapOf(
+                    "success" to true,
+                    "data" to response
+                )
+            )
+        } catch (e: Exception) {
+            ResponseEntity.internalServerError().body(
+                mapOf(
+                    "success" to false,
+                    "message" to "Server error occurred."
                 )
             )
         }
@@ -233,7 +296,7 @@ class SwapController(
             return ResponseEntity.status(HttpStatus.FORBIDDEN).body(
                 mapOf(
                     "success" to false,
-                    "message" to "관리자 권한이 필요합니다."
+                    "message" to "Administrator privileges required."
                 )
             )
         }
@@ -250,21 +313,21 @@ class SwapController(
             ResponseEntity.badRequest().body(
                 mapOf(
                     "success" to false,
-                    "message" to (e.message ?: "잘못된 요청입니다.")
+                    "message" to (e.message ?: "Invalid request.")
                 )
             )
         } catch (e: IllegalStateException) {
             ResponseEntity.status(HttpStatus.CONFLICT).body(
                 mapOf(
                     "success" to false,
-                    "message" to (e.message ?: "풀이 이미 존재합니다.")
+                    "message" to (e.message ?: "Pool already exists.")
                 )
             )
         } catch (e: Exception) {
             ResponseEntity.internalServerError().body(
                 mapOf(
                     "success" to false,
-                    "message" to "서버 오류가 발생했습니다."
+                    "message" to "Server error occurred."
                 )
             )
         }

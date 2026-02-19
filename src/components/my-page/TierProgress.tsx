@@ -25,7 +25,7 @@ export default function TierProgress({ user }: TierProgressProps) {
 
   return (
     <div className={`p-6 rounded-3xl border ${isDark ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-100'}`}>
-      <h3 className={`font-black text-lg mb-4 ${isDark ? 'text-white' : 'text-slate-900'}`}>티어 진행도</h3>
+      <h3 className={`font-black text-lg mb-4 ${isDark ? 'text-white' : 'text-slate-900'}`}>Tier Progress</h3>
 
       <div className="flex justify-between text-xs font-bold mb-2">
         <span className="text-indigo-600">{user.tier}</span>
@@ -34,18 +34,18 @@ export default function TierProgress({ user }: TierProgressProps) {
       <div className={`w-full h-3 rounded-full ${isDark ? 'bg-slate-800' : 'bg-slate-100'}`}>
         <div className="bg-indigo-600 h-3 rounded-full transition-all" style={{ width: `${progress}%` }} />
       </div>
-      <p className="text-xs text-slate-400 mt-2">{progress}% 완료</p>
+      <p className="text-xs text-slate-400 mt-2">{progress}% Complete</p>
 
       {req && (
         <div className={`mt-4 p-4 rounded-2xl ${isDark ? 'bg-slate-800' : 'bg-slate-50'}`}>
-          <p className="text-xs font-bold text-slate-400 mb-2">다음 티어 조건</p>
+          <p className="text-xs font-bold text-slate-400 mb-2">Next Tier Requirements</p>
           <div className="space-y-1 text-sm">
             <div className="flex justify-between">
-              <span className="text-slate-400">예측 횟수</span>
+              <span className="text-slate-400">Predictions</span>
               <span className="font-bold">{user.totalPredictions} / {req.predictions}</span>
             </div>
             <div className="flex justify-between">
-              <span className="text-slate-400">정확도</span>
+              <span className="text-slate-400">Accuracy</span>
               <span className="font-bold">{(user.accuracyScore * 100).toFixed(1)}% / {req.accuracy}%</span>
             </div>
           </div>

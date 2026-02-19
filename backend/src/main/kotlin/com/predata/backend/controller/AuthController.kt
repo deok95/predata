@@ -28,7 +28,7 @@ class AuthController(
     fun sendCode(@RequestBody request: SendCodeRequest): ResponseEntity<Any> {
         if (request.email.isBlank() || !request.email.contains("@")) {
             return ResponseEntity.badRequest().body(
-                mapOf("success" to false, "message" to "유효한 이메일을 입력해주세요.")
+                mapOf("success" to false, "message" to "Please enter a valid email address.")
             )
         }
         val result = authService.sendVerificationCode(request.email)
@@ -43,7 +43,7 @@ class AuthController(
     fun verifyCode(@RequestBody request: VerifyCodeRequest): ResponseEntity<Any> {
         if (request.email.isBlank() || request.code.isBlank()) {
             return ResponseEntity.badRequest().body(
-                mapOf("success" to false, "message" to "이메일과 인증 코드를 입력해주세요.")
+                mapOf("success" to false, "message" to "Please enter email and verification code.")
             )
         }
         val result = authService.verifyCode(request.email, request.code)
@@ -62,17 +62,17 @@ class AuthController(
     fun completeSignup(@RequestBody request: CompleteSignupRequest): ResponseEntity<Any> {
         if (request.email.isBlank() || request.code.isBlank()) {
             return ResponseEntity.badRequest().body(
-                mapOf("success" to false, "message" to "이메일과 인증 코드를 입력해주세요.")
+                mapOf("success" to false, "message" to "Please enter email and verification code.")
             )
         }
         if (request.password.isBlank() || request.password.length < 6) {
             return ResponseEntity.badRequest().body(
-                mapOf("success" to false, "message" to "비밀번호는 6자 이상이어야 합니다.")
+                mapOf("success" to false, "message" to "Password must be at least 6 characters.")
             )
         }
         if (request.password != request.passwordConfirm) {
             return ResponseEntity.badRequest().body(
-                mapOf("success" to false, "message" to "비밀번호가 일치하지 않습니다.")
+                mapOf("success" to false, "message" to "Passwords do not match.")
             )
         }
         val result = authService.completeSignup(
@@ -100,7 +100,7 @@ class AuthController(
     fun login(@RequestBody request: LoginRequest): ResponseEntity<Any> {
         if (request.email.isBlank() || request.password.isBlank()) {
             return ResponseEntity.badRequest().body(
-                mapOf("success" to false, "message" to "이메일과 비밀번호를 입력해주세요.")
+                mapOf("success" to false, "message" to "Please enter email and password.")
             )
         }
         val result = authService.login(request.email, request.password)

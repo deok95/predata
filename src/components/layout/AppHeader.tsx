@@ -7,7 +7,6 @@ import { useAuth } from '@/hooks/useAuth';
 import { useRegisterModal } from '@/components/RegisterModal';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { mockQuestions } from '@/lib/mockData';
 import { questionApi, notificationApi } from '@/lib/api';
 import type { Question, Notification } from '@/types/api';
 import PredataLogo from '@/components/ui/PredataLogo';
@@ -27,15 +26,15 @@ export default function AppHeader() {
   const searchRef = useRef<HTMLDivElement>(null);
   const notiRef = useRef<HTMLDivElement>(null);
 
-  // 질문 목록 로드
+  // Load questions list
   useEffect(() => {
     questionApi.getAll().then(res => {
       if (res.success && res.data && res.data.length > 0) setAllQuestions(res.data);
-      else setAllQuestions(mockQuestions);
-    }).catch(() => setAllQuestions(mockQuestions));
+      else setAllQuestions([]);
+    }).catch(() => setAllQuestions([]));
   }, []);
 
-  // 알림 목록 로드
+  // Load notifications list
   useEffect(() => {
     if (!user || isGuest) {
       setNotifications([]);
@@ -57,7 +56,7 @@ export default function AppHeader() {
       });
   }, [user, isGuest]);
 
-  // 검색 필터
+  // Search filter
   useEffect(() => {
     if (!searchQuery.trim()) {
       setSearchResults([]);
@@ -71,7 +70,7 @@ export default function AppHeader() {
     setSearchResults(results.slice(0, 5));
   }, [searchQuery, allQuestions]);
 
-  // 바깥 클릭 시 닫기
+  // Close on outside click
   useEffect(() => {
     const handleClick = (e: MouseEvent) => {
       if (searchRef.current && !searchRef.current.contains(e.target as Node)) {
@@ -96,10 +95,10 @@ export default function AppHeader() {
     const date = new Date(dateStr);
     const diff = Math.floor((now.getTime() - date.getTime()) / 1000);
 
-    if (diff < 60) return '방금 전';
-    if (diff < 3600) return `${Math.floor(diff / 60)}분 전`;
-    if (diff < 86400) return `${Math.floor(diff / 3600)}시간 전`;
-    return `${Math.floor(diff / 86400)}일 전`;
+    if (diff < 60) return 'Just now';
+    if (diff < 3600) return `${Math.floor(diff / 60)}m ago`;
+    if (diff < 86400) return `${Math.floor(diff / 3600)}h ago`;
+    return `${Math.floor(diff / 86400)}d ago`;
   };
 
   const unreadCount = notifications.filter(n => !n.isRead).length;
@@ -154,7 +153,7 @@ export default function AppHeader() {
             setShowResults(true);
           }}
           onFocus={() => searchQuery.trim() && setShowResults(true)}
-          placeholder="마켓 검색..."
+          placeholder="Search markets..."
           className={`w-full border-none rounded-2xl py-2.5 lg:py-3.5 pl-9 lg:pl-12 pr-8 lg:pr-10 text-xs lg:text-sm focus:ring-2 focus:ring-indigo-500/20 transition-all ${isDark ? 'bg-slate-900 text-slate-200' : 'bg-slate-50 text-slate-900'}`}
         />
         {searchQuery && (
@@ -186,7 +185,7 @@ export default function AppHeader() {
               ))
             ) : (
               <div className="px-5 py-6 text-center">
-                <p className="text-sm text-slate-400">검색 결과가 없습니다</p>
+                <p className="text-sm text-slate-400">No results found</p>
               </div>
             )}
           </div>
@@ -212,10 +211,10 @@ export default function AppHeader() {
           {showNotifications && (
             <div className={`fixed left-4 right-4 top-16 max-h-[70vh] overflow-y-auto lg:absolute lg:left-auto lg:right-0 lg:top-full lg:mt-2 lg:w-80 lg:max-h-none lg:overflow-visible rounded-2xl border shadow-2xl z-50 ${isDark ? 'bg-slate-900 border-slate-700' : 'bg-white border-slate-200'}`}>
               <div className={`flex items-center justify-between px-5 py-3 border-b ${isDark ? 'border-slate-800' : 'border-slate-100'}`}>
-                <h4 className={`font-black text-sm ${isDark ? 'text-white' : 'text-slate-900'}`}>알림</h4>
+                <h4 className={`font-black text-sm ${isDark ? 'text-white' : 'text-slate-900'}`}>Notifications</h4>
                 {unreadCount > 0 && (
                   <button onClick={markAllRead} className="text-xs text-indigo-500 font-bold hover:underline">
-                    모두 읽음
+                    Mark all read
                   </button>
                 )}
               </div>
@@ -244,7 +243,7 @@ export default function AppHeader() {
                   ))
                 ) : (
                   <div className="px-5 py-8 text-center text-sm text-slate-400">
-                    알림이 없습니다
+                    No notifications
                   </div>
                 )}
               </div>
@@ -258,13 +257,13 @@ export default function AppHeader() {
             className="flex items-center space-x-2 px-4 py-2.5 rounded-2xl bg-indigo-600 text-white text-sm font-bold hover:bg-indigo-700 transition-all active:scale-95"
           >
             <UserPlus size={16} />
-            <span className="hidden lg:block">회원가입</span>
+            <span className="hidden lg:block">Sign Up</span>
           </button>
         ) : (
           <button
             onClick={() => router.push('/my-page')}
             className={`p-3 rounded-xl transition-all ${isDark ? 'bg-slate-800 text-indigo-400 hover:bg-slate-700' : 'bg-slate-100 text-indigo-600 hover:bg-slate-200'}`}
-            title="마이페이지"
+            title="My Page"
           >
             <User size={20} />
           </button>
