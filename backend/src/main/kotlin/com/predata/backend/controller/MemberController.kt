@@ -17,7 +17,7 @@ import java.math.BigDecimal
 
 @RestController
 @RequestMapping("/api/members")
-@CrossOrigin(origins = ["http://localhost:3000", "http://localhost:3001"])
+@CrossOrigin(originPatterns = ["http://localhost:*", "http://127.0.0.1:*", "https://predata.io", "https://www.predata.io", "https://*.vercel.app", "https://*.trycloudflare.com"])
 class MemberController(
     private val memberRepository: MemberRepository,
     private val ipTrackingService: IpTrackingService,

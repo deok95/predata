@@ -21,6 +21,27 @@ export default function BulkUploadPanel() {
     }
   };
 
+  const parseDurationSeconds = (raw?: string | number): number => {
+    if (typeof raw === 'number' && Number.isFinite(raw)) {
+      return Math.max(60, Math.floor(raw));
+    }
+
+    if (typeof raw === 'string') {
+      const trimmed = raw.trim().toLowerCase();
+      const match = trimmed.match(/^(\d+)\s*([mhd]?)$/);
+      if (match) {
+        const value = parseInt(match[1], 10);
+        const unit = match[2] || 's';
+        if (unit === 'm') return Math.max(60, value * 60);
+        if (unit === 'h') return Math.max(60, value * 3600);
+        if (unit === 'd') return Math.max(60, value * 86400);
+        return Math.max(60, value);
+      }
+    }
+
+    return 300;
+  };
+
   const handleUpload = async () => {
     if (parsedQuestions.length === 0) {
       alert('Please parse questions first');
@@ -29,16 +50,63 @@ export default function BulkUploadPanel() {
 
     setIsUploading(true);
     try {
-      const response = await authFetch(`${API_BASE_URL}/admin/questions/bulk`, {
-        method: 'POST',
-        body: JSON.stringify(parsedQuestions),
-      });
+      const results: BulkUploadResult['results'] = [];
+      let created = 0;
+      let failed = 0;
 
-      const data = await response.json();
-      if (!response.ok || data?.success === false) {
-        throw new Error(data?.message || `HTTP ${response.status}`);
+      for (const item of parsedQuestions) {
+        const votingDuration = 300; // fixed: 5 minutes
+        const bettingDuration = parseDurationSeconds(item.bettingDuration ?? '5m');
+        const resolveBy = item.resolution?.resolveBy;
+
+        const payload = {
+          title: item.title,
+          type: 'VERIFIABLE',
+          marketType: 'VERIFIABLE',
+          resolutionRule: 'Resolved by predefined rule or admin review at market close.',
+          resolutionSource: item.resolution?.source,
+          resolveAt: resolveBy || undefined,
+          category: item.category || 'SPORTS',
+          votingDuration,
+          bettingDuration,
+          voteResultSettlement: false,
+          executionModel: 'AMM_FPMM',
+          seedUsdc: item.seedUsdc ?? 1000,
+          feeRate: item.feeRate ?? 0.01,
+        };
+
+        try {
+          const response = await authFetch(`${API_BASE_URL}/admin/questions`, {
+            method: 'POST',
+            body: JSON.stringify(payload),
+          });
+          const data = await response.json();
+          if (!response.ok || data?.success === false) {
+            throw new Error(data?.message || `HTTP ${response.status}`);
+          }
+
+          created += 1;
+          results.push({
+            title: item.title,
+            questionId: data?.questionId,
+            success: true,
+          });
+        } catch (error) {
+          failed += 1;
+          results.push({
+            title: item.title,
+            success: false,
+            error: error instanceof Error ? error.message : 'Unknown error',
+          });
+        }
       }
-      setUploadResult(data.data || data || null);
+
+      setUploadResult({
+        total: parsedQuestions.length,
+        created,
+        failed,
+        results,
+      });
     } catch (error) {
       alert('Upload failed: ' + (error instanceof Error ? error.message : 'Unknown error'));
     } finally {

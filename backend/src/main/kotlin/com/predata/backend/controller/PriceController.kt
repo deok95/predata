@@ -7,7 +7,7 @@ import org.springframework.web.bind.annotation.*
 
 @RestController
 @RequestMapping("/api")
-@CrossOrigin(origins = ["http://localhost:3000", "http://localhost:3001"])
+@CrossOrigin(originPatterns = ["http://localhost:*", "http://127.0.0.1:*", "https://predata.io", "https://www.predata.io", "https://*.vercel.app", "https://*.trycloudflare.com"])
 class PriceController(
     private val orderBookService: OrderBookService,
     private val priceHistoryRepository: com.predata.backend.repository.PriceHistoryRepository
