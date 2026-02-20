@@ -18,7 +18,6 @@ import java.time.ZoneOffset
 
 @RestController
 @RequestMapping("/api/admin/sports")
-@CrossOrigin(originPatterns = ["http://localhost:*", "http://127.0.0.1:*", "https://predata.io", "https://www.predata.io", "https://*.vercel.app", "https://*.trycloudflare.com"])
 class SportsManagementController(
     private val matchSyncScheduler: MatchSyncScheduler,
     private val matchRepository: MatchRepository,

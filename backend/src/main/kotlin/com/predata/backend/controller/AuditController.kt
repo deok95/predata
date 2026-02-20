@@ -17,7 +17,6 @@ import java.time.LocalDateTime
  */
 @RestController
 @RequestMapping("/api/admin")
-@CrossOrigin(originPatterns = ["http://localhost:*", "http://127.0.0.1:*", "https://predata.io", "https://www.predata.io", "https://*.vercel.app", "https://*.trycloudflare.com"])
 class AuditController(
     private val auditService: AuditService
 ) {

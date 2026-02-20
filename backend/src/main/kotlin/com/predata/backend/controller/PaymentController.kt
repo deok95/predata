@@ -13,7 +13,6 @@ import java.math.BigDecimal
 
 @RestController
 @RequestMapping("/api/payments")
-@CrossOrigin(originPatterns = ["http://localhost:*", "http://127.0.0.1:*", "https://predata.io", "https://www.predata.io", "https://*.vercel.app", "https://*.trycloudflare.com"])
 class PaymentController(
     private val paymentVerificationService: PaymentVerificationService,
     private val withdrawalService: WithdrawalService

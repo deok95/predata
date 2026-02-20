@@ -57,7 +57,7 @@ class WebMvcConfig(
 
     override fun addCorsMappings(registry: CorsRegistry) {
         registry.addMapping("/**")  // 모든 경로에 대해 CORS 허용
-            .allowedOriginPatterns("http://localhost:*", "http://127.0.0.1:*", "https://predata.vercel.app", "https://*.vercel.app", "https://*.trycloudflare.com", "https://api.predata.io", "https://predata.io")  // 모든 로컬호스트 포트 허용
+            .allowedOriginPatterns("http://localhost:*", "http://127.0.0.1:*", "https://predata.vercel.app", "https://*.vercel.app", "https://*.trycloudflare.com", "https://api.predata.io", "https://predata.io", "https://www.predata.io")  // 모든 로컬호스트 포트 허용
             .allowedMethods("GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS", "HEAD")  // 모든 HTTP 메서드 허용
             .allowedHeaders("*")  // 모든 헤더 허용
             .exposedHeaders("X-RateLimit-Limit", "X-RateLimit-Remaining", "Retry-After")  // Rate limit 헤더 노출

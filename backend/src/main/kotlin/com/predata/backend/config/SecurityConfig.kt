@@ -23,6 +23,7 @@ class SecurityConfig(
     @Bean
     fun filterChain(http: HttpSecurity): SecurityFilterChain {
         http
+            .cors {}  // WebMvcConfig의 CORS 설정을 Spring Security에서도 사용
             .csrf { it.disable() }  // REST API는 CSRF 불필요
             .sessionManagement { session ->
                 // OAuth2 로그인 시 state 저장을 위해 세션 허용
