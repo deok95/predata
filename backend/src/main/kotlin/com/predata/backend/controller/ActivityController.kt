@@ -29,8 +29,7 @@ class ActivityController(
     private val oddsService: OddsService,
     private val clientIpService: ClientIpService,
     private val bettingSuspensionService: com.predata.backend.service.BettingSuspensionService,
-    private val activityRepository: ActivityRepository,
-    private val orderMatchingService: com.predata.backend.service.OrderMatchingService
+    private val activityRepository: ActivityRepository
 ) {
 
     /**
@@ -54,44 +53,21 @@ class ActivityController(
     }
 
     /**
-     * 베팅 실행 (시장가 IOC 주문으로 전환)
-     * 기존 BetService 대신 OrderMatchingService 사용
+     * 베팅 실행 (AMM_FPMM)
      */
     @PostMapping("/bet")
     fun bet(@Valid @RequestBody request: BetRequest, httpRequest: HttpServletRequest): ResponseEntity<Any> {
         val authenticatedMemberId = httpRequest.authenticatedMemberId()
-
         val clientIp = clientIpService.extractClientIp(httpRequest)
 
-        // BetRequest를 CreateOrderRequest로 변환 (시장가 IOC 주문)
-        val orderRequest = CreateOrderRequest(
-            questionId = request.questionId,
-            side = when (request.choice) {
-                com.predata.backend.domain.Choice.YES -> com.predata.backend.domain.OrderSide.YES
-                com.predata.backend.domain.Choice.NO -> com.predata.backend.domain.OrderSide.NO
-            },
-            price = java.math.BigDecimal.ZERO,  // MARKET 주문은 가격 무시됨 (OrderMatchingService에서 호가로 결정)
-            amount = request.amount,
-            orderType = com.predata.backend.domain.OrderType.MARKET  // 시장가 IOC
-        )
+        val response = betService.bet(authenticatedMemberId, request, clientIp)
 
-        // OrderMatchingService로 주문 실행
-        val orderResponse = orderMatchingService.createOrder(authenticatedMemberId, orderRequest)
+        if (response.success) clientIpService.updateMemberLastIp(authenticatedMemberId, clientIp)
 
-        // IP 업데이트
-        if (orderResponse.success) clientIpService.updateMemberLastIp(authenticatedMemberId, clientIp)
-
-        // ActivityResponse로 변환
-        val activityResponse = ActivityResponse(
-            success = orderResponse.success,
-            message = orderResponse.message,
-            activityId = orderResponse.orderId
-        )
-
-        return if (orderResponse.success) {
-            ResponseEntity.ok(ApiEnvelope.ok(activityResponse))
+        return if (response.success) {
+            ResponseEntity.ok(ApiEnvelope.ok(response))
         } else {
-            ResponseEntity.status(HttpStatus.BAD_REQUEST).body(activityResponse)
+            ResponseEntity.status(HttpStatus.BAD_REQUEST).body(response)
         }
     }
 

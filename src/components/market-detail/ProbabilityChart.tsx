@@ -20,7 +20,6 @@ interface ProbabilityChartProps {
   noPool: number;
   questionId: number;
   disableApi?: boolean;
-  executionModel?: 'AMM_FPMM' | 'ORDERBOOK_LEGACY';
   ammPool?: AmmPool | null;
 }
 
@@ -37,7 +36,6 @@ export default function ProbabilityChart({
   noPool,
   questionId,
   disableApi = false,
-  executionModel = 'ORDERBOOK_LEGACY',
   ammPool = null
 }: ProbabilityChartProps) {
   const { isDark } = useTheme();
@@ -67,31 +65,11 @@ export default function ProbabilityChart({
       }
 
       try {
-        // Only call AMM API if question uses AMM execution model
-        if (executionModel !== 'AMM_FPMM') {
-          // ORDERBOOK_LEGACY: show horizontal line with current yesPercent
-          const mockData: ChartDataPoint[] = Array.from({ length: 24 }, (_, i) => {
-            const now = new Date();
-            const timeAgo = new Date(now.getTime() - (23 - i) * 3600000);
-            const hours = timeAgo.getHours().toString().padStart(2, '0');
-            const mins = timeAgo.getMinutes().toString().padStart(2, '0');
-
-            return {
-              time: `${hours}:${mins}`,
-              probability: yesPercent,
-              lastTrade: null,
-            };
-          });
-          setChartData(mockData);
-          setLoading(false);
-          return;
-        }
-
         // Use swap price history from AMM
         const history = await swapApi.getPriceHistory(questionId, 100);
 
         if (history.length === 0) {
-          // No pool (ORDERBOOK_LEGACY) - show horizontal line with current yesPercent
+          // No swap history yet - show horizontal line with current yesPercent
           const mockData: ChartDataPoint[] = Array.from({ length: 24 }, (_, i) => {
             const now = new Date();
             const timeAgo = new Date(now.getTime() - (23 - i) * 3600000);
@@ -142,7 +120,7 @@ export default function ProbabilityChart({
     };
 
     fetchPriceHistory();
-  }, [questionId, yesPercent, disableApi, executionModel, ammPool?.version]);
+  }, [questionId, yesPercent, disableApi, ammPool?.version]);
 
   const yesChange = yesPercent >= 50 ? `+${yesPercent - 50}` : `${yesPercent - 50}`;
   const isPositive = yesPercent >= 50;

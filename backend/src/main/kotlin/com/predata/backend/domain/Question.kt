@@ -58,12 +58,15 @@ data class Question(
     @Column(name = "betting_end_at", nullable = false)
     var bettingEndAt: LocalDateTime,
 
+    @Deprecated("AMM_FPMM에서는 market_pools 테이블 사용. 레거시 집계 참조용으로만 유지.")
     @Column(name = "total_bet_pool")
     var totalBetPool: Long = 0,
 
+    @Deprecated("AMM_FPMM에서는 market_pools 테이블 사용. 레거시 집계 참조용으로만 유지.")
     @Column(name = "yes_bet_pool")
     var yesBetPool: Long = 0,
 
+    @Deprecated("AMM_FPMM에서는 market_pools 테이블 사용. 레거시 집계 참조용으로만 유지.")
     @Column(name = "no_bet_pool")
     var noBetPool: Long = 0,
 
@@ -101,8 +104,8 @@ data class Question(
     var phase: QuestionPhase? = null,
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "execution_model", length = 20, nullable = false, columnDefinition = "VARCHAR(20) DEFAULT 'ORDERBOOK_LEGACY'")
-    var executionModel: ExecutionModel = ExecutionModel.ORDERBOOK_LEGACY,
+    @Column(name = "execution_model", length = 20, nullable = false, columnDefinition = "VARCHAR(20) DEFAULT 'AMM_FPMM'")
+    var executionModel: ExecutionModel = ExecutionModel.AMM_FPMM,
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "match_id")
@@ -132,6 +135,7 @@ enum class FinalResult {
 }
 
 enum class ExecutionModel {
-    AMM_FPMM,          // AMM (Fixed Product Market Maker) 실행 모델
-    ORDERBOOK_LEGACY   // 레거시 오더북 실행 모델
+    AMM_FPMM,                       // AMM (Fixed Product Market Maker) 실행 모델
+    @Deprecated("Orderbook model removed. All markets use AMM_FPMM.")
+    ORDERBOOK_LEGACY                // 레거시 오더북 실행 모델 (제거됨)
 }

@@ -234,26 +234,16 @@ class QuestionManagementService(
 
         val savedQuestion = questionRepository.save(question)
 
-        // AMM_FPMM인 경우 자동으로 풀 시드
-        if (request.executionModel == com.predata.backend.domain.ExecutionModel.AMM_FPMM) {
-            try {
-                val seedRequest = com.predata.backend.dto.amm.SeedPoolRequest(
-                    questionId = savedQuestion.id!!,
-                    seedUsdc = request.seedUsdc,
-                    feeRate = request.feeRate
-                )
-                swapService.seedPool(seedRequest)
-            } catch (e: Exception) {
-                throw IllegalStateException("Question created but AMM pool seeding failed: ${e.message}")
-            }
-        } else {
-            // ORDERBOOK_LEGACY인 경우 기존 로직
-            savedQuestion.totalBetPool = INITIAL_LIQUIDITY * 2
-            savedQuestion.yesBetPool = INITIAL_LIQUIDITY
-            savedQuestion.noBetPool = INITIAL_LIQUIDITY
-            savedQuestion.initialYesPool = INITIAL_LIQUIDITY
-            savedQuestion.initialNoPool = INITIAL_LIQUIDITY
-            questionRepository.save(savedQuestion)
+        // AMM_FPMM 풀 시드
+        try {
+            val seedRequest = com.predata.backend.dto.amm.SeedPoolRequest(
+                questionId = savedQuestion.id!!,
+                seedUsdc = request.seedUsdc,
+                feeRate = request.feeRate
+            )
+            swapService.seedPool(seedRequest)
+        } catch (e: Exception) {
+            throw IllegalStateException("Question created but AMM pool seeding failed: ${e.message}")
         }
 
         // 온체인에 질문 생성 (비동기)

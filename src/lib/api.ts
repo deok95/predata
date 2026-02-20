@@ -1,14 +1,6 @@
 export { API_BASE_URL, BACKEND_URL, ApiError, apiRequest, authFetch, unwrapApiEnvelope } from './api/core';
 export { authApi, memberApi } from './api/account';
 export { bettingApi, questionApi, settlementApi } from './api/market';
-export { orderApi } from './api/order';
-export type {
-  CreateOrderRequest,
-  CreateOrderResponse,
-  OrderBookData,
-  OrderBookLevel,
-  OrderData,
-} from './api/order';
 export { swapApi } from './api/swap';
 export type {
   SwapRequest,
@@ -42,7 +34,6 @@ export {
 
 import { authApi, memberApi } from './api/account';
 import { bettingApi, questionApi, settlementApi } from './api/market';
-import { orderApi } from './api/order';
 import { swapApi } from './api/swap';
 import { paymentApi, transactionApi, votingPassApi } from './api/finance';
 import { notificationApi } from './api/notification';
@@ -76,7 +67,6 @@ export const api = {
   tier: tierApi,
   reward: rewardApi,
   leaderboard: leaderboardApi,
-  order: orderApi,
   swap: swapApi,
   notification: notificationApi,
   portfolio: portfolioApi,

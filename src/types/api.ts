@@ -47,7 +47,7 @@ export interface Question {
   status: 'VOTING' | 'BREAK' | 'BETTING' | 'SETTLED';
   votingPhase?: 'VOTING_COMMIT_OPEN' | 'VOTING_REVEAL_OPEN' | 'BETTING_OPEN' | 'SETTLED';
   type: 'VERIFIABLE' | 'OPINION';
-  executionModel?: 'AMM_FPMM' | 'ORDERBOOK_LEGACY';
+  executionModel?: 'AMM_FPMM';
   totalBetPool: number;
   yesBetPool: number;
   noBetPool: number;

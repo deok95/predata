@@ -6,8 +6,7 @@ import { useTheme } from '@/hooks/useTheme';
 import { useToast } from '@/components/ui/Toast';
 import { useAuth } from '@/hooks/useAuth';
 import { useRegisterModal } from '@/components/RegisterModal';
-import { bettingApi, orderApi, ticketApi, ApiError, getMyPositionsByQuestion } from '@/lib/api';
-import type { PositionData, OrderData } from '@/lib/api';
+import { bettingApi, ticketApi, ApiError } from '@/lib/api';
 import { swapApi } from '@/lib/api/swap';
 import type { PoolStateResponse, SwapSimulationResponse, MySharesSnapshot } from '@/lib/api/swap';
 import { BET_MIN_USDC, BET_MAX_USDC } from '@/lib/contracts';
@@ -40,16 +39,12 @@ export default function TradingPanel({ question, user, onTradeComplete, votedCho
   const [tradeAmount, setTradeAmount] = useState('');
   const [selectedOutcome, setSelectedOutcome] = useState<'YES' | 'NO'>('YES');
   const [activeTab, setActiveTab] = useState<'buy' | 'sell'>('buy');
-  const [orderType, setOrderType] = useState<'market' | 'limit'>('market');
-  const [limitPrice, setLimitPrice] = useState('');
   const [loading, setLoading] = useState(false);
   const [showDepositModal, setShowDepositModal] = useState(false);
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [hasCommitted, setHasCommitted] = useState(false);
   const [committedChoice, setCommittedChoice] = useState<'YES' | 'NO' | null>(null);
   const [ticketStatus, setTicketStatus] = useState<TicketStatus | null>(null);
-  const [positions, setPositions] = useState<PositionData[]>([]);
-  const [openSellOrders, setOpenSellOrders] = useState<OrderData[]>([]);
   const [isMobilePanelOpen, setIsMobilePanelOpen] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
 
@@ -64,33 +59,12 @@ export default function TradingPanel({ question, user, onTradeComplete, votedCho
   // Detect mobile screen
   useEffect(() => {
     const checkMobile = () => {
-      const mobile = window.innerWidth < 768;
-      console.log('Mobile detection:', mobile, 'Width:', window.innerWidth);
-      setIsMobile(mobile);
+      setIsMobile(window.innerWidth < 768);
     };
     checkMobile();
     window.addEventListener('resize', checkMobile);
     return () => window.removeEventListener('resize', checkMobile);
   }, []);
-
-  // Refresh positions and orders (for SELL tab)
-  const refreshPositionsAndOrders = async () => {
-    if (user?.id && question.status === 'BETTING') {
-      try {
-        const [posData, orderData] = await Promise.all([
-          getMyPositionsByQuestion(question.id),
-          orderApi.getOrdersByQuestion(question.id)
-        ]);
-        setPositions(posData);
-        const sellOrders = orderData.filter(
-          o => o.direction === 'SELL' && (o.status === 'OPEN' || o.status === 'PARTIAL')
-        );
-        setOpenSellOrders(sellOrders);
-      } catch (error) {
-        console.error('Failed to refresh positions/orders:', error);
-      }
-    }
-  };
 
   // Check if user has already committed (salt exists in localStorage)
   useEffect(() => {
@@ -112,60 +86,23 @@ export default function TradingPanel({ question, user, onTradeComplete, votedCho
     }
   }, [question.status, user?.id]);
 
-  // Fetch positions and open sell orders for SELL tab
+  // Fetch pool state and my shares (BETTING mode)
   useEffect(() => {
-    if (activeTab === 'sell' && user?.id && question.status === 'BETTING') {
-      // Fetch positions
-      getMyPositionsByQuestion(question.id).then(setPositions).catch(() => setPositions([]));
-
-      // Fetch open sell orders
-      orderApi.getOrdersByQuestion(question.id).then(orders => {
-        const sellOrders = orders.filter(
-          o => o.direction === 'SELL' && (o.status === 'OPEN' || o.status === 'PARTIAL')
-        );
-        setOpenSellOrders(sellOrders);
-      }).catch(() => setOpenSellOrders([]));
-    }
-  }, [activeTab, user?.id, question.id, question.status]);
-
-  // Fetch pool state and my shares for AMM (BETTING mode)
-  useEffect(() => {
-    console.log('[TradingPanel] Checking pool fetch - executionModel:', question.executionModel, 'status:', question.status);
-
-    // Only call AMM APIs if question uses AMM execution model
-    if (question.status === 'BETTING' && question.executionModel === 'AMM_FPMM') {
-      console.log('[TradingPanel] Fetching pool state for AMM question');
-      // Always fetch pool state
+    if (question.status === 'BETTING') {
       swapApi.getPoolState(question.id)
-        .then(response => {
-          console.log('[TradingPanel] Pool state fetched:', response);
-          setPoolState(response);
-        })
-        .catch(error => {
-          console.error('[TradingPanel] Failed to fetch pool state:', error);
-          setPoolState(null);
-        });
+        .then(setPoolState)
+        .catch(() => setPoolState(null));
 
-      // Fetch my shares only if authenticated
       if (user?.id && !isGuest) {
         swapApi.getMyShares(question.id)
           .then(response => setMyShares(response))
-          .catch(error => {
-            console.error('Failed to fetch my shares:', error);
-            setMyShares(null);
-          });
+          .catch(() => setMyShares(null));
       }
     }
-  }, [question.id, question.status, question.executionModel, user?.id, isGuest]);
+  }, [question.id, question.status, user?.id, isGuest]);
 
   // Simulate swap when amount changes (debounced)
   useEffect(() => {
-    // Skip simulation if not AMM question
-    if (question.executionModel !== 'AMM_FPMM') {
-      setSimulation(null);
-      return;
-    }
-
     if (!tradeAmount || parseFloat(tradeAmount) <= 0 || !poolState) {
       setSimulation(null);
       return;
@@ -197,7 +134,7 @@ export default function TradingPanel({ question, user, onTradeComplete, votedCho
     }, 300);
 
     return () => clearTimeout(timer);
-  }, [tradeAmount, selectedOutcome, activeTab, question.id, question.executionModel, poolState]);
+  }, [tradeAmount, selectedOutcome, activeTab, question.id, poolState]);
 
   const yesOdds = question.totalBetPool > 0
     ? Math.round((question.yesBetPool / question.totalBetPool) * 100)
@@ -214,9 +151,7 @@ export default function TradingPanel({ question, user, onTradeComplete, votedCho
       return;
     }
 
-    // Check poolState only for AMM questions
-    if (question.executionModel === 'AMM_FPMM' && !poolState) {
-      console.log('[TradingPanel] poolState null - executionModel:', question.executionModel, 'poolState:', poolState);
+    if (!poolState) {
       showToast('Loading pool information. Please try again later.', 'error');
       return;
     }
@@ -284,11 +219,9 @@ export default function TradingPanel({ question, user, onTradeComplete, votedCho
 
       // Refresh pool state and user balance
       await refreshUser();
-      if (question.executionModel === 'AMM_FPMM') {
-        swapApi.getPoolState(question.id)
-          .then(setPoolState)
-          .catch(console.error);
-      }
+      swapApi.getPoolState(question.id)
+        .then(setPoolState)
+        .catch(console.error);
       onTradeComplete();
     } catch (error) {
       if (error instanceof ApiError) {
@@ -303,48 +236,6 @@ export default function TradingPanel({ question, user, onTradeComplete, votedCho
         }
       } else {
         showToast(activeTab === 'buy' ? 'An error occurred during purchase.' : 'An error occurred during sale.', 'error');
-      }
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleLimitOrder = async () => {
-    if (!limitPrice || parseFloat(limitPrice) <= 0 || parseFloat(limitPrice) >= 1) {
-      showToast('Please enter a valid price (0.01 ~ 0.99)', 'error');
-      return;
-    }
-
-    setLoading(true);
-    try {
-      const result = await orderApi.createOrder({
-        questionId: question.id,
-        side: selectedOutcome,
-        price: parseFloat(limitPrice),
-        amount: Number(tradeAmount),
-        direction: activeTab === 'buy' ? 'BUY' : 'SELL',
-      });
-
-      if (result.success) {
-        const actionLabel = activeTab === 'buy' ? 'Buy' : 'Sell';
-        if (result.filledAmount === Number(tradeAmount)) {
-          showToast(`${actionLabel} order filled completely!`);
-        } else if (result.filledAmount > 0) {
-          showToast(`${actionLabel} partially filled: ${result.filledAmount}/${tradeAmount} $`);
-        } else {
-          showToast(`${actionLabel} order added to orderbook.`);
-        }
-        setTradeAmount('');
-        setLimitPrice('');
-        await refreshUser();
-        await refreshPositionsAndOrders();
-        onTradeComplete();
-      }
-    } catch (error) {
-      if (error instanceof ApiError) {
-        showToast(error.message, 'error');
-      } else {
-        showToast('An error occurred while placing order.', 'error');
       }
     } finally {
       setLoading(false);
@@ -975,12 +866,6 @@ export default function TradingPanel({ question, user, onTradeComplete, votedCho
   }
 
   // BETTING status: Show full trading interface
-  // Position check (condition for enabling Sell tab)
-  const hasAnyPosition = positions.length > 0 && positions.some(p => p.quantity > 0);
-
-  // SELL temporarily disabled: Cannot properly execute SELL in current YES BUY ↔ NO BUY matching structure
-  const sellTemporarilyDisabled = true;
-
   // Mobile: Show bottom button and slide-up panel
   if (isMobile) {
     const currentYesPrice = poolState?.currentPrice.yes || (yesOdds / 100);
@@ -993,7 +878,6 @@ export default function TradingPanel({ question, user, onTradeComplete, votedCho
           <div className="grid grid-cols-2 gap-3 max-w-md mx-auto pointer-events-auto">
             <button
               onClick={() => {
-                console.log('Buy button clicked');
                 setSelectedOutcome('YES');
                 setActiveTab('buy');
                 setIsMobilePanelOpen(true);
@@ -1004,7 +888,6 @@ export default function TradingPanel({ question, user, onTradeComplete, votedCho
             </button>
             <button
               onClick={() => {
-                console.log('Sell button clicked');
                 setSelectedOutcome('NO');
                 setActiveTab('buy');
                 setIsMobilePanelOpen(true);

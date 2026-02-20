@@ -509,7 +509,6 @@ function QuestionDetailContent() {
 	                noPool={question.noBetPool}
 	                questionId={question.id}
 	                disableApi={isReadOnlyFallback}
-	                executionModel={question.executionModel}
 	                ammPool={poolState ? {
 	                  collateralLocked: Number(poolState.collateralLocked),
 	                  yesShares: Number(poolState.yesShares),
@@ -522,13 +521,11 @@ function QuestionDetailContent() {
                 <ActivityFeed
                   questionId={question.id}
                   refreshKey={refreshKey}
-                  executionModel={question.executionModel}
                 />
               )}
               {!isReadOnlyFallback && user && (
                 <MyBetsPanel
                   questionId={question.id}
-                  executionModel={question.executionModel}
                 />
               )}
             </div>

@@ -7,7 +7,7 @@ export function mapQuestion(raw: Record<string, unknown>): Question {
     category: (raw.category as Question['category']) ?? undefined,
     status: String(raw.status) as Question['status'],
     type: (raw.type as Question['type']) ?? 'VERIFIABLE',
-    executionModel: (raw.executionModel as Question['executionModel']) ?? 'ORDERBOOK_LEGACY',
+    executionModel: (raw.executionModel as Question['executionModel']) ?? 'AMM_FPMM',
     totalBetPool: Number(raw.totalBetPool ?? 0),
     yesBetPool: Number(raw.yesBetPool ?? 0),
     noBetPool: Number(raw.noBetPool ?? 0),
