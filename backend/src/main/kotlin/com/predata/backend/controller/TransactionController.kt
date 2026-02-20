@@ -1,5 +1,6 @@
 package com.predata.backend.controller
 
+import com.predata.backend.dto.ApiEnvelope
 import com.predata.backend.service.TransactionHistoryService
 import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.*
@@ -21,29 +22,51 @@ class TransactionController(
         @RequestParam(required = false) type: String?,
         @RequestParam(defaultValue = "0") page: Int,
         @RequestParam(defaultValue = "20") size: Int
-    ): ResponseEntity<Any> {
-        return try {
-            val result = transactionHistoryService.getHistory(memberId, type, page, size)
-            ResponseEntity.ok(mapOf(
-                "content" to result.content.map { tx ->
-                    mapOf(
-                        "id" to tx.id,
-                        "type" to tx.type,
-                        "amount" to tx.amount.toDouble(),
-                        "balanceAfter" to tx.balanceAfter.toDouble(),
-                        "description" to tx.description,
-                        "questionId" to tx.questionId,
-                        "txHash" to tx.txHash,
-                        "createdAt" to tx.createdAt.toString()
-                    )
-                },
-                "totalElements" to result.totalElements,
-                "totalPages" to result.totalPages,
-                "page" to result.number,
-                "size" to result.size
-            ))
-        } catch (e: Exception) {
-            ResponseEntity.badRequest().body(mapOf("success" to false, "message" to e.message))
+    ): ResponseEntity<ApiEnvelope<TransactionHistoryResponse>> {
+        val result = transactionHistoryService.getHistory(memberId, type, page, size)
+
+        val items = result.content.map { tx ->
+            TransactionItemDto(
+                id = tx.id,
+                type = tx.type,
+                amount = tx.amount.toDouble(),
+                balanceAfter = tx.balanceAfter.toDouble(),
+                description = tx.description,
+                questionId = tx.questionId,
+                txHash = tx.txHash,
+                createdAt = tx.createdAt.toString()
+            )
         }
+
+        return ResponseEntity.ok(
+            ApiEnvelope.ok(
+                TransactionHistoryResponse(
+                    content = items,
+                    totalElements = result.totalElements,
+                    totalPages = result.totalPages,
+                    page = result.number,
+                    size = result.size
+                )
+            )
+        )
     }
 }
+
+data class TransactionItemDto(
+    val id: Long?,
+    val type: String,
+    val amount: Double,
+    val balanceAfter: Double,
+    val description: String?,
+    val questionId: Long?,
+    val txHash: String?,
+    val createdAt: String
+)
+
+data class TransactionHistoryResponse(
+    val content: List<TransactionItemDto>,
+    val totalElements: Long,
+    val totalPages: Int,
+    val page: Int,
+    val size: Int
+)

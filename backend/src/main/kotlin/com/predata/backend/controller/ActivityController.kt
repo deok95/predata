@@ -37,7 +37,7 @@ class ActivityController(
      * 투표 실행
      */
     @PostMapping("/vote")
-    fun vote(@Valid @RequestBody request: VoteRequest, httpRequest: HttpServletRequest): ResponseEntity<ActivityResponse> {
+    fun vote(@Valid @RequestBody request: VoteRequest, httpRequest: HttpServletRequest): ResponseEntity<Any> {
         val authenticatedMemberId = httpRequest.authenticatedMemberId()
 
         val clientIp = clientIpService.extractClientIp(httpRequest)
@@ -47,7 +47,7 @@ class ActivityController(
         if (response.success) clientIpService.updateMemberLastIp(authenticatedMemberId, clientIp)
 
         return if (response.success) {
-            ResponseEntity.ok(response)
+            ResponseEntity.ok(ApiEnvelope.ok(response))
         } else {
             ResponseEntity.status(HttpStatus.BAD_REQUEST).body(response)
         }
@@ -58,7 +58,7 @@ class ActivityController(
      * 기존 BetService 대신 OrderMatchingService 사용
      */
     @PostMapping("/bet")
-    fun bet(@Valid @RequestBody request: BetRequest, httpRequest: HttpServletRequest): ResponseEntity<ActivityResponse> {
+    fun bet(@Valid @RequestBody request: BetRequest, httpRequest: HttpServletRequest): ResponseEntity<Any> {
         val authenticatedMemberId = httpRequest.authenticatedMemberId()
 
         val clientIp = clientIpService.extractClientIp(httpRequest)
@@ -89,7 +89,7 @@ class ActivityController(
         )
 
         return if (orderResponse.success) {
-            ResponseEntity.ok(activityResponse)
+            ResponseEntity.ok(ApiEnvelope.ok(activityResponse))
         } else {
             ResponseEntity.status(HttpStatus.BAD_REQUEST).body(activityResponse)
         }
@@ -120,7 +120,7 @@ class ActivityController(
     @GetMapping("/questions")
     fun getAllQuestions(): ResponseEntity<ApiEnvelope<List<QuestionResponse>>> {
         val questions = questionService.getAllQuestions()
-        return ResponseEntity.ok(ApiEnvelope(success = true, data = questions))
+        return ResponseEntity.ok(ApiEnvelope.ok(questions))
     }
 
     /**
@@ -131,7 +131,7 @@ class ActivityController(
         val question = questionService.getQuestion(id)
 
         return if (question != null) {
-            ResponseEntity.ok(ApiEnvelope(success = true, data = question))
+            ResponseEntity.ok(ApiEnvelope.ok(question))
         } else {
             ResponseEntity.status(HttpStatus.NOT_FOUND).body(
                 ApiEnvelope(success = false, data = null, message = "Question not found.")
@@ -146,7 +146,7 @@ class ActivityController(
     fun incrementViewCount(@PathVariable id: Long): ResponseEntity<ApiEnvelope<Boolean>> {
         val success = questionService.incrementViewCount(id)
         return if (success) {
-            ResponseEntity.ok(ApiEnvelope(success = true, data = true))
+            ResponseEntity.ok(ApiEnvelope.ok(true))
         } else {
             ResponseEntity.status(HttpStatus.NOT_FOUND).body(
                 ApiEnvelope(success = false, data = null, message = "Question not found.")
@@ -161,7 +161,7 @@ class ActivityController(
     fun getQuestionsByStatus(@PathVariable status: String): ResponseEntity<ApiEnvelope<List<QuestionResponse>>> {
         val questionStatus = com.predata.backend.domain.QuestionStatus.valueOf(status.uppercase())
         val questions = questionService.getQuestionsByStatus(questionStatus)
-        return ResponseEntity.ok(ApiEnvelope(success = true, data = questions))
+        return ResponseEntity.ok(ApiEnvelope.ok(questions))
     }
 
     /**
@@ -172,7 +172,7 @@ class ActivityController(
     fun getMyActivities(
         @RequestParam(required = false) type: String?,
         httpRequest: HttpServletRequest
-    ): ResponseEntity<List<MemberActivityView>> {
+    ): ResponseEntity<ApiEnvelope<List<MemberActivityView>>> {
         val authenticatedMemberId = httpRequest.authenticatedMemberId()
 
         val activities = if (type != null) {
@@ -184,7 +184,7 @@ class ActivityController(
 
         val result = activities.map(ActivityViewAssembler::toMemberActivityView)
 
-        return ResponseEntity.ok(result)
+        return ResponseEntity.ok(ApiEnvelope.ok(result))
     }
 
     /**
@@ -195,7 +195,7 @@ class ActivityController(
     fun getActivitiesByQuestion(
         @PathVariable questionId: Long,
         @RequestParam(required = false) type: String?
-    ): ResponseEntity<List<QuestionActivityView>> {
+    ): ResponseEntity<ApiEnvelope<List<QuestionActivityView>>> {
         val activities = if (type != null) {
             val activityType = ActivityType.valueOf(type.uppercase())
             activityRepository.findByQuestionIdAndActivityType(questionId, activityType)
@@ -205,7 +205,7 @@ class ActivityController(
 
         val result = activities.map(ActivityViewAssembler::toQuestionActivityView)
 
-        return ResponseEntity.ok(result)
+        return ResponseEntity.ok(ApiEnvelope.ok(result))
     }
 
     /**
@@ -217,7 +217,7 @@ class ActivityController(
         @PathVariable questionId: Long,
         @RequestParam(required = false) type: String?,
         httpRequest: HttpServletRequest
-    ): ResponseEntity<List<MemberQuestionActivityView>> {
+    ): ResponseEntity<ApiEnvelope<List<MemberQuestionActivityView>>> {
         val authenticatedMemberId = httpRequest.authenticatedMemberId()
 
         val activities = activityRepository.findByMemberIdAndQuestionId(authenticatedMemberId, questionId)
@@ -231,7 +231,7 @@ class ActivityController(
 
         val result = filtered.map(ActivityViewAssembler::toMemberQuestionActivityView)
 
-        return ResponseEntity.ok(result)
+        return ResponseEntity.ok(ApiEnvelope.ok(result))
     }
 
     /**
@@ -265,21 +265,17 @@ class ActivityController(
             subsidy = 0.0 // 브랜드 지원금은 Question 엔티티에 추가 필요
         )
 
-        return ResponseEntity.ok(
-            ApiEnvelope(
-                success = true,
-                data = OddsResponse(
-                    questionId = id,
-                    yesOdds = odds.yesOdds,
-                    noOdds = odds.noOdds,
-                    yesPrice = odds.yesPrice,
-                    noPrice = odds.noPrice,
-                    poolYes = question.yesBetPool,
-                    poolNo = question.noBetPool,
-                    totalPool = question.totalBetPool
-                )
-            )
+        val response = OddsResponse(
+            questionId = id,
+            yesOdds = odds.yesOdds,
+            noOdds = odds.noOdds,
+            yesPrice = odds.yesPrice,
+            noPrice = odds.noPrice,
+            poolYes = question.yesBetPool,
+            poolNo = question.noBetPool,
+            totalPool = question.totalBetPool
         )
+        return ResponseEntity.ok(ApiEnvelope.ok(response))
     }
 
     /**
@@ -287,16 +283,12 @@ class ActivityController(
      */
     @GetMapping("/health")
     fun health(): ResponseEntity<ApiEnvelope<HealthStatusResponse>> {
-        return ResponseEntity.ok(
-            ApiEnvelope(
-                success = true,
-                data = HealthStatusResponse(
-                    status = "OK",
-                    service = "predata-backend",
-                    version = "1.0.0"
-                )
-            )
+        val response = HealthStatusResponse(
+            status = "OK",
+            service = "predata-backend",
+            version = "1.0.0"
         )
+        return ResponseEntity.ok(ApiEnvelope.ok(response))
     }
 
 }

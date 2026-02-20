@@ -1,15 +1,17 @@
 package com.predata.backend.controller.amm
 
-import com.predata.backend.config.JwtAuthInterceptor
 import com.predata.backend.domain.ShareOutcome
 import com.predata.backend.domain.SwapAction
+import com.predata.backend.dto.ApiEnvelope
 import com.predata.backend.dto.amm.*
+import com.predata.backend.exception.ConflictException
+import com.predata.backend.exception.ForbiddenException
+import com.predata.backend.exception.NotFoundException
 import com.predata.backend.service.amm.SwapService
 import com.predata.backend.util.authenticatedMemberId
 import com.predata.backend.util.authenticatedRole
 import jakarta.servlet.http.HttpServletRequest
 import org.springframework.dao.OptimisticLockingFailureException
-import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
 import org.springframework.orm.ObjectOptimisticLockingFailureException
 import org.springframework.security.access.prepost.PreAuthorize
@@ -31,45 +33,16 @@ class SwapController(
     fun executeSwap(
         @RequestBody request: SwapRequest,
         httpRequest: HttpServletRequest
-    ): ResponseEntity<Map<String, Any>> {
+    ): ResponseEntity<ApiEnvelope<SwapResponse>> {
         val memberId = httpRequest.authenticatedMemberId()
 
         return try {
             val response = retryableSwapFacade.executeSwapWithRetry(memberId, request)
-            ResponseEntity.ok(
-                mapOf(
-                    "success" to true,
-                    "data" to response
-                )
-            )
+            ResponseEntity.ok(ApiEnvelope.ok(response))
         } catch (e: OptimisticLockingFailureException) {
-            ResponseEntity.status(HttpStatus.CONFLICT).body(
-                mapOf(
-                    "success" to false,
-                    "message" to "Trading is congested. Please try again later."
-                )
-            )
+            throw ConflictException("Trading is congested. Please try again later.")
         } catch (e: ObjectOptimisticLockingFailureException) {
-            ResponseEntity.status(HttpStatus.CONFLICT).body(
-                mapOf(
-                    "success" to false,
-                    "message" to "Trading is congested. Please try again later."
-                )
-            )
-        } catch (e: IllegalArgumentException) {
-            ResponseEntity.badRequest().body(
-                mapOf(
-                    "success" to false,
-                    "message" to (e.message ?: "Invalid request.")
-                )
-            )
-        } catch (e: Exception) {
-            ResponseEntity.internalServerError().body(
-                mapOf(
-                    "success" to false,
-                    "message" to "Server error occurred."
-                )
-            )
+            throw ConflictException("Trading is congested. Please try again later.")
         }
     }
 
@@ -83,30 +56,9 @@ class SwapController(
         @RequestParam action: SwapAction,
         @RequestParam outcome: ShareOutcome,
         @RequestParam amount: BigDecimal
-    ): ResponseEntity<Map<String, Any>> {
-        return try {
-            val response = swapService.simulateSwap(questionId, action, outcome, amount)
-            ResponseEntity.ok(
-                mapOf(
-                    "success" to true,
-                    "data" to response
-                )
-            )
-        } catch (e: IllegalArgumentException) {
-            ResponseEntity.badRequest().body(
-                mapOf(
-                    "success" to false,
-                    "message" to (e.message ?: "Invalid request.")
-                )
-            )
-        } catch (e: Exception) {
-            ResponseEntity.internalServerError().body(
-                mapOf(
-                    "success" to false,
-                    "message" to "Server error occurred."
-                )
-            )
-        }
+    ): ResponseEntity<ApiEnvelope<SwapSimulationResponse>> {
+        val response = swapService.simulateSwap(questionId, action, outcome, amount)
+        return ResponseEntity.ok(ApiEnvelope.ok(response))
     }
 
     /**
@@ -116,29 +68,12 @@ class SwapController(
     @GetMapping("/pool/{questionId}")
     fun getPoolState(
         @PathVariable questionId: Long
-    ): ResponseEntity<Map<String, Any>> {
+    ): ResponseEntity<ApiEnvelope<PoolStateResponse>> {
         return try {
             val response = swapService.getPoolState(questionId)
-            ResponseEntity.ok(
-                mapOf(
-                    "success" to true,
-                    "data" to response
-                )
-            )
+            ResponseEntity.ok(ApiEnvelope.ok(response))
         } catch (e: IllegalArgumentException) {
-            ResponseEntity.status(HttpStatus.NOT_FOUND).body(
-                mapOf(
-                    "success" to false,
-                    "message" to (e.message ?: "Market pool not found.")
-                )
-            )
-        } catch (e: Exception) {
-            ResponseEntity.internalServerError().body(
-                mapOf(
-                    "success" to false,
-                    "message" to "Server error occurred."
-                )
-            )
+            throw NotFoundException(e.message ?: "Market pool not found.")
         }
     }
 
@@ -150,25 +85,10 @@ class SwapController(
     fun getMyShares(
         @PathVariable questionId: Long,
         httpRequest: HttpServletRequest
-    ): ResponseEntity<Map<String, Any>> {
+    ): ResponseEntity<ApiEnvelope<MySharesSnapshot>> {
         val memberId = httpRequest.authenticatedMemberId()
-
-        return try {
-            val response = swapService.getMyShares(memberId, questionId)
-            ResponseEntity.ok(
-                mapOf(
-                    "success" to true,
-                    "data" to response
-                )
-            )
-        } catch (e: Exception) {
-            ResponseEntity.internalServerError().body(
-                mapOf(
-                    "success" to false,
-                    "message" to "Server error occurred."
-                )
-            )
-        }
+        val response = swapService.getMyShares(memberId, questionId)
+        return ResponseEntity.ok(ApiEnvelope.ok(response))
     }
 
     /**
@@ -179,29 +99,12 @@ class SwapController(
     fun getPriceHistory(
         @PathVariable questionId: Long,
         @RequestParam(defaultValue = "100") limit: Int
-    ): ResponseEntity<Map<String, Any>> {
+    ): ResponseEntity<ApiEnvelope<List<PricePointResponse>>> {
         return try {
             val response = swapService.getPriceHistory(questionId, limit)
-            ResponseEntity.ok(
-                mapOf(
-                    "success" to true,
-                    "data" to response
-                )
-            )
+            ResponseEntity.ok(ApiEnvelope.ok(response))
         } catch (e: IllegalArgumentException) {
-            ResponseEntity.status(HttpStatus.NOT_FOUND).body(
-                mapOf(
-                    "success" to false,
-                    "message" to (e.message ?: "Question not found.")
-                )
-            )
-        } catch (e: Exception) {
-            ResponseEntity.internalServerError().body(
-                mapOf(
-                    "success" to false,
-                    "message" to "Server error occurred."
-                )
-            )
+            throw NotFoundException(e.message ?: "Question not found.")
         }
     }
 
@@ -213,23 +116,9 @@ class SwapController(
     fun getSwapHistory(
         @PathVariable questionId: Long,
         @RequestParam(defaultValue = "20") limit: Int
-    ): ResponseEntity<Map<String, Any>> {
-        return try {
-            val response = swapService.getSwapHistory(questionId, limit)
-            ResponseEntity.ok(
-                mapOf(
-                    "success" to true,
-                    "data" to response
-                )
-            )
-        } catch (e: Exception) {
-            ResponseEntity.internalServerError().body(
-                mapOf(
-                    "success" to false,
-                    "message" to "Server error occurred."
-                )
-            )
-        }
+    ): ResponseEntity<ApiEnvelope<List<SwapHistoryResponse>>> {
+        val response = swapService.getSwapHistory(questionId, limit)
+        return ResponseEntity.ok(ApiEnvelope.ok(response))
     }
 
     /**
@@ -241,25 +130,10 @@ class SwapController(
         @PathVariable questionId: Long,
         @RequestParam(defaultValue = "50") limit: Int,
         httpRequest: HttpServletRequest
-    ): ResponseEntity<Map<String, Any>> {
+    ): ResponseEntity<ApiEnvelope<List<SwapHistoryResponse>>> {
         val memberId = httpRequest.authenticatedMemberId()
-
-        return try {
-            val response = swapService.getMySwapHistory(memberId, questionId, limit)
-            ResponseEntity.ok(
-                mapOf(
-                    "success" to true,
-                    "data" to response
-                )
-            )
-        } catch (e: Exception) {
-            ResponseEntity.internalServerError().body(
-                mapOf(
-                    "success" to false,
-                    "message" to "Server error occurred."
-                )
-            )
-        }
+        val response = swapService.getMySwapHistory(memberId, questionId, limit)
+        return ResponseEntity.ok(ApiEnvelope.ok(response))
     }
 
     /**
@@ -271,47 +145,13 @@ class SwapController(
     fun seedPool(
         @RequestBody request: SeedPoolRequest,
         httpRequest: HttpServletRequest
-    ): ResponseEntity<Map<String, Any>> {
-        // ADMIN 권한 체크 (이미 @PreAuthorize로 처리되지만 명시적 확인)
+    ): ResponseEntity<ApiEnvelope<SeedPoolResponse>> {
         val role = httpRequest.authenticatedRole()
         if (role != "ADMIN") {
-            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(
-                mapOf(
-                    "success" to false,
-                    "message" to "Administrator privileges required."
-                )
-            )
+            throw ForbiddenException("Administrator privileges required.")
         }
 
-        return try {
-            val response = swapService.seedPool(request)
-            ResponseEntity.ok(
-                mapOf(
-                    "success" to true,
-                    "data" to response
-                )
-            )
-        } catch (e: IllegalArgumentException) {
-            ResponseEntity.badRequest().body(
-                mapOf(
-                    "success" to false,
-                    "message" to (e.message ?: "Invalid request.")
-                )
-            )
-        } catch (e: IllegalStateException) {
-            ResponseEntity.status(HttpStatus.CONFLICT).body(
-                mapOf(
-                    "success" to false,
-                    "message" to (e.message ?: "Pool already exists.")
-                )
-            )
-        } catch (e: Exception) {
-            ResponseEntity.internalServerError().body(
-                mapOf(
-                    "success" to false,
-                    "message" to "Server error occurred."
-                )
-            )
-        }
+        val response = swapService.seedPool(request)
+        return ResponseEntity.ok(ApiEnvelope.ok(response))
     }
 }

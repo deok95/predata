@@ -30,7 +30,14 @@ export class ApiError extends Error {
 interface ApiEnvelope<T> {
   success: boolean;
   data?: T;
+  error?: {
+    code: string;
+    message: string;
+    status: number;
+    details?: string[];
+  };
   message?: string;
+  timestamp?: string;
 }
 
 function isApiEnvelope<T>(raw: unknown): raw is ApiEnvelope<T> {
@@ -40,11 +47,11 @@ function isApiEnvelope<T>(raw: unknown): raw is ApiEnvelope<T> {
 export function unwrapApiEnvelope<T>(raw: T | ApiEnvelope<T>): T {
   if (isApiEnvelope<T>(raw)) {
     if (!raw.success) {
-      throw new Error(raw.message || 'Request failed.');
+      throw new Error(raw.error?.message || raw.message || 'Request failed.');
     }
 
     if (raw.data === undefined) {
-      throw new Error(raw.message || 'No response data.');
+      throw new Error(raw.error?.message || raw.message || 'No response data.');
     }
 
     return raw.data;
@@ -90,7 +97,7 @@ export async function apiRequest<T>(endpoint: string, options?: RequestInit): Pr
         } catch {
           throw new ApiError(429, 'Rate limit exceeded (unsafe methods are not retried)');
         }
-        throw new ApiError(429, data.message || 'Rate limit exceeded', data);
+        throw new ApiError(429, data.error?.message || data.message || 'Rate limit exceeded', data);
       }
 
       // Use Retry-After header value, default 2 seconds, max 5 seconds
@@ -147,7 +154,7 @@ export async function apiRequest<T>(endpoint: string, options?: RequestInit): Pr
 
       throw new ApiError(
         response.status,
-        data.message || `HTTP ${response.status}: ${response.statusText}`,
+        data.error?.message || data.message || `HTTP ${response.status}: ${response.statusText}`,
         data
       );
     }

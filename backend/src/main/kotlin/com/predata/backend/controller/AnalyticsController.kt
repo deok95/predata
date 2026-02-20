@@ -1,5 +1,6 @@
 package com.predata.backend.controller
 
+import com.predata.backend.dto.ApiEnvelope
 import com.predata.backend.service.*
 import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.*
@@ -16,9 +17,9 @@ class AnalyticsController(
      * GET /api/analytics/demographics/{questionId}
      */
     @GetMapping("/demographics/{questionId}")
-    fun getVoteDemographics(@PathVariable questionId: Long): ResponseEntity<VoteDemographicsReport> {
+    fun getVoteDemographics(@PathVariable questionId: Long): ResponseEntity<ApiEnvelope<VoteDemographicsReport>> {
         val report = analyticsService.getVoteDemographics(questionId)
-        return ResponseEntity.ok(report)
+        return ResponseEntity.ok(ApiEnvelope.ok(report))
     }
 
     /**
@@ -26,9 +27,9 @@ class AnalyticsController(
      * GET /api/analytics/gap-analysis/{questionId}
      */
     @GetMapping("/gap-analysis/{questionId}")
-    fun getVoteBetGapAnalysis(@PathVariable questionId: Long): ResponseEntity<VoteBetGapReport> {
+    fun getVoteBetGapAnalysis(@PathVariable questionId: Long): ResponseEntity<ApiEnvelope<VoteBetGapReport>> {
         val report = analyticsService.getVoteBetGapAnalysis(questionId)
-        return ResponseEntity.ok(report)
+        return ResponseEntity.ok(ApiEnvelope.ok(report))
     }
 
     /**
@@ -36,9 +37,9 @@ class AnalyticsController(
      * GET /api/analytics/filtering-effect/{questionId}
      */
     @GetMapping("/filtering-effect/{questionId}")
-    fun getFilteringEffect(@PathVariable questionId: Long): ResponseEntity<FilteringEffectReport> {
+    fun getFilteringEffect(@PathVariable questionId: Long): ResponseEntity<ApiEnvelope<FilteringEffectReport>> {
         val report = analyticsService.getFilteringEffectReport(questionId)
-        return ResponseEntity.ok(report)
+        return ResponseEntity.ok(ApiEnvelope.ok(report))
     }
 
     /**
@@ -46,9 +47,9 @@ class AnalyticsController(
      * GET /api/analytics/dashboard/{questionId}
      */
     @GetMapping("/dashboard/{questionId}")
-    fun getQualityDashboard(@PathVariable questionId: Long): ResponseEntity<QualityDashboard> {
+    fun getQualityDashboard(@PathVariable questionId: Long): ResponseEntity<ApiEnvelope<QualityDashboard>> {
         val dashboard = analyticsService.getQualityDashboard(questionId)
-        return ResponseEntity.ok(dashboard)
+        return ResponseEntity.ok(ApiEnvelope.ok(dashboard))
     }
 
     /**
@@ -56,8 +57,8 @@ class AnalyticsController(
      * GET /api/analytics/global/stats
      */
     @GetMapping("/global/stats")
-    fun getGlobalStats(): ResponseEntity<Map<String, Any>> {
+    fun getGlobalStats(): ResponseEntity<ApiEnvelope<Map<String, Any>>> {
         val stats = analyticsService.getGlobalStats()
-        return ResponseEntity.ok(stats)
+        return ResponseEntity.ok(ApiEnvelope.ok(stats))
     }
 }

@@ -1,6 +1,6 @@
 package com.predata.backend.controller
 
-import com.predata.backend.config.JwtAuthInterceptor
+import com.predata.backend.dto.ApiEnvelope
 import com.predata.backend.service.VotingPassPurchaseResponse
 import com.predata.backend.service.VotingPassService
 import com.predata.backend.util.authenticatedMemberId
@@ -23,23 +23,12 @@ class VotingPassController(
     fun purchaseVotingPass(
         httpRequest: HttpServletRequest,
         @RequestBody(required = false) request: VotingPassPurchaseRequest? = null // backward compatible; ignored
-    ): ResponseEntity<VotingPassPurchaseResponse> {
+    ): ResponseEntity<ApiEnvelope<VotingPassPurchaseResponse>> {
         val authenticatedMemberId = httpRequest.authenticatedMemberId()
 
-        return try {
-            // Never trust memberId in body; enforce JWT subject.
-            val response = votingPassService.purchaseVotingPass(authenticatedMemberId)
-            ResponseEntity.ok(response)
-        } catch (e: IllegalArgumentException) {
-            ResponseEntity.badRequest().body(
-                VotingPassPurchaseResponse(
-                    success = false,
-                    hasVotingPass = false,
-                    remainingBalance = 0.0,
-                    message = e.message ?: "Failed to purchase voting pass."
-                )
-            )
-        }
+        // Never trust memberId in body; enforce JWT subject.
+        val response = votingPassService.purchaseVotingPass(authenticatedMemberId)
+        return ResponseEntity.ok(ApiEnvelope.ok(response))
     }
 }
 

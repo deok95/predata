@@ -1,12 +1,13 @@
 package com.predata.backend.controller
 
+import com.predata.backend.domain.Choice
 import com.predata.backend.domain.VotingPhase
 import com.predata.backend.dto.*
+import com.predata.backend.exception.ForbiddenException
 import com.predata.backend.repository.QuestionRepository
 import com.predata.backend.service.AbusingDetectionService
 import com.predata.backend.service.DataQualityService
 import com.predata.backend.service.PersonaWeightService
-import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.*
 
@@ -30,7 +31,7 @@ class DataAnalysisController(
         }
 
         if (question.votingPhase.ordinal < VotingPhase.BETTING_OPEN.ordinal) {
-            throw IllegalStateException("Vote results not yet revealed.")
+            throw ForbiddenException("Vote results not yet revealed.")
         }
     }
 
@@ -39,15 +40,10 @@ class DataAnalysisController(
      * GET /api/analysis/questions/{id}/abusing-report
      */
     @GetMapping("/questions/{id}/abusing-report")
-    fun getAbusingReport(@PathVariable id: Long): ResponseEntity<*> {
-        return try {
-            checkPhaseForAnalysis(id)
-            val report = abusingDetectionService.analyzeAbusingPatterns(id)
-            ResponseEntity.ok(report)
-        } catch (e: IllegalStateException) {
-            ResponseEntity.status(HttpStatus.FORBIDDEN)
-                .body(mapOf("success" to false, "message" to (e.message ?: "Vote results not yet revealed.")))
-        }
+    fun getAbusingReport(@PathVariable id: Long): ResponseEntity<ApiEnvelope<AbusingReport>> {
+        checkPhaseForAnalysis(id)
+        val report = abusingDetectionService.analyzeAbusingPatterns(id)
+        return ResponseEntity.ok(ApiEnvelope.ok(report))
     }
 
     /**
@@ -55,27 +51,17 @@ class DataAnalysisController(
      * GET /api/analysis/questions/{id}/quality-score
      */
     @GetMapping("/questions/{id}/quality-score")
-    fun getQualityScore(@PathVariable id: Long): ResponseEntity<Map<String, Any>> {
-        return try {
-            checkPhaseForAnalysis(id)
-            val score = dataQualityService.calculateQualityScore(id)
-            ResponseEntity.ok(
-                mapOf(
-                    "questionId" to id,
-                    "qualityScore" to score,
-                    "grade" to when {
-                        score >= 90 -> "A"
-                        score >= 80 -> "B"
-                        score >= 70 -> "C"
-                        score >= 60 -> "D"
-                        else -> "F"
-                    }
-                )
-            )
-        } catch (e: IllegalStateException) {
-            ResponseEntity.status(HttpStatus.FORBIDDEN)
-                .body(mapOf("success" to false, "message" to (e.message ?: "Vote results not yet revealed.")))
+    fun getQualityScore(@PathVariable id: Long): ResponseEntity<ApiEnvelope<QualityScoreResponse>> {
+        checkPhaseForAnalysis(id)
+        val score = dataQualityService.calculateQualityScore(id)
+        val grade = when {
+            score >= 90 -> "A"
+            score >= 80 -> "B"
+            score >= 70 -> "C"
+            score >= 60 -> "D"
+            else -> "F"
         }
+        return ResponseEntity.ok(ApiEnvelope.ok(QualityScoreResponse(questionId = id, qualityScore = score, grade = grade)))
     }
 
     /**
@@ -86,15 +72,10 @@ class DataAnalysisController(
     fun getWeightedVotes(
         @PathVariable id: Long,
         @RequestParam(required = false) category: String?
-    ): ResponseEntity<*> {
-        return try {
-            checkPhaseForAnalysis(id)
-            val result = personaWeightService.calculateWeightedVotes(id, category)
-            ResponseEntity.ok(result)
-        } catch (e: IllegalStateException) {
-            ResponseEntity.status(HttpStatus.FORBIDDEN)
-                .body(mapOf("success" to false, "message" to (e.message ?: "Vote results not yet revealed.")))
-        }
+    ): ResponseEntity<ApiEnvelope<WeightedVoteResult>> {
+        checkPhaseForAnalysis(id)
+        val result = personaWeightService.calculateWeightedVotes(id, category)
+        return ResponseEntity.ok(ApiEnvelope.ok(result))
     }
 
     /**
@@ -102,15 +83,10 @@ class DataAnalysisController(
      * GET /api/analysis/questions/{id}/by-country
      */
     @GetMapping("/questions/{id}/by-country")
-    fun getVotesByCountry(@PathVariable id: Long): ResponseEntity<*> {
-        return try {
-            checkPhaseForAnalysis(id)
-            val result = personaWeightService.calculateVotesByCountry(id)
-            ResponseEntity.ok(result)
-        } catch (e: IllegalStateException) {
-            ResponseEntity.status(HttpStatus.FORBIDDEN)
-                .body(mapOf("success" to false, "message" to (e.message ?: "Vote results not yet revealed.")))
-        }
+    fun getVotesByCountry(@PathVariable id: Long): ResponseEntity<ApiEnvelope<Any>> {
+        checkPhaseForAnalysis(id)
+        val result = personaWeightService.calculateVotesByCountry(id)
+        return ResponseEntity.ok(ApiEnvelope.ok(result))
     }
 
     /**
@@ -122,42 +98,23 @@ class DataAnalysisController(
         @PathVariable id: Long,
         @RequestParam(defaultValue = "2000") minLatencyMs: Int,
         @RequestParam(defaultValue = "false") onlyBettors: Boolean
-    ): ResponseEntity<*> {
-        return try {
-            checkPhaseForAnalysis(id)
+    ): ResponseEntity<ApiEnvelope<PremiumDataResponse>> {
+        checkPhaseForAnalysis(id)
 
-            // 원본 데이터
-            val allVotes = dataQualityService.applyFilters(
-                id,
-                FilterOptions(minLatencyMs = 0, onlyBettors = false)
-            )
+        val allVotes = dataQualityService.applyFilters(id, FilterOptions(minLatencyMs = 0, onlyBettors = false))
+        val cleanedVotes = dataQualityService.applyFilters(id, FilterOptions(minLatencyMs = minLatencyMs, onlyBettors = onlyBettors))
+        val weightedResult = personaWeightService.calculateWeightedVotes(id)
+        val qualityScore = dataQualityService.calculateQualityScore(id)
+        val abusingReport = abusingDetectionService.analyzeAbusingPatterns(id)
+        val originalGap = abusingReport.overallGap
 
-            // 필터링된 데이터
-            val cleanedVotes = dataQualityService.applyFilters(
-                id,
-                FilterOptions(
-                    minLatencyMs = minLatencyMs,
-                    onlyBettors = onlyBettors
-                )
-            )
+        val gapReduction = originalGap - kotlin.math.abs(
+            weightedResult.weightedYesPercentage -
+            (cleanedVotes.count { it.choice == Choice.YES } * 100.0 / cleanedVotes.size)
+        )
 
-            // 가중치 적용
-            val weightedResult = personaWeightService.calculateWeightedVotes(id)
-
-            // 품질 점수
-            val qualityScore = dataQualityService.calculateQualityScore(id)
-
-            // 괴리율 감소 계산
-            val abusingReport = abusingDetectionService.analyzeAbusingPatterns(id)
-            val originalGap = abusingReport.overallGap
-
-            // 필터링 후 재계산 (간단히 가중치 결과로 대체)
-            val gapReduction = originalGap - kotlin.math.abs(
-                weightedResult.weightedYesPercentage -
-                (cleanedVotes.count { it.choice == com.predata.backend.domain.Choice.YES } * 100.0 / cleanedVotes.size)
-            )
-
-            ResponseEntity.ok(
+        return ResponseEntity.ok(
+            ApiEnvelope.ok(
                 PremiumDataResponse(
                     questionId = id,
                     rawVoteCount = allVotes.size,
@@ -167,10 +124,7 @@ class DataAnalysisController(
                     gapReduction = String.format("%.2f", gapReduction).toDouble()
                 )
             )
-        } catch (e: IllegalStateException) {
-            ResponseEntity.status(HttpStatus.FORBIDDEN)
-                .body(mapOf("success" to false, "message" to (e.message ?: "Vote results not yet revealed.")))
-        }
+        )
     }
 
     /**
@@ -181,29 +135,15 @@ class DataAnalysisController(
     fun getFastClickers(
         @PathVariable id: Long,
         @RequestParam(defaultValue = "1000") thresholdMs: Int
-    ): ResponseEntity<Map<String, Any>> {
-        return try {
-            checkPhaseForAnalysis(id)
-            val fastClickers = dataQualityService.detectFastClickers(id, thresholdMs)
+    ): ResponseEntity<ApiEnvelope<FastClickersResponse>> {
+        checkPhaseForAnalysis(id)
+        val fastClickers = dataQualityService.detectFastClickers(id, thresholdMs)
+        val totalVotes = dataQualityService.applyFilters(id, FilterOptions(minLatencyMs = 0)).size
+        val percentage = String.format("%.2f", fastClickers.size * 100.0 / totalVotes).toDouble()
 
-            ResponseEntity.ok(
-                mapOf(
-                    "questionId" to id,
-                    "thresholdMs" to thresholdMs,
-                    "suspiciousCount" to fastClickers.size,
-                    "percentage" to String.format(
-                        "%.2f",
-                        fastClickers.size * 100.0 / dataQualityService.applyFilters(
-                            id,
-                            FilterOptions(minLatencyMs = 0)
-                        ).size
-                    ).toDouble()
-                )
-            )
-        } catch (e: IllegalStateException) {
-            ResponseEntity.status(HttpStatus.FORBIDDEN)
-                .body(mapOf("success" to false, "message" to (e.message ?: "Vote results not yet revealed.")))
-        }
+        return ResponseEntity.ok(
+            ApiEnvelope.ok(FastClickersResponse(questionId = id, thresholdMs = thresholdMs, suspiciousCount = fastClickers.size, percentage = percentage))
+        )
     }
 
     /**
@@ -214,39 +154,27 @@ class DataAnalysisController(
     fun simulateFilter(
         @PathVariable id: Long,
         @RequestBody options: FilterOptions
-    ): ResponseEntity<Map<String, Any>> {
-        return try {
-            checkPhaseForAnalysis(id)
-            val allVotes = dataQualityService.applyFilters(
-                id,
-                FilterOptions(minLatencyMs = 0)
-            )
+    ): ResponseEntity<ApiEnvelope<FilterSimulationResponse>> {
+        checkPhaseForAnalysis(id)
+        val allVotes = dataQualityService.applyFilters(id, FilterOptions(minLatencyMs = 0))
+        val filteredVotes = dataQualityService.applyFilters(id, options)
 
-            val filteredVotes = dataQualityService.applyFilters(id, options)
+        val originalYesPct = allVotes.count { it.choice == Choice.YES } * 100.0 / allVotes.size
+        val filteredYesPct = filteredVotes.count { it.choice == Choice.YES } * 100.0 / filteredVotes.size
 
-            val originalYesPct = allVotes.count {
-                it.choice == com.predata.backend.domain.Choice.YES
-            } * 100.0 / allVotes.size
-
-            val filteredYesPct = filteredVotes.count {
-                it.choice == com.predata.backend.domain.Choice.YES
-            } * 100.0 / filteredVotes.size
-
-            ResponseEntity.ok(
-                mapOf(
-                    "questionId" to id,
-                    "filterOptions" to options,
-                    "originalVoteCount" to allVotes.size,
-                    "filteredVoteCount" to filteredVotes.size,
-                    "removedCount" to (allVotes.size - filteredVotes.size),
-                    "originalYesPercentage" to String.format("%.2f", originalYesPct).toDouble(),
-                    "filteredYesPercentage" to String.format("%.2f", filteredYesPct).toDouble(),
-                    "percentageChange" to String.format("%.2f", filteredYesPct - originalYesPct).toDouble()
+        return ResponseEntity.ok(
+            ApiEnvelope.ok(
+                FilterSimulationResponse(
+                    questionId = id,
+                    filterOptions = options,
+                    originalVoteCount = allVotes.size,
+                    filteredVoteCount = filteredVotes.size,
+                    removedCount = allVotes.size - filteredVotes.size,
+                    originalYesPercentage = String.format("%.2f", originalYesPct).toDouble(),
+                    filteredYesPercentage = String.format("%.2f", filteredYesPct).toDouble(),
+                    percentageChange = String.format("%.2f", filteredYesPct - originalYesPct).toDouble()
                 )
             )
-        } catch (e: IllegalStateException) {
-            ResponseEntity.status(HttpStatus.FORBIDDEN)
-                .body(mapOf("success" to false, "message" to (e.message ?: "Vote results not yet revealed.")))
-        }
+        )
     }
 }

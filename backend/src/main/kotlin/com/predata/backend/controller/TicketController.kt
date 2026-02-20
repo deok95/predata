@@ -1,6 +1,6 @@
 package com.predata.backend.controller
 
-import com.predata.backend.config.JwtAuthInterceptor
+import com.predata.backend.dto.ApiEnvelope
 import com.predata.backend.service.TicketService
 import com.predata.backend.util.authenticatedMemberId
 import jakarta.servlet.http.HttpServletRequest
@@ -8,7 +8,6 @@ import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.*
 import java.time.LocalDate
 import java.time.ZoneId
-import java.time.ZonedDateTime
 
 /**
  * 투표 티켓 컨트롤러
@@ -28,7 +27,7 @@ class TicketController(
     @GetMapping("/status")
     fun getStatus(
         httpRequest: HttpServletRequest
-    ): ResponseEntity<Map<String, Any>> {
+    ): ResponseEntity<ApiEnvelope<TicketStatusResponse>> {
         val authenticatedMemberId = httpRequest.authenticatedMemberId()
 
         val remainingTickets = ticketService.getRemainingTickets(authenticatedMemberId)
@@ -38,11 +37,19 @@ class TicketController(
             .toString()
 
         return ResponseEntity.ok(
-            mapOf(
-                "remainingTickets" to remainingTickets,
-                "maxTickets" to 5,
-                "resetAt" to resetAt
+            ApiEnvelope.ok(
+                TicketStatusResponse(
+                    remainingTickets = remainingTickets,
+                    maxTickets = 5,
+                    resetAt = resetAt
+                )
             )
         )
     }
 }
+
+data class TicketStatusResponse(
+    val remainingTickets: Int,
+    val maxTickets: Int,
+    val resetAt: String
+)

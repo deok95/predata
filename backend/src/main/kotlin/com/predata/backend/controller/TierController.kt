@@ -1,5 +1,6 @@
 package com.predata.backend.controller
 
+import com.predata.backend.dto.ApiEnvelope
 import com.predata.backend.service.TierProgressResponse
 import com.predata.backend.service.TierService
 import com.predata.backend.service.TierStatistics
@@ -18,9 +19,9 @@ class TierController(
      * GET /api/tiers/progress/{memberId}
      */
     @GetMapping("/progress/{memberId}")
-    fun getTierProgress(@PathVariable memberId: Long): ResponseEntity<TierProgressResponse> {
+    fun getTierProgress(@PathVariable memberId: Long): ResponseEntity<ApiEnvelope<TierProgressResponse>> {
         val progress = tierService.getTierProgress(memberId)
-        return ResponseEntity.ok(progress)
+        return ResponseEntity.ok(ApiEnvelope.ok(progress))
     }
 
     /**
@@ -28,8 +29,8 @@ class TierController(
      * GET /api/tiers/statistics
      */
     @GetMapping("/statistics")
-    fun getTierStatistics(): ResponseEntity<TierStatistics> {
+    fun getTierStatistics(): ResponseEntity<ApiEnvelope<TierStatistics>> {
         val stats = tierService.getTierStatistics()
-        return ResponseEntity.ok(stats)
+        return ResponseEntity.ok(ApiEnvelope.ok(stats))
     }
 }

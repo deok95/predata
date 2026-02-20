@@ -1,7 +1,9 @@
 package com.predata.backend.controller
 
+import com.predata.backend.dto.ApiEnvelope
 import com.predata.backend.dto.BlockchainStatusResponse
 import com.predata.backend.dto.QuestionOnChain
+import com.predata.backend.exception.NotFoundException
 import com.predata.backend.service.BlockchainService
 import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.*
@@ -21,9 +23,9 @@ class BlockchainController(
      * GET /api/blockchain/status
      */
     @GetMapping("/status")
-    fun getBlockchainStatus(): ResponseEntity<BlockchainStatusResponse> {
+    fun getBlockchainStatus(): ResponseEntity<ApiEnvelope<BlockchainStatusResponse>> {
         val status = blockchainService.getBlockchainStatus()
-        return ResponseEntity.ok(status)
+        return ResponseEntity.ok(ApiEnvelope.ok(status))
     }
 
     /**
@@ -31,13 +33,13 @@ class BlockchainController(
      * GET /api/blockchain/question/{questionId}
      */
     @GetMapping("/question/{questionId}")
-    fun getQuestionFromChain(@PathVariable questionId: Long): ResponseEntity<QuestionOnChain> {
+    fun getQuestionFromChain(@PathVariable questionId: Long): ResponseEntity<ApiEnvelope<QuestionOnChain>> {
         val onChainData = blockchainService.getQuestionFromChain(questionId)
-        
+
         return if (onChainData != null) {
-            ResponseEntity.ok(onChainData)
+            ResponseEntity.ok(ApiEnvelope.ok(onChainData))
         } else {
-            ResponseEntity.notFound().build()
+            throw NotFoundException("Question not found.")
         }
     }
 }

@@ -1,6 +1,7 @@
 package com.predata.backend.controller
 
 import com.predata.backend.dto.*
+import com.predata.backend.exception.NotFoundException
 import com.predata.backend.service.QuestionGeneratorService
 import jakarta.validation.Valid
 import org.springframework.http.HttpStatus
@@ -20,9 +21,9 @@ class QuestionGeneratorController(
      * GET /api/admin/settings/question-generator
      */
     @GetMapping("/settings/question-generator")
-    fun getSettings(): ResponseEntity<QuestionGeneratorSettingsResponse> {
+    fun getSettings(): ResponseEntity<ApiEnvelope<QuestionGeneratorSettingsResponse>> {
         val settings = questionGeneratorService.getSettings()
-        return ResponseEntity.ok(settings)
+        return ResponseEntity.ok(ApiEnvelope.ok(settings))
     }
 
     /**
@@ -32,13 +33,9 @@ class QuestionGeneratorController(
     @PutMapping("/settings/question-generator")
     fun updateSettings(
         @Valid @RequestBody request: UpdateQuestionGeneratorSettingsRequest
-    ): ResponseEntity<QuestionGeneratorSettingsResponse> {
-        return try {
-            val settings = questionGeneratorService.updateSettings(request)
-            ResponseEntity.ok(settings)
-        } catch (e: IllegalArgumentException) {
-            ResponseEntity.badRequest().build()
-        }
+    ): ResponseEntity<ApiEnvelope<QuestionGeneratorSettingsResponse>> {
+        val settings = questionGeneratorService.updateSettings(request)
+        return ResponseEntity.ok(ApiEnvelope.ok(settings))
     }
 
     /**
@@ -63,27 +60,9 @@ class QuestionGeneratorController(
     @PostMapping("/questions/generate-batch")
     fun generateBatch(
         @RequestBody(required = false) request: BatchGenerateQuestionsRequest?
-    ): ResponseEntity<BatchGenerateQuestionsResponse> {
-        return try {
-            val result = autoQuestionGenerationService.generateBatch(request ?: BatchGenerateQuestionsRequest())
-            ResponseEntity.ok(result)
-        } catch (e: IllegalArgumentException) {
-            ResponseEntity.badRequest().body(
-                BatchGenerateQuestionsResponse(
-                    success = false,
-                    batchId = "",
-                    generatedAt = java.time.LocalDateTime.now(),
-                    subcategory = request?.subcategory ?: "",
-                    requestedCount = 0,
-                    acceptedCount = 0,
-                    rejectedCount = 0,
-                    opinionCount = 0,
-                    verifiableCount = 0,
-                    drafts = emptyList(),
-                    message = e.message
-                )
-            )
-        }
+    ): ResponseEntity<ApiEnvelope<BatchGenerateQuestionsResponse>> {
+        val result = autoQuestionGenerationService.generateBatch(request ?: BatchGenerateQuestionsRequest())
+        return ResponseEntity.ok(ApiEnvelope.ok(result))
     }
 
     /**
@@ -91,25 +70,11 @@ class QuestionGeneratorController(
      * GET /api/admin/questions/generation-batches/{batchId}
      */
     @GetMapping("/questions/generation-batches/{batchId}")
-    fun getBatch(@PathVariable batchId: String): ResponseEntity<BatchGenerateQuestionsResponse> {
+    fun getBatch(@PathVariable batchId: String): ResponseEntity<ApiEnvelope<BatchGenerateQuestionsResponse>> {
         return try {
-            ResponseEntity.ok(autoQuestionGenerationService.getBatch(batchId))
+            ResponseEntity.ok(ApiEnvelope.ok(autoQuestionGenerationService.getBatch(batchId)))
         } catch (e: IllegalArgumentException) {
-            ResponseEntity.status(HttpStatus.NOT_FOUND).body(
-                BatchGenerateQuestionsResponse(
-                    success = false,
-                    batchId = batchId,
-                    generatedAt = java.time.LocalDateTime.now(),
-                    subcategory = "",
-                    requestedCount = 0,
-                    acceptedCount = 0,
-                    rejectedCount = 0,
-                    opinionCount = 0,
-                    verifiableCount = 0,
-                    drafts = emptyList(),
-                    message = e.message
-                )
-            )
+            throw NotFoundException(e.message ?: "Batch not found.")
         }
     }
 
@@ -121,20 +86,8 @@ class QuestionGeneratorController(
     fun publishBatch(
         @PathVariable batchId: String,
         @Valid @RequestBody request: PublishGeneratedBatchRequest
-    ): ResponseEntity<PublishResultResponse> {
-        return try {
-            ResponseEntity.ok(autoQuestionGenerationService.publishBatch(batchId, request))
-        } catch (e: IllegalArgumentException) {
-            ResponseEntity.badRequest().body(
-                PublishResultResponse(
-                    success = false,
-                    batchId = batchId,
-                    publishedCount = 0,
-                    failedCount = 0,
-                    message = e.message
-                )
-            )
-        }
+    ): ResponseEntity<ApiEnvelope<PublishResultResponse>> {
+        return ResponseEntity.ok(ApiEnvelope.ok(autoQuestionGenerationService.publishBatch(batchId, request)))
     }
 
     /**
@@ -145,25 +98,7 @@ class QuestionGeneratorController(
     fun retryBatch(
         @PathVariable batchId: String,
         @RequestBody(required = false) request: RetryFailedGenerationRequest?
-    ): ResponseEntity<BatchGenerateQuestionsResponse> {
-        return try {
-            ResponseEntity.ok(autoQuestionGenerationService.retryBatch(batchId, request ?: RetryFailedGenerationRequest()))
-        } catch (e: IllegalArgumentException) {
-            ResponseEntity.badRequest().body(
-                BatchGenerateQuestionsResponse(
-                    success = false,
-                    batchId = batchId,
-                    generatedAt = java.time.LocalDateTime.now(),
-                    subcategory = "",
-                    requestedCount = 0,
-                    acceptedCount = 0,
-                    rejectedCount = 0,
-                    opinionCount = 0,
-                    verifiableCount = 0,
-                    drafts = emptyList(),
-                    message = e.message
-                )
-            )
-        }
+    ): ResponseEntity<ApiEnvelope<BatchGenerateQuestionsResponse>> {
+        return ResponseEntity.ok(ApiEnvelope.ok(autoQuestionGenerationService.retryBatch(batchId, request ?: RetryFailedGenerationRequest())))
     }
 }

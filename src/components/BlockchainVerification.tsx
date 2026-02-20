@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { CheckCircle, AlertCircle, ExternalLink, Loader } from 'lucide-react'
-import { API_BASE_URL } from '@/lib/api'
+import { apiRequest, unwrapApiEnvelope } from '@/lib/api'
 
 const BASESCAN_URL = process.env.NEXT_PUBLIC_BASESCAN_URL || 'https://sepolia.basescan.org'
 
@@ -17,16 +17,10 @@ export default function BlockchainVerification({ questionId }: { questionId: num
 
     try {
       // Fetch on-chain data from backend
-      const response = await fetch(`${API_BASE_URL}/blockchain/question/${questionId}`)
-
-      if (response.ok) {
-        const data = await response.json()
-        setOnChainData(data)
-      } else {
-        setError('Unable to fetch on-chain data.')
-      }
+      const raw = await apiRequest<Record<string, unknown>>(`/api/blockchain/question/${questionId}`)
+      setOnChainData(unwrapApiEnvelope(raw))
     } catch (err) {
-      setError('An error occurred during verification.')
+      setError('Unable to fetch on-chain data.')
     } finally {
       setLoading(false)
     }

@@ -1,5 +1,6 @@
 package com.predata.backend.controller
 
+import com.predata.backend.dto.ApiEnvelope
 import com.predata.backend.repository.QuestionRepository
 import com.predata.backend.sports.domain.Match
 import com.predata.backend.sports.domain.MatchStatus
@@ -32,9 +33,9 @@ class SportsManagementController(
      * POST /api/admin/sports/generate
      */
     @PostMapping("/generate")
-    fun manualGenerate(): ResponseEntity<MatchSyncResult> {
+    fun manualGenerate(): ResponseEntity<ApiEnvelope<MatchSyncResult>> {
         val result = matchSyncScheduler.syncUpcomingMatches()
-        return ResponseEntity.ok(result)
+        return ResponseEntity.ok(ApiEnvelope.ok(result))
     }
 
     /**
@@ -42,9 +43,9 @@ class SportsManagementController(
      * POST /api/admin/sports/update-results
      */
     @PostMapping("/update-results")
-    fun manualUpdateResults(): ResponseEntity<LivePollResult> {
+    fun manualUpdateResults(): ResponseEntity<ApiEnvelope<LivePollResult>> {
         val result = matchSyncScheduler.pollLiveMatches()
-        return ResponseEntity.ok(result)
+        return ResponseEntity.ok(ApiEnvelope.ok(result))
     }
 
     /**
@@ -52,14 +53,14 @@ class SportsManagementController(
      * GET /api/admin/sports/live
      */
     @GetMapping("/live")
-    fun getLiveMatches(): ResponseEntity<List<LiveMatchInfo>> {
+    fun getLiveMatches(): ResponseEntity<ApiEnvelope<List<LiveMatchInfo>>> {
         val liveMatches = matchRepository.findByMatchStatus(MatchStatus.LIVE) +
             matchRepository.findByMatchStatus(MatchStatus.HALFTIME)
         val questionIdByMatch = buildQuestionIdByMatch()
         val liveMatchInfos = liveMatches
             .distinctBy { it.id }
             .map { match -> toLiveMatchInfo(match, questionIdByMatch[match.id]) }
-        return ResponseEntity.ok(liveMatchInfos)
+        return ResponseEntity.ok(ApiEnvelope.ok(liveMatchInfos))
     }
 
     /**
@@ -67,7 +68,7 @@ class SportsManagementController(
      * GET /api/admin/sports/upcoming
      */
     @GetMapping("/upcoming")
-    fun getUpcomingMatches(): ResponseEntity<List<UpcomingMatchInfo>> {
+    fun getUpcomingMatches(): ResponseEntity<ApiEnvelope<List<UpcomingMatchInfo>>> {
         val start = LocalDateTime.now(ZoneOffset.UTC)
         val end = start.plusDays(fetchWindowDays)
         val questionIdByMatch = buildQuestionIdByMatch()
@@ -87,7 +88,7 @@ class SportsManagementController(
                     status = match.matchStatus.name
                 )
             }
-        return ResponseEntity.ok(upcomingMatches)
+        return ResponseEntity.ok(ApiEnvelope.ok(upcomingMatches))
     }
 
     /**
@@ -95,7 +96,7 @@ class SportsManagementController(
      * GET /api/admin/sports/questions
      */
     @GetMapping("/questions")
-    fun getMatchQuestions(): ResponseEntity<List<MatchQuestionView>> {
+    fun getMatchQuestions(): ResponseEntity<ApiEnvelope<List<MatchQuestionView>>> {
         val start = LocalDateTime.now(ZoneOffset.UTC)
         val end = start.plusDays(fetchWindowDays)
         val questions = questionRepository.findAllMatchQuestions()
@@ -115,7 +116,7 @@ class SportsManagementController(
                 createdAt = q.createdAt.toString()
             )
         }
-        return ResponseEntity.ok(views)
+        return ResponseEntity.ok(ApiEnvelope.ok(views))
     }
 
     /**
@@ -123,9 +124,9 @@ class SportsManagementController(
      * POST /api/admin/sports/generate-match-questions
      */
     @PostMapping("/generate-match-questions")
-    fun generateMatchQuestions(): ResponseEntity<MatchQuestionGenerateResult> {
+    fun generateMatchQuestions(): ResponseEntity<ApiEnvelope<MatchQuestionGenerateResult>> {
         val result = matchQuestionGeneratorService.generateQuestions()
-        return ResponseEntity.ok(result)
+        return ResponseEntity.ok(ApiEnvelope.ok(result))
     }
 
     private fun buildQuestionIdByMatch(): Map<Long, Long> {

@@ -1,5 +1,6 @@
 package com.predata.backend.controller
 
+import com.predata.backend.dto.ApiEnvelope
 import com.predata.backend.service.BanService
 import com.predata.backend.service.IpTrackingService
 import org.springframework.http.ResponseEntity
@@ -24,7 +25,7 @@ class BanController(
     fun banMember(@RequestBody request: BanRequest): ResponseEntity<Any> {
         val result = banService.banMember(request.memberId, request.reason)
         return if (result.success) {
-            ResponseEntity.ok(result)
+            ResponseEntity.ok(ApiEnvelope.ok(result))
         } else {
             ResponseEntity.badRequest().body(result)
         }
@@ -38,7 +39,7 @@ class BanController(
     fun unbanMember(@RequestBody request: UnbanRequest): ResponseEntity<Any> {
         val result = banService.unbanMember(request.memberId)
         return if (result.success) {
-            ResponseEntity.ok(result)
+            ResponseEntity.ok(ApiEnvelope.ok(result))
         } else {
             ResponseEntity.badRequest().body(result)
         }
@@ -50,7 +51,7 @@ class BanController(
      */
     @GetMapping("/banned")
     fun getBannedMembers(): ResponseEntity<Any> {
-        return ResponseEntity.ok(banService.getBannedMembers())
+        return ResponseEntity.ok(ApiEnvelope.ok(banService.getBannedMembers()))
     }
 
     /**
@@ -59,7 +60,7 @@ class BanController(
      */
     @GetMapping("/multi-account-report")
     fun getMultiAccountReport(): ResponseEntity<Any> {
-        return ResponseEntity.ok(ipTrackingService.detectMultiAccounts())
+        return ResponseEntity.ok(ApiEnvelope.ok(ipTrackingService.detectMultiAccounts()))
     }
 
     /**
@@ -68,7 +69,7 @@ class BanController(
      */
     @GetMapping("/ip-lookup")
     fun lookupIp(@RequestParam ip: String): ResponseEntity<Any> {
-        return ResponseEntity.ok(ipTrackingService.getAccountsByIp(ip))
+        return ResponseEntity.ok(ApiEnvelope.ok(ipTrackingService.getAccountsByIp(ip)))
     }
 
     /**
@@ -77,7 +78,7 @@ class BanController(
      */
     @GetMapping("/member-ips/{memberId}")
     fun getMemberIps(@PathVariable memberId: Long): ResponseEntity<Any> {
-        return ResponseEntity.ok(ipTrackingService.getIpHistoryForMember(memberId))
+        return ResponseEntity.ok(ApiEnvelope.ok(ipTrackingService.getIpHistoryForMember(memberId)))
     }
 }
 

@@ -24,9 +24,9 @@ class OrderController(
      * 오더북 조회
      */
     @GetMapping("/questions/{id}/orderbook")
-    fun getOrderBook(@PathVariable id: Long): ResponseEntity<OrderBookResponse> {
+    fun getOrderBook(@PathVariable id: Long): ResponseEntity<ApiEnvelope<OrderBookResponse>> {
         val orderBook = orderBookService.getOrderBook(id)
-        return ResponseEntity.ok(orderBook)
+        return ResponseEntity.ok(ApiEnvelope.ok(orderBook))
     }
 
     /**
@@ -37,7 +37,7 @@ class OrderController(
     fun createOrder(
         @Valid @RequestBody request: CreateOrderRequest,
         httpRequest: HttpServletRequest
-    ): ResponseEntity<CreateOrderResponse> {
+    ): ResponseEntity<Any> {
         val authenticatedMemberId = httpRequest.authenticatedMemberId()
 
         // 베팅 일시 중지 체크 (쿨다운)
@@ -53,7 +53,7 @@ class OrderController(
 
         val response = orderMatchingService.createOrder(authenticatedMemberId, request)
         return if (response.success) {
-            ResponseEntity.ok(response)
+            ResponseEntity.ok(ApiEnvelope.ok(response))
         } else {
             ResponseEntity.status(HttpStatus.BAD_REQUEST).body(response)
         }
@@ -67,12 +67,12 @@ class OrderController(
     fun cancelOrder(
         @PathVariable id: Long,
         httpRequest: HttpServletRequest
-    ): ResponseEntity<CancelOrderResponse> {
+    ): ResponseEntity<Any> {
         val authenticatedMemberId = httpRequest.authenticatedMemberId()
 
         val response = orderMatchingService.cancelOrder(id, authenticatedMemberId)
         return if (response.success) {
-            ResponseEntity.ok(response)
+            ResponseEntity.ok(ApiEnvelope.ok(response))
         } else {
             ResponseEntity.status(HttpStatus.BAD_REQUEST).body(response)
         }
@@ -83,11 +83,11 @@ class OrderController(
      * 본인의 활성 주문 조회 (JWT 인증 사용)
      */
     @GetMapping("/orders/me")
-    fun getMyActiveOrders(httpRequest: HttpServletRequest): ResponseEntity<List<OrderResponse>> {
+    fun getMyActiveOrders(httpRequest: HttpServletRequest): ResponseEntity<ApiEnvelope<List<OrderResponse>>> {
         val authenticatedMemberId = httpRequest.authenticatedMemberId()
 
         val orders = orderMatchingService.getActiveOrders(authenticatedMemberId)
-        return ResponseEntity.ok(orders)
+        return ResponseEntity.ok(ApiEnvelope.ok(orders))
     }
 
     /**
@@ -98,10 +98,10 @@ class OrderController(
     fun getMyOrdersByQuestion(
         @PathVariable questionId: Long,
         httpRequest: HttpServletRequest
-    ): ResponseEntity<List<OrderResponse>> {
+    ): ResponseEntity<ApiEnvelope<List<OrderResponse>>> {
         val authenticatedMemberId = httpRequest.authenticatedMemberId()
 
         val orders = orderMatchingService.getOrdersByQuestion(authenticatedMemberId, questionId)
-        return ResponseEntity.ok(orders)
+        return ResponseEntity.ok(ApiEnvelope.ok(orders))
     }
 }

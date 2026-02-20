@@ -2,8 +2,14 @@
 export interface ApiResponse<T> {
   success: boolean;
   data?: T;
+  error?: {
+    code: string;
+    message: string;
+    status: number;
+    details?: string[];
+  };
   message?: string;
-  errorCode?: string;
+  timestamp?: string;
 }
 
 // Member Types

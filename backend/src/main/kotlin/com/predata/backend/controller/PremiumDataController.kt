@@ -1,5 +1,6 @@
 package com.predata.backend.controller
 
+import com.predata.backend.dto.ApiEnvelope
 import com.predata.backend.service.*
 import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.*
@@ -16,9 +17,9 @@ class PremiumDataController(
      * POST /api/premium-data/preview
      */
     @PostMapping("/preview")
-    fun previewPremiumData(@RequestBody request: PremiumDataRequest): ResponseEntity<PremiumDataResponse> {
+    fun previewPremiumData(@RequestBody request: PremiumDataRequest): ResponseEntity<ApiEnvelope<PremiumDataResponse>> {
         val preview = premiumDataService.previewPremiumData(request)
-        return ResponseEntity.ok(preview)
+        return ResponseEntity.ok(ApiEnvelope.ok(preview))
     }
 
     /**
@@ -26,9 +27,9 @@ class PremiumDataController(
      * POST /api/premium-data/export
      */
     @PostMapping("/export")
-    fun exportPremiumData(@RequestBody request: PremiumDataRequest): ResponseEntity<PremiumDataResponse> {
+    fun exportPremiumData(@RequestBody request: PremiumDataRequest): ResponseEntity<ApiEnvelope<PremiumDataResponse>> {
         val data = premiumDataService.extractPremiumData(request)
-        return ResponseEntity.ok(data)
+        return ResponseEntity.ok(ApiEnvelope.ok(data))
     }
 
     /**
@@ -36,8 +37,8 @@ class PremiumDataController(
      * GET /api/premium-data/quality-summary/{questionId}
      */
     @GetMapping("/quality-summary/{questionId}")
-    fun getQualitySummary(@PathVariable questionId: Long): ResponseEntity<DataQualitySummary> {
+    fun getQualitySummary(@PathVariable questionId: Long): ResponseEntity<ApiEnvelope<DataQualitySummary>> {
         val summary = premiumDataService.getDataQualitySummary(questionId)
-        return ResponseEntity.ok(summary)
+        return ResponseEntity.ok(ApiEnvelope.ok(summary))
     }
 }

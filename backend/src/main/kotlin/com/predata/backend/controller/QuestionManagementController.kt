@@ -1,5 +1,6 @@
 package com.predata.backend.controller
 
+import com.predata.backend.dto.ApiEnvelope
 import com.predata.backend.service.*
 import jakarta.validation.Valid
 import org.springframework.data.domain.Page
@@ -8,6 +9,7 @@ import org.springframework.data.domain.Sort
 import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.*
+
 
 @RestController
 @RequestMapping("/api/admin/questions")
@@ -22,22 +24,9 @@ class QuestionManagementController(
      * Request: { title, type, category, votingDuration, bettingDuration }
      */
     @PostMapping
-    fun createQuestion(@Valid @RequestBody request: com.predata.backend.dto.AdminCreateQuestionRequest): ResponseEntity<QuestionCreationResponse> {
-        return try {
-            val response = questionManagementService.createQuestionWithDuration(request)
-            ResponseEntity.status(HttpStatus.CREATED).body(response)
-        } catch (e: IllegalArgumentException) {
-            ResponseEntity.badRequest().body(
-                QuestionCreationResponse(
-                    success = false,
-                    questionId = 0,
-                    title = "",
-                    category = "",
-                    expiredAt = "",
-                    message = e.message ?: "Failed to create question."
-                )
-            )
-        }
+    fun createQuestion(@Valid @RequestBody request: com.predata.backend.dto.AdminCreateQuestionRequest): ResponseEntity<ApiEnvelope<QuestionCreationResponse>> {
+        val response = questionManagementService.createQuestionWithDuration(request)
+        return ResponseEntity.status(HttpStatus.CREATED).body(ApiEnvelope.ok(response))
     }
 
     /**
@@ -45,22 +34,9 @@ class QuestionManagementController(
      * POST /api/admin/questions/legacy
      */
     @PostMapping("/legacy")
-    fun createQuestionLegacy(@Valid @RequestBody request: CreateQuestionRequest): ResponseEntity<QuestionCreationResponse> {
-        return try {
-            val response = questionManagementService.createQuestion(request)
-            ResponseEntity.status(HttpStatus.CREATED).body(response)
-        } catch (e: IllegalArgumentException) {
-            ResponseEntity.badRequest().body(
-                QuestionCreationResponse(
-                    success = false,
-                    questionId = 0,
-                    title = "",
-                    category = "",
-                    expiredAt = "",
-                    message = e.message ?: "Failed to create question."
-                )
-            )
-        }
+    fun createQuestionLegacy(@Valid @RequestBody request: CreateQuestionRequest): ResponseEntity<ApiEnvelope<QuestionCreationResponse>> {
+        val response = questionManagementService.createQuestion(request)
+        return ResponseEntity.status(HttpStatus.CREATED).body(ApiEnvelope.ok(response))
     }
 
     /**
@@ -71,33 +47,9 @@ class QuestionManagementController(
     fun updateQuestion(
         @PathVariable id: Long,
         @RequestBody request: UpdateQuestionRequest
-    ): ResponseEntity<QuestionCreationResponse> {
-        return try {
-            val response = questionManagementService.updateQuestion(id, request)
-            ResponseEntity.ok(response)
-        } catch (e: IllegalArgumentException) {
-            ResponseEntity.badRequest().body(
-                QuestionCreationResponse(
-                    success = false,
-                    questionId = 0,
-                    title = "",
-                    category = "",
-                    expiredAt = "",
-                    message = e.message ?: "Failed to update question."
-                )
-            )
-        } catch (e: IllegalStateException) {
-            ResponseEntity.status(HttpStatus.CONFLICT).body(
-                QuestionCreationResponse(
-                    success = false,
-                    questionId = 0,
-                    title = "",
-                    category = "",
-                    expiredAt = "",
-                    message = e.message ?: "Failed to update question."
-                )
-            )
-        }
+    ): ResponseEntity<ApiEnvelope<QuestionCreationResponse>> {
+        val response = questionManagementService.updateQuestion(id, request)
+        return ResponseEntity.ok(ApiEnvelope.ok(response))
     }
 
     /**
@@ -105,25 +57,9 @@ class QuestionManagementController(
      * DELETE /api/admin/questions/{id}
      */
     @DeleteMapping("/{id}")
-    fun deleteQuestion(@PathVariable id: Long): ResponseEntity<DeleteQuestionResponse> {
-        return try {
-            val response = questionManagementService.deleteQuestion(id)
-            ResponseEntity.ok(response)
-        } catch (e: IllegalArgumentException) {
-            ResponseEntity.badRequest().body(
-                DeleteQuestionResponse(
-                    success = false,
-                    message = e.message ?: "Failed to delete question."
-                )
-            )
-        } catch (e: IllegalStateException) {
-            ResponseEntity.status(HttpStatus.CONFLICT).body(
-                DeleteQuestionResponse(
-                    success = false,
-                    message = e.message ?: "Failed to delete question."
-                )
-            )
-        }
+    fun deleteQuestion(@PathVariable id: Long): ResponseEntity<ApiEnvelope<DeleteQuestionResponse>> {
+        val response = questionManagementService.deleteQuestion(id)
+        return ResponseEntity.ok(ApiEnvelope.ok(response))
     }
 
     /**
@@ -136,7 +72,7 @@ class QuestionManagementController(
         @RequestParam(defaultValue = "20") size: Int,
         @RequestParam(defaultValue = "createdAt") sortBy: String,
         @RequestParam(defaultValue = "DESC") sortDirection: String
-    ): ResponseEntity<Page<QuestionAdminView>> {
+    ): ResponseEntity<ApiEnvelope<Page<QuestionAdminView>>> {
         val sort = if (sortDirection.uppercase() == "DESC") {
             Sort.by(Sort.Direction.DESC, sortBy)
         } else {
@@ -145,7 +81,7 @@ class QuestionManagementController(
 
         val pageable = PageRequest.of(page, size, sort)
         val questions = questionManagementService.getAllQuestionsForAdmin(pageable)
-        return ResponseEntity.ok(questions)
+        return ResponseEntity.ok(ApiEnvelope.ok(questions))
     }
 
     /**
@@ -153,19 +89,8 @@ class QuestionManagementController(
      * DELETE /api/admin/questions/purge-all
      */
     @DeleteMapping("/purge-all")
-    fun purgeAllQuestions(): ResponseEntity<PurgeQuestionsResponse> {
-        return try {
-            ResponseEntity.ok(questionManagementService.purgeAllQuestions())
-        } catch (e: Exception) {
-            ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(
-                PurgeQuestionsResponse(
-                    success = false,
-                    deletedQuestions = 0,
-                    cleanedTables = emptyMap(),
-                    message = e.message ?: "Failed to purge all questions."
-                )
-            )
-        }
+    fun purgeAllQuestions(): ResponseEntity<ApiEnvelope<PurgeQuestionsResponse>> {
+        return ResponseEntity.ok(ApiEnvelope.ok(questionManagementService.purgeAllQuestions()))
     }
 
 }

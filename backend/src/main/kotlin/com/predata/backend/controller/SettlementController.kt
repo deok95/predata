@@ -6,7 +6,6 @@ import com.predata.backend.service.SettlementService
 import com.predata.backend.util.authenticatedMemberId
 import jakarta.servlet.http.HttpServletRequest
 import jakarta.validation.Valid
-import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.*
 
@@ -21,11 +20,11 @@ class SettlementController(
      * GET /api/settlements/history/me
      */
     @GetMapping("/api/settlements/history/me")
-    fun getMySettlementHistory(httpRequest: HttpServletRequest): ResponseEntity<List<com.predata.backend.service.SettlementHistoryItem>> {
+    fun getMySettlementHistory(httpRequest: HttpServletRequest): ResponseEntity<ApiEnvelope<List<com.predata.backend.service.SettlementHistoryItem>>> {
         val authenticatedMemberId = httpRequest.authenticatedMemberId()
 
         val history = settlementService.getSettlementHistory(authenticatedMemberId)
-        return ResponseEntity.ok(history)
+        return ResponseEntity.ok(ApiEnvelope.ok(history))
     }
 
     /**
@@ -34,14 +33,8 @@ class SettlementController(
      */
     @PostMapping("/api/admin/settlements/questions/{id}/settle-auto")
     fun settleQuestionAuto(@PathVariable id: Long): ResponseEntity<Any> {
-        return try {
-            val result = settlementService.initiateSettlementAuto(id)
-            ResponseEntity.ok(result)
-        } catch (e: IllegalArgumentException) {
-            ResponseEntity.badRequest().body(mapOf("error" to (e.message ?: "Settlement failed")))
-        } catch (e: IllegalStateException) {
-            ResponseEntity.status(HttpStatus.CONFLICT).body(mapOf("error" to (e.message ?: "Settlement failed")))
-        }
+        val result = settlementService.initiateSettlementAuto(id)
+        return ResponseEntity.ok(ApiEnvelope.ok(result))
     }
 
     /**
@@ -55,7 +48,7 @@ class SettlementController(
     ): ResponseEntity<Any> {
         val finalResult = FinalResult.valueOf(request.finalResult)
         val result = settlementService.initiateSettlement(id, finalResult, request.sourceUrl)
-        return ResponseEntity.ok(result)
+        return ResponseEntity.ok(ApiEnvelope.ok(result))
     }
 
     /**
@@ -68,7 +61,7 @@ class SettlementController(
         @RequestBody(required = false) request: FinalizeSettlementRequest?
     ): ResponseEntity<Any> {
         val result = settlementService.finalizeSettlement(id, request?.force ?: false)
-        return ResponseEntity.ok(result)
+        return ResponseEntity.ok(ApiEnvelope.ok(result))
     }
 
     /**
@@ -78,6 +71,6 @@ class SettlementController(
     @PostMapping("/api/admin/settlements/questions/{id}/cancel")
     fun cancelSettlement(@PathVariable id: Long): ResponseEntity<Any> {
         val result = settlementService.cancelPendingSettlement(id)
-        return ResponseEntity.ok(result)
+        return ResponseEntity.ok(ApiEnvelope.ok(result))
     }
 }

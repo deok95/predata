@@ -1,12 +1,12 @@
 package com.predata.backend.controller
 
 import com.fasterxml.jackson.databind.ObjectMapper
-import com.predata.backend.config.JwtAuthInterceptor
+import com.predata.backend.dto.ApiEnvelope
 import com.predata.backend.dto.VoteCommitRequest
 import com.predata.backend.dto.VoteCommitResponse
 import com.predata.backend.dto.VoteRevealRequest
 import com.predata.backend.dto.VoteRevealResponse
-import com.predata.backend.exception.ServiceUnavailableException
+import com.predata.backend.exception.ForbiddenException
 import com.predata.backend.service.IdempotencyService
 import com.predata.backend.service.VoteCommitService
 import com.predata.backend.util.authenticatedMemberId
@@ -65,43 +65,24 @@ class VoteController(
             }
         }
 
-        // 정상 처리
-        return try {
-            val response = voteCommitService.commit(authenticatedMemberId, request)
-            val status = if (response.success) HttpStatus.OK else HttpStatus.BAD_REQUEST
+        // 정상 처리 — ServiceUnavailableException(503)/IllegalStateException(409)은 GlobalExceptionHandler 위임
+        val response = voteCommitService.commit(authenticatedMemberId, request)
+        val status = if (response.success) HttpStatus.OK else HttpStatus.BAD_REQUEST
 
-            // Idempotency 저장
-            if (idempotencyKey != null) {
-                val requestBody = objectMapper.writeValueAsString(request)
-                val responseBody = objectMapper.writeValueAsString(response)
-                idempotencyService.store(
-                    idempotencyKey,
-                    authenticatedMemberId,
-                    "/api/votes/commit",
-                    requestBody,
-                    responseBody,
-                    status.value()
-                )
-            }
-
-            ResponseEntity.status(status).body(response)
-        } catch (e: ServiceUnavailableException) {
-            // 시스템 점검 중 (pause/circuit breaker) → 503 Service Unavailable
-            ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE).body(
-                VoteCommitResponse(
-                    success = false,
-                    message = e.message ?: "System is under maintenance."
-                )
-            )
-        } catch (e: IllegalStateException) {
-            // Phase 검증 실패 → 409 Conflict
-            ResponseEntity.status(HttpStatus.CONFLICT).body(
-                VoteCommitResponse(
-                    success = false,
-                    message = e.message ?: "This action cannot be performed in the current state."
-                )
+        if (idempotencyKey != null) {
+            val requestBody = objectMapper.writeValueAsString(request)
+            val responseBody = objectMapper.writeValueAsString(response)
+            idempotencyService.store(
+                idempotencyKey,
+                authenticatedMemberId,
+                "/api/votes/commit",
+                requestBody,
+                responseBody,
+                status.value()
             )
         }
+
+        return ResponseEntity.status(status).body(response)
     }
 
     /**
@@ -138,57 +119,37 @@ class VoteController(
             }
         }
 
-        // 정상 처리
-        return try {
-            val response = voteCommitService.reveal(authenticatedMemberId, request)
-            val status = if (response.success) HttpStatus.OK else HttpStatus.BAD_REQUEST
+        // 정상 처리 — ServiceUnavailableException(503)/IllegalStateException(409)은 GlobalExceptionHandler 위임
+        val response = voteCommitService.reveal(authenticatedMemberId, request)
+        val status = if (response.success) HttpStatus.OK else HttpStatus.BAD_REQUEST
 
-            // Idempotency 저장
-            if (idempotencyKey != null) {
-                val requestBody = objectMapper.writeValueAsString(request)
-                val responseBody = objectMapper.writeValueAsString(response)
-                idempotencyService.store(
-                    idempotencyKey,
-                    authenticatedMemberId,
-                    "/api/votes/reveal",
-                    requestBody,
-                    responseBody,
-                    status.value()
-                )
-            }
-
-            ResponseEntity.status(status).body(response)
-        } catch (e: ServiceUnavailableException) {
-            // 시스템 점검 중 (pause/circuit breaker) → 503 Service Unavailable
-            ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE).body(
-                VoteRevealResponse(
-                    success = false,
-                    message = e.message ?: "System is under maintenance."
-                )
-            )
-        } catch (e: IllegalStateException) {
-            // Phase 검증 실패 → 409 Conflict
-            ResponseEntity.status(HttpStatus.CONFLICT).body(
-                VoteRevealResponse(
-                    success = false,
-                    message = e.message ?: "This action cannot be performed in the current state."
-                )
+        if (idempotencyKey != null) {
+            val requestBody = objectMapper.writeValueAsString(request)
+            val responseBody = objectMapper.writeValueAsString(response)
+            idempotencyService.store(
+                idempotencyKey,
+                authenticatedMemberId,
+                "/api/votes/reveal",
+                requestBody,
+                responseBody,
+                status.value()
             )
         }
+
+        return ResponseEntity.status(status).body(response)
     }
 
     /**
      * 투표 결과 조회 (Reveal 종료 후에만 공개)
+     * IllegalStateException → ForbiddenException(403)으로 변환하여 GlobalExceptionHandler 위임
      */
     @GetMapping("/results/{questionId}")
-    fun getResults(@PathVariable questionId: Long): ResponseEntity<Map<String, Any>> {
+    fun getResults(@PathVariable questionId: Long): ResponseEntity<ApiEnvelope<Map<String, Any>>> {
         return try {
             val result = voteCommitService.getResults(questionId)
-            ResponseEntity.ok(result)
+            ResponseEntity.ok(ApiEnvelope.ok(result))
         } catch (e: IllegalStateException) {
-            ResponseEntity.status(HttpStatus.FORBIDDEN).body(
-                mapOf("success" to false, "message" to (e.message ?: "Vote results not yet revealed."))
-            )
+            throw ForbiddenException(e.message ?: "Vote results not yet revealed.")
         }
     }
 
@@ -196,8 +157,8 @@ class VoteController(
      * 투표 상태 조회 (phase, 참여자 수만 공개)
      */
     @GetMapping("/status/{questionId}")
-    fun getStatus(@PathVariable questionId: Long): ResponseEntity<Map<String, Any>> {
+    fun getStatus(@PathVariable questionId: Long): ResponseEntity<ApiEnvelope<Map<String, Any>>> {
         val status = voteCommitService.getStatus(questionId)
-        return ResponseEntity.ok(status)
+        return ResponseEntity.ok(ApiEnvelope.ok(status))
     }
 }

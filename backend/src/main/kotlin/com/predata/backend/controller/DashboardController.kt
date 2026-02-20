@@ -1,5 +1,6 @@
 package com.predata.backend.controller
 
+import com.predata.backend.dto.ApiEnvelope
 import com.predata.backend.service.VotingDashboardService
 import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.*
@@ -20,9 +21,9 @@ class DashboardController(
      * GET /api/admin/dashboard/voting
      */
     @GetMapping("/voting")
-    fun getVotingDashboard(): ResponseEntity<Map<String, Any>> {
+    fun getVotingDashboard(): ResponseEntity<ApiEnvelope<Map<String, Any>>> {
         val dashboard = votingDashboardService.getDashboard()
-        return ResponseEntity.ok(dashboard)
+        return ResponseEntity.ok(ApiEnvelope.ok(dashboard))
     }
 
     /**
@@ -30,8 +31,8 @@ class DashboardController(
      * GET /api/admin/dashboard/voting/{questionId}
      */
     @GetMapping("/voting/{questionId}")
-    fun getQuestionHealth(@PathVariable questionId: Long): ResponseEntity<Map<String, Any>> {
+    fun getQuestionHealth(@PathVariable questionId: Long): ResponseEntity<ApiEnvelope<Map<String, Any>>> {
         val health = votingDashboardService.getQuestionHealth(questionId)
-        return ResponseEntity.ok(health)
+        return ResponseEntity.ok(ApiEnvelope.ok(health))
     }
 }

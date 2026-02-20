@@ -1,6 +1,9 @@
 package com.predata.backend.controller
 
+import com.predata.backend.dto.ApiEnvelope
 import com.predata.backend.domain.Member
+import com.predata.backend.exception.ConflictException
+import com.predata.backend.exception.NotFoundException
 import com.predata.backend.repository.MemberRepository
 import com.predata.backend.service.ClientIpService
 import com.predata.backend.service.IpTrackingService
@@ -11,7 +14,6 @@ import jakarta.validation.constraints.Email
 import jakarta.validation.constraints.NotBlank
 import jakarta.validation.constraints.Size
 import org.slf4j.LoggerFactory
-import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.*
 import java.math.BigDecimal
@@ -45,13 +47,13 @@ class MemberController(
      * GET /api/members/by-wallet?address=0x1234...
      */
     @GetMapping("/by-wallet")
-    fun getMemberByWallet(@RequestParam address: String): ResponseEntity<PublicMemberResponse> {
+    fun getMemberByWallet(@RequestParam address: String): ResponseEntity<ApiEnvelope<PublicMemberResponse>> {
         val member = memberRepository.findByWalletAddress(address)
 
         return if (member.isPresent) {
-            ResponseEntity.ok(PublicMemberResponse.from(member.get()))
+            ResponseEntity.ok(ApiEnvelope.ok(PublicMemberResponse.from(member.get())))
         } else {
-            ResponseEntity.notFound().build()
+            throw NotFoundException("Member not found.")
         }
     }
 
@@ -63,10 +65,10 @@ class MemberController(
     fun createMember(
         @Valid @RequestBody request: CreateMemberRequest,
         httpRequest: HttpServletRequest
-    ): ResponseEntity<MemberResponse> {
+    ): ResponseEntity<ApiEnvelope<MemberResponse>> {
         // 이메일 중복 체크
         if (memberRepository.existsByEmail(request.email)) {
-            return ResponseEntity.status(HttpStatus.CONFLICT).build()
+            throw ConflictException("Email already in use.")
         }
 
         // IP 추출
@@ -92,7 +94,7 @@ class MemberController(
         )
 
         val savedMember = memberRepository.save(member)
-        return ResponseEntity.ok(MemberResponse.from(savedMember))
+        return ResponseEntity.ok(ApiEnvelope.ok(MemberResponse.from(savedMember)))
     }
 
     /**
@@ -100,15 +102,15 @@ class MemberController(
      * GET /api/members/me
      */
     @GetMapping("/me")
-    fun getMyInfo(httpRequest: HttpServletRequest): ResponseEntity<MemberResponse> {
+    fun getMyInfo(httpRequest: HttpServletRequest): ResponseEntity<ApiEnvelope<MemberResponse>> {
         val memberId = httpRequest.authenticatedMemberId()
 
         val member = memberRepository.findById(memberId)
 
         return if (member.isPresent) {
-            ResponseEntity.ok(MemberResponse.from(member.get()))
+            ResponseEntity.ok(ApiEnvelope.ok(MemberResponse.from(member.get())))
         } else {
-            ResponseEntity.notFound().build()
+            throw NotFoundException("Member not found.")
         }
     }
 
@@ -119,14 +121,10 @@ class MemberController(
      * ⚠️ 보안: 이메일, 잔액, 역할 등 민감 정보는 제외됨
      */
     @GetMapping("/{id}")
-    fun getMember(@PathVariable id: Long): ResponseEntity<PublicMemberResponse> {
+    fun getMember(@PathVariable id: Long): ResponseEntity<ApiEnvelope<PublicMemberResponse>> {
         val member = memberRepository.findById(id)
-
-        return if (member.isPresent) {
-            ResponseEntity.ok(PublicMemberResponse.from(member.get()))
-        } else {
-            ResponseEntity.notFound().build()
-        }
+            .orElseThrow { NotFoundException("Member not found.") }
+        return ResponseEntity.ok(ApiEnvelope.ok(PublicMemberResponse.from(member)))
     }
 
     /**
@@ -137,33 +135,29 @@ class MemberController(
     fun updateWalletAddress(
         @Valid @RequestBody request: UpdateWalletRequest,
         httpRequest: HttpServletRequest
-    ): ResponseEntity<Any> {
+    ): ResponseEntity<ApiEnvelope<MemberResponse>> {
         val memberId = httpRequest.authenticatedMemberId()
 
         val member = memberRepository.findById(memberId)
             .orElseThrow { IllegalArgumentException("회원을 찾을 수 없습니다.") }
 
-        // 지갑 주소 형식 검증
         if (request.walletAddress != null && !request.walletAddress.matches(Regex("^0x[a-fA-F0-9]{40}$"))) {
-            return ResponseEntity.badRequest().body(mapOf("message" to "Invalid wallet address."))
+            throw IllegalArgumentException("Invalid wallet address.")
         }
 
-        // 이미 다른 유저가 사용 중인 지갑인지 확인
         if (request.walletAddress != null) {
             val existingMember = memberRepository.findByWalletAddress(request.walletAddress)
             if (existingMember.isPresent && existingMember.get().id != memberId) {
-                return ResponseEntity.status(HttpStatus.CONFLICT)
-                    .body(mapOf("message" to "Wallet already in use by another user."))
+                throw ConflictException("Wallet already in use by another user.")
             }
         }
 
-        // 지갑 주소 업데이트
         member.walletAddress = request.walletAddress
         val updated = memberRepository.save(member)
 
         logger.info("지갑 주소 업데이트: memberId=$memberId, walletAddress=${request.walletAddress}")
 
-        return ResponseEntity.ok(MemberResponse.from(updated))
+        return ResponseEntity.ok(ApiEnvelope.ok(MemberResponse.from(updated)))
     }
 }
 

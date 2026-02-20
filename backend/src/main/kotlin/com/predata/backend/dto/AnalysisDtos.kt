@@ -54,3 +54,27 @@ data class FilterOptions(
     val minTierWeight: Double = 1.0,   // Minimum tier weight
     val excludeCountries: List<String> = emptyList()
 )
+
+data class QualityScoreResponse(
+    val questionId: Long,
+    val qualityScore: Double,
+    val grade: String
+)
+
+data class FastClickersResponse(
+    val questionId: Long,
+    val thresholdMs: Int,
+    val suspiciousCount: Int,
+    val percentage: Double
+)
+
+data class FilterSimulationResponse(
+    val questionId: Long,
+    val filterOptions: FilterOptions,
+    val originalVoteCount: Int,
+    val filteredVoteCount: Int,
+    val removedCount: Int,
+    val originalYesPercentage: Double,
+    val filteredYesPercentage: Double,
+    val percentageChange: Double
+)

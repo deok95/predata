@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { Activity, Trophy, Clock, AlertTriangle } from 'lucide-react';
 import { useTheme } from '@/hooks/useTheme';
-import { API_BASE_URL, authFetch } from '@/lib/api';
+import { API_BASE_URL, authFetch, apiRequest, unwrapApiEnvelope } from '@/lib/api';
 
 interface LiveMatch {
   matchId: number;
@@ -79,8 +79,8 @@ export default function LiveMatchesDashboard() {
 
   const checkSuspensionStatus = async (questionId: number) => {
     try {
-      const response = await fetch(`${API_BASE_URL}/betting/suspension/question/${questionId}`);
-      const status: BettingSuspension = await response.json();
+      const raw = await apiRequest<BettingSuspension>(`/api/betting/suspension/question/${questionId}`);
+      const status = unwrapApiEnvelope(raw);
       setSuspensionStatuses(prev => new Map(prev).set(questionId, status));
     } catch (error) {
       if (process.env.NODE_ENV === 'development') {

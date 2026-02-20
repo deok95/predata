@@ -1,6 +1,6 @@
 package com.predata.backend.controller
 
-import com.predata.backend.config.JwtAuthInterceptor
+import com.predata.backend.dto.ApiEnvelope
 import com.predata.backend.service.PaymentVerificationService
 import com.predata.backend.service.WithdrawalService
 import com.predata.backend.service.WithdrawResponse
@@ -29,24 +29,16 @@ class PaymentController(
         @RequestBody request: VerifyDepositRequest,
         httpRequest: HttpServletRequest
     ): ResponseEntity<Any> {
-        return try {
-            val authenticatedMemberId = httpRequest.authenticatedMemberId()
+        val authenticatedMemberId = httpRequest.authenticatedMemberId()
 
-            log.info("충전 검증 요청: memberId=$authenticatedMemberId, txHash=${request.txHash}, amount=${request.amount}, fromAddress=${request.fromAddress}")
-            val result = paymentVerificationService.verifyDeposit(
-                memberId = authenticatedMemberId,
-                txHash = request.txHash,
-                amount = BigDecimal(request.amount.toString()),
-                fromAddress = request.fromAddress
-            )
-            ResponseEntity.ok(result)
-        } catch (e: IllegalArgumentException) {
-            log.warn("Deposit verification failed: ${e.message}")
-            ResponseEntity.badRequest().body(mapOf("success" to false, "message" to e.message))
-        } catch (e: Exception) {
-            log.error("충전 검증 오류", e)
-            ResponseEntity.internalServerError().body(mapOf("success" to false, "message" to "Server error occurred."))
-        }
+        log.info("충전 검증 요청: memberId=$authenticatedMemberId, txHash=${request.txHash}, amount=${request.amount}, fromAddress=${request.fromAddress}")
+        val result = paymentVerificationService.verifyDeposit(
+            memberId = authenticatedMemberId,
+            txHash = request.txHash,
+            amount = BigDecimal(request.amount.toString()),
+            fromAddress = request.fromAddress
+        )
+        return ResponseEntity.ok(ApiEnvelope.ok(result))
     }
 
     /**
@@ -57,34 +49,16 @@ class PaymentController(
     fun withdraw(
         @RequestBody request: WithdrawRequest,
         httpRequest: HttpServletRequest
-    ): ResponseEntity<Any> {
-        return try {
-            val authenticatedMemberId = httpRequest.authenticatedMemberId()
+    ): ResponseEntity<ApiEnvelope<WithdrawResponse>> {
+        val authenticatedMemberId = httpRequest.authenticatedMemberId()
 
-            log.info("출금 요청: memberId=$authenticatedMemberId, amount=${request.amount}, wallet=${request.walletAddress}")
-            val result = withdrawalService.withdraw(
-                memberId = authenticatedMemberId,
-                amount = BigDecimal(request.amount.toString()),
-                walletAddress = request.walletAddress
-            )
-            ResponseEntity.ok(result)
-        } catch (e: IllegalArgumentException) {
-            log.warn("Withdrawal failed: ${e.message}")
-            ResponseEntity.badRequest().body(
-                WithdrawResponse(
-                    success = false,
-                    message = e.message ?: "Withdrawal failed."
-                )
-            )
-        } catch (e: Exception) {
-            log.error("출금 오류", e)
-            ResponseEntity.internalServerError().body(
-                WithdrawResponse(
-                    success = false,
-                    message = "Server error occurred."
-                )
-            )
-        }
+        log.info("출금 요청: memberId=$authenticatedMemberId, amount=${request.amount}, wallet=${request.walletAddress}")
+        val result = withdrawalService.withdraw(
+            memberId = authenticatedMemberId,
+            amount = BigDecimal(request.amount.toString()),
+            walletAddress = request.walletAddress
+        )
+        return ResponseEntity.ok(ApiEnvelope.ok(result))
     }
 }
 

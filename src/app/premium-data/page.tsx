@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import { Download, Filter, Eye, Database, CheckCircle, XCircle } from 'lucide-react';
-import { API_BASE_URL } from '@/lib/api';
+import { apiRequest, unwrapApiEnvelope } from '@/lib/api';
 
 interface PremiumDataRequest {
   questionId: number;
@@ -51,13 +51,11 @@ export default function PremiumDataExport() {
   const handlePreview = async () => {
     setLoading(true);
     try {
-      const response = await fetch(`${API_BASE_URL}/premium-data/preview`, {
+      const raw = await apiRequest<PremiumDataResponse>('/api/premium-data/preview', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(filters)
+        body: JSON.stringify(filters),
       });
-      const data = await response.json();
-      setPreviewData(data);
+      setPreviewData(unwrapApiEnvelope(raw));
     } catch (error) {
       if (process.env.NODE_ENV === 'development') {
         console.error('Failed to preview:', error);
@@ -71,12 +69,11 @@ export default function PremiumDataExport() {
   const handleExport = async (format: 'json' | 'csv') => {
     setLoading(true);
     try {
-      const response = await fetch(`${API_BASE_URL}/premium-data/export`, {
+      const raw = await apiRequest<PremiumDataResponse>('/api/premium-data/export', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(filters)
+        body: JSON.stringify(filters),
       });
-      const data: PremiumDataResponse = await response.json();
+      const data = unwrapApiEnvelope(raw);
 
       if (format === 'json') {
         downloadJSON(data);

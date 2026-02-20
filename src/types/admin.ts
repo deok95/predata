@@ -16,6 +16,7 @@ export interface BulkQuestionItem {
     matchId?: string;
     asset?: string;
     condition?: string;
+    resolveBy?: string;
   };
 }
 
