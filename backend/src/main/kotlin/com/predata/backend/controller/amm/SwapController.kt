@@ -5,6 +5,8 @@ import com.predata.backend.domain.ShareOutcome
 import com.predata.backend.domain.SwapAction
 import com.predata.backend.dto.amm.*
 import com.predata.backend.service.amm.SwapService
+import com.predata.backend.util.authenticatedMemberId
+import com.predata.backend.util.authenticatedRole
 import jakarta.servlet.http.HttpServletRequest
 import org.springframework.dao.OptimisticLockingFailureException
 import org.springframework.http.HttpStatus
@@ -30,14 +32,7 @@ class SwapController(
         @RequestBody request: SwapRequest,
         httpRequest: HttpServletRequest
     ): ResponseEntity<Map<String, Any>> {
-        // JWT에서 인증된 memberId 가져오기
-        val memberId = httpRequest.getAttribute(JwtAuthInterceptor.ATTR_MEMBER_ID) as? Long
-            ?: return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(
-                mapOf(
-                    "success" to false,
-                    "message" to "Authentication required."
-                )
-            )
+        val memberId = httpRequest.authenticatedMemberId()
 
         return try {
             val response = retryableSwapFacade.executeSwapWithRetry(memberId, request)
@@ -156,14 +151,7 @@ class SwapController(
         @PathVariable questionId: Long,
         httpRequest: HttpServletRequest
     ): ResponseEntity<Map<String, Any>> {
-        // JWT에서 인증된 memberId 가져오기
-        val memberId = httpRequest.getAttribute(JwtAuthInterceptor.ATTR_MEMBER_ID) as? Long
-            ?: return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(
-                mapOf(
-                    "success" to false,
-                    "message" to "Authentication required."
-                )
-            )
+        val memberId = httpRequest.authenticatedMemberId()
 
         return try {
             val response = swapService.getMyShares(memberId, questionId)
@@ -254,13 +242,7 @@ class SwapController(
         @RequestParam(defaultValue = "50") limit: Int,
         httpRequest: HttpServletRequest
     ): ResponseEntity<Map<String, Any>> {
-        val memberId = httpRequest.getAttribute(JwtAuthInterceptor.ATTR_MEMBER_ID) as? Long
-            ?: return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(
-                mapOf(
-                    "success" to false,
-                    "message" to "Authentication required."
-                )
-            )
+        val memberId = httpRequest.authenticatedMemberId()
 
         return try {
             val response = swapService.getMySwapHistory(memberId, questionId, limit)
@@ -291,7 +273,7 @@ class SwapController(
         httpRequest: HttpServletRequest
     ): ResponseEntity<Map<String, Any>> {
         // ADMIN 권한 체크 (이미 @PreAuthorize로 처리되지만 명시적 확인)
-        val role = httpRequest.getAttribute(JwtAuthInterceptor.ATTR_ROLE) as? String
+        val role = httpRequest.authenticatedRole()
         if (role != "ADMIN") {
             return ResponseEntity.status(HttpStatus.FORBIDDEN).body(
                 mapOf(

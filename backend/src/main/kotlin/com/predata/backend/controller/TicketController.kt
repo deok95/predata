@@ -2,8 +2,8 @@ package com.predata.backend.controller
 
 import com.predata.backend.config.JwtAuthInterceptor
 import com.predata.backend.service.TicketService
+import com.predata.backend.util.authenticatedMemberId
 import jakarta.servlet.http.HttpServletRequest
-import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.*
 import java.time.LocalDate
@@ -29,13 +29,7 @@ class TicketController(
     fun getStatus(
         httpRequest: HttpServletRequest
     ): ResponseEntity<Map<String, Any>> {
-        val authenticatedMemberId = httpRequest.getAttribute(JwtAuthInterceptor.ATTR_MEMBER_ID) as? Long
-            ?: return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(
-                mapOf(
-                    "success" to false,
-                    "message" to "Authentication required."
-                )
-            )
+        val authenticatedMemberId = httpRequest.authenticatedMemberId()
 
         val remainingTickets = ticketService.getRemainingTickets(authenticatedMemberId)
         val resetAt = LocalDate.now()

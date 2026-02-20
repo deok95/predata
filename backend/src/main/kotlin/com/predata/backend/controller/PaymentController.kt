@@ -4,6 +4,7 @@ import com.predata.backend.config.JwtAuthInterceptor
 import com.predata.backend.service.PaymentVerificationService
 import com.predata.backend.service.WithdrawalService
 import com.predata.backend.service.WithdrawResponse
+import com.predata.backend.util.authenticatedMemberId
 import jakarta.servlet.http.HttpServletRequest
 import org.slf4j.LoggerFactory
 import org.springframework.http.ResponseEntity
@@ -29,8 +30,7 @@ class PaymentController(
         httpRequest: HttpServletRequest
     ): ResponseEntity<Any> {
         return try {
-            val authenticatedMemberId = httpRequest.getAttribute(JwtAuthInterceptor.ATTR_MEMBER_ID) as? Long
-                ?: throw IllegalArgumentException("Authentication information not found.")
+            val authenticatedMemberId = httpRequest.authenticatedMemberId()
 
             log.info("충전 검증 요청: memberId=$authenticatedMemberId, txHash=${request.txHash}, amount=${request.amount}, fromAddress=${request.fromAddress}")
             val result = paymentVerificationService.verifyDeposit(
@@ -59,8 +59,7 @@ class PaymentController(
         httpRequest: HttpServletRequest
     ): ResponseEntity<Any> {
         return try {
-            val authenticatedMemberId = httpRequest.getAttribute(JwtAuthInterceptor.ATTR_MEMBER_ID) as? Long
-                ?: throw IllegalArgumentException("Authentication information not found.")
+            val authenticatedMemberId = httpRequest.authenticatedMemberId()
 
             log.info("출금 요청: memberId=$authenticatedMemberId, amount=${request.amount}, wallet=${request.walletAddress}")
             val result = withdrawalService.withdraw(

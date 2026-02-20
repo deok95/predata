@@ -4,9 +4,9 @@ import com.predata.backend.config.JwtAuthInterceptor
 import com.predata.backend.service.ReferralResult
 import com.predata.backend.service.ReferralService
 import com.predata.backend.service.ReferralStatsResponse
+import com.predata.backend.util.authenticatedMemberId
 import com.predata.backend.util.IpUtil
 import jakarta.servlet.http.HttpServletRequest
-import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.*
 
@@ -19,8 +19,7 @@ class ReferralController(
     @GetMapping("/stats")
     fun getStats(request: HttpServletRequest): ResponseEntity<ReferralStatsResponse> {
         return try {
-            val memberId = request.getAttribute(JwtAuthInterceptor.ATTR_MEMBER_ID) as? Long
-                ?: return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build()
+            val memberId = request.authenticatedMemberId()
             ResponseEntity.ok(referralService.getReferralStats(memberId))
         } catch (e: Exception) {
             // Return default referral stats on any error
@@ -35,8 +34,7 @@ class ReferralController(
 
     @GetMapping("/code")
     fun getMyCode(request: HttpServletRequest): ResponseEntity<Map<String, String>> {
-        val memberId = request.getAttribute(JwtAuthInterceptor.ATTR_MEMBER_ID) as? Long
-            ?: return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build()
+        val memberId = request.authenticatedMemberId()
         val code = referralService.getReferralCode(memberId)
         return ResponseEntity.ok(mapOf("code" to code))
     }
@@ -46,8 +44,7 @@ class ReferralController(
         @RequestBody req: ApplyReferralRequest,
         request: HttpServletRequest
     ): ResponseEntity<ReferralResult> {
-        val memberId = request.getAttribute(JwtAuthInterceptor.ATTR_MEMBER_ID) as? Long
-            ?: return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build()
+        val memberId = request.authenticatedMemberId()
         val clientIp = IpUtil.extractClientIp(request)
         val result = referralService.applyReferral(memberId, req.referralCode, clientIp)
         return ResponseEntity.ok(result)

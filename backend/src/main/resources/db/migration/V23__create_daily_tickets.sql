@@ -9,5 +9,18 @@ CREATE TABLE IF NOT EXISTS daily_tickets (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- 인덱스 추가 (조회 성능 향상)
-CREATE INDEX idx_daily_ticket_member_date ON daily_tickets(member_id, reset_date);
+SET @index_exists = (
+    SELECT COUNT(*) FROM information_schema.STATISTICS
+    WHERE TABLE_SCHEMA = DATABASE()
+      AND TABLE_NAME = 'daily_tickets'
+      AND INDEX_NAME = 'idx_daily_ticket_member_date'
+);
 
+SET @sql = IF(@index_exists = 0,
+    'CREATE INDEX idx_daily_ticket_member_date ON daily_tickets(member_id, reset_date)',
+    'SELECT "Index idx_daily_ticket_member_date already exists, skipping" as message'
+);
+
+PREPARE stmt FROM @sql;
+EXECUTE stmt;
+DEALLOCATE PREPARE stmt;

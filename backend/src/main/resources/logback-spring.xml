@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<configuration>
+
+    <conversionRule conversionWord="maskedMsg"
+                    converterClass="com.predata.backend.logging.SensitiveDataMaskingConverter"/>
+
+    <!-- Console appender: 민감값 마스킹 포함 -->
+    <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
+        <encoder>
+            <pattern>%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %maskedMsg%n</pattern>
+        </encoder>
+    </appender>
+
+    <!-- prod/staging: WARN 이상만 출력 -->
+    <springProfile name="prod,staging">
+        <root level="WARN">
+            <appender-ref ref="CONSOLE"/>
+        </root>
+        <logger name="com.predata.backend" level="INFO"/>
+    </springProfile>
+
+    <!-- local/test: DEBUG 출력 -->
+    <springProfile name="local,test">
+        <root level="INFO">
+            <appender-ref ref="CONSOLE"/>
+        </root>
+        <logger name="com.predata.backend" level="DEBUG"/>
+        <logger name="org.hibernate.SQL" level="DEBUG"/>
+    </springProfile>
+
+    <!-- 프로필 미지정 기본값 -->
+    <springProfile name="!prod &amp; !staging &amp; !local &amp; !test">
+        <root level="INFO">
+            <appender-ref ref="CONSOLE"/>
+        </root>
+        <logger name="com.predata.backend" level="DEBUG"/>
+    </springProfile>
+
+</configuration>

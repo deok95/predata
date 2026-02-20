@@ -1,10 +1,10 @@
 package com.predata.backend.config
 
 import com.fasterxml.jackson.databind.ObjectMapper
+import com.predata.backend.exception.ErrorCode
 import com.predata.backend.exception.ErrorResponse
 import jakarta.servlet.http.HttpServletRequest
 import jakarta.servlet.http.HttpServletResponse
-import org.springframework.http.HttpStatus
 import org.springframework.http.MediaType
 import org.springframework.stereotype.Component
 import org.springframework.web.servlet.HandlerInterceptor
@@ -59,18 +59,17 @@ class JwtAuthInterceptor(
 
         val authHeader = request.getHeader("Authorization")
         if (authHeader == null || !authHeader.startsWith("Bearer ")) {
-            writeError(response, HttpStatus.UNAUTHORIZED, "UNAUTHORIZED", "Authentication required.")
+            writeError(response, ErrorCode.UNAUTHORIZED)
             return false
         }
 
         val token = authHeader.substring(7)
         val claims = jwtUtil.validateAndParse(token)
         if (claims == null) {
-            writeError(response, HttpStatus.UNAUTHORIZED, "INVALID_TOKEN", "Invalid or expired token.")
+            writeError(response, ErrorCode.INVALID_TOKEN)
             return false
         }
 
-        // Extract claims with NPE protection
         try {
             val memberId = jwtUtil.getMemberId(claims)
             val email = jwtUtil.getEmail(claims)
@@ -80,19 +79,17 @@ class JwtAuthInterceptor(
             request.setAttribute(ATTR_EMAIL, email)
             request.setAttribute(ATTR_ROLE, role)
         } catch (e: Exception) {
-            // Handle malformed JWT (missing subject, email, or role claims)
-            writeError(response, HttpStatus.UNAUTHORIZED, "INVALID_TOKEN", "Invalid token format.")
+            writeError(response, ErrorCode.INVALID_TOKEN, customMessage = "Invalid token format.")
             return false
         }
 
         return true
     }
 
-    private fun writeError(response: HttpServletResponse, status: HttpStatus, code: String, message: String) {
-        response.status = status.value()
+    private fun writeError(response: HttpServletResponse, errorCode: ErrorCode, customMessage: String? = null) {
+        response.status = errorCode.status
         response.contentType = MediaType.APPLICATION_JSON_VALUE
         response.characterEncoding = "UTF-8"
-        val error = ErrorResponse(code = code, message = message, status = status.value())
-        response.writer.write(objectMapper.writeValueAsString(error))
+        response.writer.write(objectMapper.writeValueAsString(ErrorResponse.of(errorCode, customMessage = customMessage)))
     }
 }

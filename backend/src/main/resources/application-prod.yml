@@ -1,0 +1,32 @@
+spring:
+  jpa:
+    show-sql: false
+    properties:
+      hibernate:
+        format_sql: false
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health
+  endpoint:
+    env:
+      show-values: never
+    configprops:
+      show-values: never
+    health:
+      show-details: never
+  info:
+    env:
+      enabled: false
+
+app:
+  rate-limit:
+    dev-mode: false
+
+logging:
+  level:
+    com.predata.backend: WARN
+    org.hibernate.SQL: WARN
+    root: WARN

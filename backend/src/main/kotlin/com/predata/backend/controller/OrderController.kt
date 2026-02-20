@@ -3,6 +3,7 @@ package com.predata.backend.controller
 import com.predata.backend.dto.*
 import com.predata.backend.service.OrderBookService
 import com.predata.backend.service.OrderMatchingService
+import com.predata.backend.util.authenticatedMemberId
 import jakarta.servlet.http.HttpServletRequest
 import jakarta.validation.Valid
 import org.springframework.http.HttpStatus
@@ -37,11 +38,7 @@ class OrderController(
         @Valid @RequestBody request: CreateOrderRequest,
         httpRequest: HttpServletRequest
     ): ResponseEntity<CreateOrderResponse> {
-        // JWT에서 인증된 memberId 가져오기 (IDOR 방지)
-        val authenticatedMemberId = httpRequest.getAttribute(com.predata.backend.config.JwtAuthInterceptor.ATTR_MEMBER_ID) as? Long
-            ?: return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(
-                CreateOrderResponse(success = false, message = "Authentication required.")
-            )
+        val authenticatedMemberId = httpRequest.authenticatedMemberId()
 
         // 베팅 일시 중지 체크 (쿨다운)
         val suspensionStatus = bettingSuspensionService.isBettingSuspendedByQuestionId(request.questionId)
@@ -71,11 +68,7 @@ class OrderController(
         @PathVariable id: Long,
         httpRequest: HttpServletRequest
     ): ResponseEntity<CancelOrderResponse> {
-        // JWT에서 인증된 memberId 가져오기 (IDOR 방지)
-        val authenticatedMemberId = httpRequest.getAttribute(com.predata.backend.config.JwtAuthInterceptor.ATTR_MEMBER_ID) as? Long
-            ?: return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(
-                CancelOrderResponse(success = false, message = "Authentication required.")
-            )
+        val authenticatedMemberId = httpRequest.authenticatedMemberId()
 
         val response = orderMatchingService.cancelOrder(id, authenticatedMemberId)
         return if (response.success) {
@@ -91,9 +84,7 @@ class OrderController(
      */
     @GetMapping("/orders/me")
     fun getMyActiveOrders(httpRequest: HttpServletRequest): ResponseEntity<List<OrderResponse>> {
-        // JWT에서 인증된 memberId 가져오기 (IDOR 방지)
-        val authenticatedMemberId = httpRequest.getAttribute(com.predata.backend.config.JwtAuthInterceptor.ATTR_MEMBER_ID) as? Long
-            ?: return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(emptyList())
+        val authenticatedMemberId = httpRequest.authenticatedMemberId()
 
         val orders = orderMatchingService.getActiveOrders(authenticatedMemberId)
         return ResponseEntity.ok(orders)
@@ -108,9 +99,7 @@ class OrderController(
         @PathVariable questionId: Long,
         httpRequest: HttpServletRequest
     ): ResponseEntity<List<OrderResponse>> {
-        // JWT에서 인증된 memberId 가져오기 (IDOR 방지)
-        val authenticatedMemberId = httpRequest.getAttribute(com.predata.backend.config.JwtAuthInterceptor.ATTR_MEMBER_ID) as? Long
-            ?: return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(emptyList())
+        val authenticatedMemberId = httpRequest.authenticatedMemberId()
 
         val orders = orderMatchingService.getOrdersByQuestion(authenticatedMemberId, questionId)
         return ResponseEntity.ok(orders)

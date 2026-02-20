@@ -10,7 +10,6 @@ import org.springframework.web.bind.MissingServletRequestParameterException
 import org.springframework.web.bind.annotation.ControllerAdvice
 import org.springframework.web.bind.annotation.ExceptionHandler
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException
-import java.time.LocalDateTime
 
 @ControllerAdvice
 class GlobalExceptionHandler {
@@ -19,21 +18,23 @@ class GlobalExceptionHandler {
 
     // === Business exceptions ===
 
+    @ExceptionHandler(UnauthorizedException::class)
+    fun handleUnauthorized(ex: UnauthorizedException): ResponseEntity<ErrorResponse> {
+        logger.warn("Unauthorized: ${ex.message}")
+        return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(
+            ErrorResponse(code = ex.code, message = ex.message, status = HttpStatus.UNAUTHORIZED.value())
+        )
+    }
+
     @ExceptionHandler(BusinessException::class)
     fun handleBusinessException(ex: BusinessException): ResponseEntity<ErrorResponse> {
-        // 401, 403 use warning level, others use info level logging
         if (ex.httpStatus in 401..403) {
             logger.warn("Business exception: ${ex.code} - ${ex.message}")
         } else {
             logger.info("Business exception: ${ex.code} - ${ex.message}")
         }
-
         return ResponseEntity.status(ex.httpStatus).body(
-            ErrorResponse(
-                code = ex.code,
-                message = ex.message,
-                status = ex.httpStatus
-            )
+            ErrorResponse(code = ex.code, message = ex.message, status = ex.httpStatus)
         )
     }
 
@@ -41,11 +42,7 @@ class GlobalExceptionHandler {
     fun handleBadRequest(ex: IllegalArgumentException): ResponseEntity<ErrorResponse> {
         logger.warn("Bad request: ${ex.message}")
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(
-            ErrorResponse(
-                code = "BAD_REQUEST",
-                message = ex.message ?: "Invalid request.",
-                status = 400
-            )
+            ErrorResponse.of(ErrorCode.BAD_REQUEST, customMessage = ex.message)
         )
     }
 
@@ -53,22 +50,14 @@ class GlobalExceptionHandler {
     fun handleConflict(ex: IllegalStateException): ResponseEntity<ErrorResponse> {
         logger.warn("Conflict: ${ex.message}")
         return ResponseEntity.status(HttpStatus.CONFLICT).body(
-            ErrorResponse(
-                code = "CONFLICT",
-                message = ex.message ?: "Request cannot be processed in current state.",
-                status = 409
-            )
+            ErrorResponse.of(ErrorCode.CONFLICT, customMessage = ex.message)
         )
     }
 
     @ExceptionHandler(NoSuchElementException::class)
     fun handleNotFound(ex: NoSuchElementException): ResponseEntity<ErrorResponse> {
         return ResponseEntity.status(HttpStatus.NOT_FOUND).body(
-            ErrorResponse(
-                code = "NOT_FOUND",
-                message = ex.message ?: "Resource not found.",
-                status = 404
-            )
+            ErrorResponse.of(ErrorCode.NOT_FOUND, customMessage = ex.message)
         )
     }
 
@@ -79,12 +68,7 @@ class GlobalExceptionHandler {
         val errors = ex.bindingResult.fieldErrors.map { "${it.field}: ${it.defaultMessage}" }
         logger.warn("Validation failed: $errors")
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(
-            ErrorResponse(
-                code = "VALIDATION_FAILED",
-                message = "Input validation failed.",
-                status = 400,
-                details = errors
-            )
+            ErrorResponse.of(ErrorCode.VALIDATION_FAILED, details = errors)
         )
     }
 
@@ -92,21 +76,16 @@ class GlobalExceptionHandler {
     fun handleUnreadable(ex: HttpMessageNotReadableException): ResponseEntity<ErrorResponse> {
         logger.warn("Unreadable request body: ${ex.message}")
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(
-            ErrorResponse(
-                code = "INVALID_REQUEST_BODY",
-                message = "Unable to parse request body.",
-                status = 400
-            )
+            ErrorResponse.of(ErrorCode.INVALID_REQUEST_BODY)
         )
     }
 
     @ExceptionHandler(MissingServletRequestParameterException::class)
     fun handleMissingParam(ex: MissingServletRequestParameterException): ResponseEntity<ErrorResponse> {
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(
-            ErrorResponse(
-                code = "MISSING_PARAMETER",
-                message = "Required parameter '${ex.parameterName}' is missing.",
-                status = 400
+            ErrorResponse.of(
+                ErrorCode.MISSING_PARAMETER,
+                customMessage = "Required parameter '${ex.parameterName}' is missing."
             )
         )
     }
@@ -114,10 +93,9 @@ class GlobalExceptionHandler {
     @ExceptionHandler(MethodArgumentTypeMismatchException::class)
     fun handleTypeMismatch(ex: MethodArgumentTypeMismatchException): ResponseEntity<ErrorResponse> {
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(
-            ErrorResponse(
-                code = "TYPE_MISMATCH",
-                message = "Parameter '${ex.name}' has invalid type.",
-                status = 400
+            ErrorResponse.of(
+                ErrorCode.TYPE_MISMATCH,
+                customMessage = "Parameter '${ex.name}' has invalid type."
             )
         )
     }
@@ -133,11 +111,7 @@ class GlobalExceptionHandler {
             else -> "Data integrity violation."
         }
         return ResponseEntity.status(HttpStatus.CONFLICT).body(
-            ErrorResponse(
-                code = "DUPLICATE_ENTRY",
-                message = message,
-                status = 409
-            )
+            ErrorResponse.of(ErrorCode.DUPLICATE_ENTRY, customMessage = message)
         )
     }
 
@@ -147,19 +121,7 @@ class GlobalExceptionHandler {
     fun handleUnexpected(ex: Exception): ResponseEntity<ErrorResponse> {
         logger.error("Unexpected error: ${ex.message}", ex)
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(
-            ErrorResponse(
-                code = "INTERNAL_ERROR",
-                message = "Internal server error occurred.",
-                status = 500
-            )
+            ErrorResponse.of(ErrorCode.INTERNAL_ERROR)
         )
     }
 }
-
-data class ErrorResponse(
-    val code: String,
-    val message: String,
-    val status: Int,
-    val details: List<String>? = null,
-    val timestamp: String = LocalDateTime.now().toString()
-)

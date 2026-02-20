@@ -3,6 +3,7 @@ package com.predata.backend.controller
 import com.predata.backend.config.JwtAuthInterceptor
 import com.predata.backend.exception.UnauthorizedException
 import com.predata.backend.service.PortfolioService
+import com.predata.backend.util.authenticatedMemberId
 import jakarta.servlet.http.HttpServletRequest
 import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.GetMapping
@@ -18,8 +19,7 @@ class PortfolioController(
     @GetMapping("/summary")
     fun getPortfolioSummary(request: HttpServletRequest): ResponseEntity<Any> {
         return try {
-            val memberId = request.getAttribute(JwtAuthInterceptor.ATTR_MEMBER_ID) as? Long
-                ?: throw UnauthorizedException()
+            val memberId = request.authenticatedMemberId()
             ResponseEntity.ok(portfolioService.getPortfolioSummary(memberId))
         } catch (e: UnauthorizedException) {
             throw e
@@ -43,22 +43,19 @@ class PortfolioController(
 
     @GetMapping("/positions")
     fun getOpenPositions(request: HttpServletRequest): ResponseEntity<Any> {
-        val memberId = request.getAttribute(JwtAuthInterceptor.ATTR_MEMBER_ID) as? Long
-            ?: throw UnauthorizedException()
+        val memberId = request.authenticatedMemberId()
         return ResponseEntity.ok(portfolioService.getOpenPositions(memberId))
     }
 
     @GetMapping("/category-breakdown")
     fun getCategoryBreakdown(request: HttpServletRequest): ResponseEntity<Any> {
-        val memberId = request.getAttribute(JwtAuthInterceptor.ATTR_MEMBER_ID) as? Long
-            ?: throw UnauthorizedException()
+        val memberId = request.authenticatedMemberId()
         return ResponseEntity.ok(portfolioService.getCategoryBreakdown(memberId))
     }
 
     @GetMapping("/accuracy-trend")
     fun getAccuracyTrend(request: HttpServletRequest): ResponseEntity<Any> {
-        val memberId = request.getAttribute(JwtAuthInterceptor.ATTR_MEMBER_ID) as? Long
-            ?: throw UnauthorizedException()
+        val memberId = request.authenticatedMemberId()
         return ResponseEntity.ok(portfolioService.getAccuracyTrend(memberId))
     }
 }

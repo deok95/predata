@@ -61,6 +61,9 @@ dependencies {
     implementation("org.web3j:core:4.9.8")
     implementation("org.web3j:contracts:4.9.8")
     
+    // Configuration Processor (IDE 자동완성 지원)
+    annotationProcessor("org.springframework.boot:spring-boot-configuration-processor")
+
     // Test
     testImplementation("org.springframework.boot:spring-boot-starter-test")
     testImplementation("org.jetbrains.kotlin:kotlin-test-junit5")

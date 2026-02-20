@@ -4,6 +4,7 @@ import com.predata.backend.domain.Member
 import com.predata.backend.repository.MemberRepository
 import com.predata.backend.service.ClientIpService
 import com.predata.backend.service.IpTrackingService
+import com.predata.backend.util.authenticatedMemberId
 import jakarta.servlet.http.HttpServletRequest
 import jakarta.validation.Valid
 import jakarta.validation.constraints.Email
@@ -100,8 +101,7 @@ class MemberController(
      */
     @GetMapping("/me")
     fun getMyInfo(httpRequest: HttpServletRequest): ResponseEntity<MemberResponse> {
-        val memberId = httpRequest.getAttribute("authenticatedMemberId") as? Long
-            ?: return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build()
+        val memberId = httpRequest.authenticatedMemberId()
 
         val member = memberRepository.findById(memberId)
 
@@ -138,8 +138,7 @@ class MemberController(
         @Valid @RequestBody request: UpdateWalletRequest,
         httpRequest: HttpServletRequest
     ): ResponseEntity<Any> {
-        val memberId = httpRequest.getAttribute("authenticatedMemberId") as? Long
-            ?: return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(mapOf("message" to "Login required."))
+        val memberId = httpRequest.authenticatedMemberId()
 
         val member = memberRepository.findById(memberId)
             .orElseThrow { IllegalArgumentException("회원을 찾을 수 없습니다.") }

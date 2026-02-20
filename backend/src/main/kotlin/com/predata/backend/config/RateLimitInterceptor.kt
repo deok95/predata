@@ -1,13 +1,13 @@
 package com.predata.backend.config
 
 import com.fasterxml.jackson.databind.ObjectMapper
+import com.predata.backend.exception.ErrorCode
 import com.predata.backend.exception.ErrorResponse
 import jakarta.servlet.http.HttpServletRequest
 import jakarta.servlet.http.HttpServletResponse
 import org.slf4j.LoggerFactory
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.core.env.Environment
-import org.springframework.http.HttpStatus
 import org.springframework.http.MediaType
 import org.springframework.stereotype.Component
 import org.springframework.web.servlet.HandlerInterceptor
@@ -102,7 +102,7 @@ class RateLimitInterceptor(
         if (currentCount > limit) {
             logger.warn("Rate limit exceeded: IP=$clientIp, bucket=$bucketType, count=$currentCount/$limit")
 
-            response.status = HttpStatus.TOO_MANY_REQUESTS.value()
+            response.status = ErrorCode.RATE_LIMITED.status
             response.contentType = MediaType.APPLICATION_JSON_VALUE
             response.characterEncoding = "UTF-8"
 
@@ -111,10 +111,9 @@ class RateLimitInterceptor(
             response.setHeader("X-RateLimit-Limit", limit.toString())
             response.setHeader("X-RateLimit-Remaining", "0")
 
-            val error = ErrorResponse(
-                code = "RATE_LIMIT_EXCEEDED",
-                message = "Too many requests. Please try again in ${remaining} seconds.",
-                status = 429
+            val error = ErrorResponse.of(
+                ErrorCode.RATE_LIMITED,
+                customMessage = "Too many requests. Please try again in ${remaining} seconds."
             )
             response.writer.write(objectMapper.writeValueAsString(error))
             return false

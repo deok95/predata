@@ -3,6 +3,7 @@ package com.predata.backend.controller
 import com.predata.backend.dto.*
 import com.predata.backend.domain.FinalResult
 import com.predata.backend.service.SettlementService
+import com.predata.backend.util.authenticatedMemberId
 import jakarta.servlet.http.HttpServletRequest
 import jakarta.validation.Valid
 import org.springframework.http.HttpStatus
@@ -21,9 +22,7 @@ class SettlementController(
      */
     @GetMapping("/api/settlements/history/me")
     fun getMySettlementHistory(httpRequest: HttpServletRequest): ResponseEntity<List<com.predata.backend.service.SettlementHistoryItem>> {
-        // JWT에서 인증된 memberId 가져오기 (IDOR 방지)
-        val authenticatedMemberId = httpRequest.getAttribute(com.predata.backend.config.JwtAuthInterceptor.ATTR_MEMBER_ID) as? Long
-            ?: return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(emptyList())
+        val authenticatedMemberId = httpRequest.authenticatedMemberId()
 
         val history = settlementService.getSettlementHistory(authenticatedMemberId)
         return ResponseEntity.ok(history)

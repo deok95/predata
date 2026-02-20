@@ -10,6 +10,7 @@ import com.predata.backend.service.OddsService
 import com.predata.backend.service.ClientIpService
 import com.predata.backend.domain.FinalResult
 import com.predata.backend.repository.ActivityRepository
+import com.predata.backend.util.authenticatedMemberId
 import jakarta.servlet.http.HttpServletRequest
 import jakarta.validation.Valid
 import org.springframework.http.HttpStatus
@@ -37,11 +38,7 @@ class ActivityController(
      */
     @PostMapping("/vote")
     fun vote(@Valid @RequestBody request: VoteRequest, httpRequest: HttpServletRequest): ResponseEntity<ActivityResponse> {
-        // JWT에서 인증된 memberId 가져오기 (IDOR 방지)
-        val authenticatedMemberId = httpRequest.getAttribute(com.predata.backend.config.JwtAuthInterceptor.ATTR_MEMBER_ID) as? Long
-            ?: return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(
-                ActivityResponse(success = false, message = "Authentication required.")
-            )
+        val authenticatedMemberId = httpRequest.authenticatedMemberId()
 
         val clientIp = clientIpService.extractClientIp(httpRequest)
         val response = voteService.vote(authenticatedMemberId, request, clientIp)
@@ -62,11 +59,7 @@ class ActivityController(
      */
     @PostMapping("/bet")
     fun bet(@Valid @RequestBody request: BetRequest, httpRequest: HttpServletRequest): ResponseEntity<ActivityResponse> {
-        // JWT에서 인증된 memberId 가져오기 (IDOR 방지)
-        val authenticatedMemberId = httpRequest.getAttribute(com.predata.backend.config.JwtAuthInterceptor.ATTR_MEMBER_ID) as? Long
-            ?: return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(
-                ActivityResponse(success = false, message = "Authentication required.")
-            )
+        val authenticatedMemberId = httpRequest.authenticatedMemberId()
 
         val clientIp = clientIpService.extractClientIp(httpRequest)
 
@@ -180,9 +173,7 @@ class ActivityController(
         @RequestParam(required = false) type: String?,
         httpRequest: HttpServletRequest
     ): ResponseEntity<List<MemberActivityView>> {
-        // JWT에서 인증된 memberId 가져오기 (IDOR 방지)
-        val authenticatedMemberId = httpRequest.getAttribute(com.predata.backend.config.JwtAuthInterceptor.ATTR_MEMBER_ID) as? Long
-            ?: return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(emptyList())
+        val authenticatedMemberId = httpRequest.authenticatedMemberId()
 
         val activities = if (type != null) {
             val activityType = ActivityType.valueOf(type.uppercase())
@@ -227,9 +218,7 @@ class ActivityController(
         @RequestParam(required = false) type: String?,
         httpRequest: HttpServletRequest
     ): ResponseEntity<List<MemberQuestionActivityView>> {
-        // JWT에서 인증된 memberId 가져오기 (IDOR 방지)
-        val authenticatedMemberId = httpRequest.getAttribute(com.predata.backend.config.JwtAuthInterceptor.ATTR_MEMBER_ID) as? Long
-            ?: return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(emptyList())
+        val authenticatedMemberId = httpRequest.authenticatedMemberId()
 
         val activities = activityRepository.findByMemberIdAndQuestionId(authenticatedMemberId, questionId)
 

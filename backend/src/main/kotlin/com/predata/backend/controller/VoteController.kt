@@ -9,6 +9,7 @@ import com.predata.backend.dto.VoteRevealResponse
 import com.predata.backend.exception.ServiceUnavailableException
 import com.predata.backend.service.IdempotencyService
 import com.predata.backend.service.VoteCommitService
+import com.predata.backend.util.authenticatedMemberId
 import jakarta.servlet.http.HttpServletRequest
 import jakarta.validation.Valid
 import org.springframework.http.HttpStatus
@@ -41,13 +42,7 @@ class VoteController(
         @Valid @RequestBody request: VoteCommitRequest,
         httpRequest: HttpServletRequest
     ): ResponseEntity<VoteCommitResponse> {
-        val authenticatedMemberId = httpRequest.getAttribute(JwtAuthInterceptor.ATTR_MEMBER_ID) as? Long
-            ?: return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(
-                VoteCommitResponse(
-                    success = false,
-                    message = "Authentication required."
-                )
-            )
+        val authenticatedMemberId = httpRequest.authenticatedMemberId()
 
         // Idempotency 체크
         val idempotencyKey = httpRequest.getHeader("X-Idempotency-Key")
@@ -120,13 +115,7 @@ class VoteController(
         @Valid @RequestBody request: VoteRevealRequest,
         httpRequest: HttpServletRequest
     ): ResponseEntity<VoteRevealResponse> {
-        val authenticatedMemberId = httpRequest.getAttribute(JwtAuthInterceptor.ATTR_MEMBER_ID) as? Long
-            ?: return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(
-                VoteRevealResponse(
-                    success = false,
-                    message = "Authentication required."
-                )
-            )
+        val authenticatedMemberId = httpRequest.authenticatedMemberId()
 
         // Idempotency 체크
         val idempotencyKey = httpRequest.getHeader("X-Idempotency-Key")

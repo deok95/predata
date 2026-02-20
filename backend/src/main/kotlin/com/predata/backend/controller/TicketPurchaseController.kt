@@ -3,8 +3,8 @@ package com.predata.backend.controller
 import com.predata.backend.config.JwtAuthInterceptor
 import com.predata.backend.service.VotingPassPurchaseResponse
 import com.predata.backend.service.VotingPassService
+import com.predata.backend.util.authenticatedMemberId
 import jakarta.servlet.http.HttpServletRequest
-import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.*
 
@@ -24,15 +24,7 @@ class VotingPassController(
         httpRequest: HttpServletRequest,
         @RequestBody(required = false) request: VotingPassPurchaseRequest? = null // backward compatible; ignored
     ): ResponseEntity<VotingPassPurchaseResponse> {
-        val authenticatedMemberId = httpRequest.getAttribute(JwtAuthInterceptor.ATTR_MEMBER_ID) as? Long
-            ?: return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(
-                VotingPassPurchaseResponse(
-                    success = false,
-                    hasVotingPass = false,
-                    remainingBalance = 0.0,
-                    message = "Authentication required."
-                )
-            )
+        val authenticatedMemberId = httpRequest.authenticatedMemberId()
 
         return try {
             // Never trust memberId in body; enforce JWT subject.

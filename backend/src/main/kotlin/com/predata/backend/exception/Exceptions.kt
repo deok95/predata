@@ -7,24 +7,24 @@ open class BusinessException(
 ) : RuntimeException(message)
 
 class UnauthorizedException(
-    message: String = "Authentication is required.",
-    code: String = "UNAUTHORIZED"
-) : BusinessException(code, message, 401)
+    message: String = ErrorCode.UNAUTHORIZED.message,
+    code: String = ErrorCode.UNAUTHORIZED.name
+) : BusinessException(code, message, ErrorCode.UNAUTHORIZED.status)
 
 class ForbiddenException(
-    message: String = "Access denied.",
-    code: String = "FORBIDDEN"
-) : BusinessException(code, message, 403)
+    message: String = ErrorCode.FORBIDDEN.message,
+    code: String = ErrorCode.FORBIDDEN.name
+) : BusinessException(code, message, ErrorCode.FORBIDDEN.status)
 
 class NotFoundException(
-    message: String = "Resource not found.",
-    code: String = "NOT_FOUND"
-) : BusinessException(code, message, 404)
+    message: String = ErrorCode.NOT_FOUND.message,
+    code: String = ErrorCode.NOT_FOUND.name
+) : BusinessException(code, message, ErrorCode.NOT_FOUND.status)
 
 class ConflictException(
-    message: String = "Cannot process the request in current state.",
-    code: String = "CONFLICT"
-) : BusinessException(code, message, 409)
+    message: String = ErrorCode.CONFLICT.message,
+    code: String = ErrorCode.CONFLICT.name
+) : BusinessException(code, message, ErrorCode.CONFLICT.status)
 
 class ServiceUnavailableException(
     message: String = "Service is temporarily unavailable.",

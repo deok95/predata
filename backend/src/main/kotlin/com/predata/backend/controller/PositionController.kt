@@ -4,8 +4,8 @@ import com.predata.backend.config.JwtAuthInterceptor
 import com.predata.backend.dto.ApiEnvelope
 import com.predata.backend.dto.PositionResponse
 import com.predata.backend.service.PositionService
+import com.predata.backend.util.authenticatedMemberId
 import jakarta.servlet.http.HttpServletRequest
-import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.*
 
@@ -28,14 +28,7 @@ class PositionController(
     fun getMyPositions(
         httpRequest: HttpServletRequest
     ): ResponseEntity<ApiEnvelope<List<PositionResponse>>> {
-        val memberId = httpRequest.getAttribute(JwtAuthInterceptor.ATTR_MEMBER_ID) as? Long
-            ?: return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(
-                ApiEnvelope(
-                    success = false,
-                    message = "Unauthorized",
-                    data = emptyList()
-                )
-            )
+        val memberId = httpRequest.authenticatedMemberId()
 
         val positions = positionService.getPositionsWithPnL(memberId)
         return ResponseEntity.ok(
@@ -55,14 +48,7 @@ class PositionController(
         @PathVariable id: Long,
         httpRequest: HttpServletRequest
     ): ResponseEntity<ApiEnvelope<List<PositionResponse>>> {
-        val memberId = httpRequest.getAttribute(JwtAuthInterceptor.ATTR_MEMBER_ID) as? Long
-            ?: return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(
-                ApiEnvelope(
-                    success = false,
-                    message = "Unauthorized",
-                    data = emptyList()
-                )
-            )
+        val memberId = httpRequest.authenticatedMemberId()
 
         val positions = positionService.getPositionsWithPnL(memberId)
             .filter { it.questionId == id }

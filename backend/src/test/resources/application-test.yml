@@ -45,7 +45,8 @@ server:
   port: 0  # 랜덤 포트 (테스트 격리)
 
 jwt:
-  secret: test-secret-key-must-be-at-least-256-bits-long-for-HS256-algorithm-to-work-properly
+  secrets:
+    - test-secret-key-must-be-at-least-256-bits-long-for-HS256-algorithm-to-work-properly
   expiration-ms: 86400000
 
 auth:
@@ -60,7 +61,7 @@ polygon:
   receiver-wallet: 0x0000000000000000000000000000000000000000
   usdc-contract: 0x0000000000000000000000000000000000000000
   chain-id: 1
-  sender-private-key: 0000000000000000000000000000000000000000000000000000000000000000
+  sender-private-key: ""
 
 logging:
   level:

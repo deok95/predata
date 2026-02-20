@@ -1,7 +1,7 @@
 -- AMM (FPMM) 실행 모델을 위한 테이블 생성
 
 -- 1. market_pools 테이블: FPMM 풀 상태 관리
-CREATE TABLE market_pools (
+CREATE TABLE IF NOT EXISTS market_pools (
     question_id BIGINT PRIMARY KEY,
     yes_shares DECIMAL(38,18) NOT NULL,
     no_shares DECIMAL(38,18) NOT NULL,
@@ -21,10 +21,22 @@ CREATE TABLE market_pools (
     CONSTRAINT chk_market_pools_fee_rate CHECK (fee_rate >= 0 AND fee_rate < 1)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-CREATE INDEX idx_market_pools_status ON market_pools(status);
+SET @idx_exists = (
+    SELECT COUNT(*) FROM information_schema.STATISTICS
+    WHERE TABLE_SCHEMA = DATABASE()
+      AND TABLE_NAME = 'market_pools'
+      AND INDEX_NAME = 'idx_market_pools_status'
+);
+SET @sql = IF(@idx_exists = 0,
+    'CREATE INDEX idx_market_pools_status ON market_pools(status)',
+    'SELECT "Index idx_market_pools_status already exists, skipping" as message'
+);
+PREPARE stmt FROM @sql;
+EXECUTE stmt;
+DEALLOCATE PREPARE stmt;
 
 -- 2. user_shares 테이블: 사용자별 shares 보유량
-CREATE TABLE user_shares (
+CREATE TABLE IF NOT EXISTS user_shares (
     member_id BIGINT NOT NULL,
     question_id BIGINT NOT NULL,
     outcome VARCHAR(10) NOT NULL,
@@ -42,11 +54,36 @@ CREATE TABLE user_shares (
     CONSTRAINT chk_user_shares_shares_nonnegative CHECK (shares >= 0)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-CREATE INDEX idx_user_shares_question_outcome ON user_shares(question_id, outcome);
-CREATE INDEX idx_user_shares_member ON user_shares(member_id);
+SET @idx_exists = (
+    SELECT COUNT(*) FROM information_schema.STATISTICS
+    WHERE TABLE_SCHEMA = DATABASE()
+      AND TABLE_NAME = 'user_shares'
+      AND INDEX_NAME = 'idx_user_shares_question_outcome'
+);
+SET @sql = IF(@idx_exists = 0,
+    'CREATE INDEX idx_user_shares_question_outcome ON user_shares(question_id, outcome)',
+    'SELECT "Index idx_user_shares_question_outcome already exists, skipping" as message'
+);
+PREPARE stmt FROM @sql;
+EXECUTE stmt;
+DEALLOCATE PREPARE stmt;
+
+SET @idx_exists = (
+    SELECT COUNT(*) FROM information_schema.STATISTICS
+    WHERE TABLE_SCHEMA = DATABASE()
+      AND TABLE_NAME = 'user_shares'
+      AND INDEX_NAME = 'idx_user_shares_member'
+);
+SET @sql = IF(@idx_exists = 0,
+    'CREATE INDEX idx_user_shares_member ON user_shares(member_id)',
+    'SELECT "Index idx_user_shares_member already exists, skipping" as message'
+);
+PREPARE stmt FROM @sql;
+EXECUTE stmt;
+DEALLOCATE PREPARE stmt;
 
 -- 3. swap_history 테이블: 스왑 거래 내역
-CREATE TABLE swap_history (
+CREATE TABLE IF NOT EXISTS swap_history (
     swap_id BIGINT AUTO_INCREMENT PRIMARY KEY,
     member_id BIGINT NOT NULL,
     question_id BIGINT NOT NULL,
@@ -73,16 +110,73 @@ CREATE TABLE swap_history (
     CONSTRAINT chk_swap_history_outcome CHECK (outcome IN ('YES', 'NO'))
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-CREATE INDEX idx_swap_history_question_created ON swap_history(question_id, created_at);
-CREATE INDEX idx_swap_history_member_created ON swap_history(member_id, created_at);
+SET @idx_exists = (
+    SELECT COUNT(*) FROM information_schema.STATISTICS
+    WHERE TABLE_SCHEMA = DATABASE()
+      AND TABLE_NAME = 'swap_history'
+      AND INDEX_NAME = 'idx_swap_history_question_created'
+);
+SET @sql = IF(@idx_exists = 0,
+    'CREATE INDEX idx_swap_history_question_created ON swap_history(question_id, created_at)',
+    'SELECT "Index idx_swap_history_question_created already exists, skipping" as message'
+);
+PREPARE stmt FROM @sql;
+EXECUTE stmt;
+DEALLOCATE PREPARE stmt;
+
+SET @idx_exists = (
+    SELECT COUNT(*) FROM information_schema.STATISTICS
+    WHERE TABLE_SCHEMA = DATABASE()
+      AND TABLE_NAME = 'swap_history'
+      AND INDEX_NAME = 'idx_swap_history_member_created'
+);
+SET @sql = IF(@idx_exists = 0,
+    'CREATE INDEX idx_swap_history_member_created ON swap_history(member_id, created_at)',
+    'SELECT "Index idx_swap_history_member_created already exists, skipping" as message'
+);
+PREPARE stmt FROM @sql;
+EXECUTE stmt;
+DEALLOCATE PREPARE stmt;
 
 -- 4. questions 테이블에 execution_model 컬럼 추가
-ALTER TABLE questions
-ADD COLUMN execution_model VARCHAR(20) NOT NULL DEFAULT 'ORDERBOOK_LEGACY'
-AFTER phase;
+SET @col_exists = (
+    SELECT COUNT(*) FROM information_schema.COLUMNS
+    WHERE TABLE_SCHEMA = DATABASE()
+      AND TABLE_NAME = 'questions'
+      AND COLUMN_NAME = 'execution_model'
+);
+SET @sql = IF(@col_exists = 0,
+    'ALTER TABLE questions ADD COLUMN execution_model VARCHAR(20) NOT NULL DEFAULT ''ORDERBOOK_LEGACY'' AFTER phase',
+    'SELECT "Column execution_model already exists, skipping" as message'
+);
+PREPARE stmt FROM @sql;
+EXECUTE stmt;
+DEALLOCATE PREPARE stmt;
 
-ALTER TABLE questions
-ADD CONSTRAINT chk_questions_execution_model
-CHECK (execution_model IN ('AMM_FPMM', 'ORDERBOOK_LEGACY'));
+SET @constraint_exists = (
+    SELECT COUNT(*) FROM information_schema.TABLE_CONSTRAINTS
+    WHERE TABLE_SCHEMA = DATABASE()
+      AND TABLE_NAME = 'questions'
+      AND CONSTRAINT_NAME = 'chk_questions_execution_model'
+);
+SET @sql = IF(@constraint_exists = 0,
+    'ALTER TABLE questions ADD CONSTRAINT chk_questions_execution_model CHECK (execution_model IN (''AMM_FPMM'', ''ORDERBOOK_LEGACY''))',
+    'SELECT "Constraint chk_questions_execution_model already exists, skipping" as message'
+);
+PREPARE stmt FROM @sql;
+EXECUTE stmt;
+DEALLOCATE PREPARE stmt;
 
-CREATE INDEX idx_questions_execution_model ON questions(execution_model);
+SET @idx_exists = (
+    SELECT COUNT(*) FROM information_schema.STATISTICS
+    WHERE TABLE_SCHEMA = DATABASE()
+      AND TABLE_NAME = 'questions'
+      AND INDEX_NAME = 'idx_questions_execution_model'
+);
+SET @sql = IF(@idx_exists = 0,
+    'CREATE INDEX idx_questions_execution_model ON questions(execution_model)',
+    'SELECT "Index idx_questions_execution_model already exists, skipping" as message'
+);
+PREPARE stmt FROM @sql;
+EXECUTE stmt;
+DEALLOCATE PREPARE stmt;

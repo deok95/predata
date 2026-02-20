@@ -314,11 +314,12 @@ class BettingE2ETest {
         val result = orderMatchingService.createOrder(memberA.id!!, orderRequest)
 
         // Then: 거부 확인
-        assertFalse(result.success, "만료된 질문에 대한 주문은 거부되어야 합니다")
+        assertFalse(result.success, "Order on an expired question must be rejected")
         val message = result.message ?: ""
         assertTrue(
-            message.contains("만료") || message.contains("기간"),
-            "에러 메시지에 '만료' 또는 '기간'이 포함되어야 합니다"
+            message.contains("expired", ignoreCase = true) ||
+                message.contains("period", ignoreCase = true),
+            "Error message should include 'expired' or 'period'"
         )
 
         // 주문이 생성되지 않았는지 확인
@@ -437,11 +438,12 @@ class BettingE2ETest {
         val result = orderMatchingService.createOrder(memberA.id!!, orderRequest)
 
         // Then: 주문 실패 확인 (호가 없음)
-        assertFalse(result.success, "호가가 없을 때 시장가 주문은 실패해야 합니다")
+        assertFalse(result.success, "Market order must fail when there are no executable quotes")
         val message = result.message ?: ""
         assertTrue(
-            message.contains("호가") || message.contains("실패"),
-            "에러 메시지에 '호가' 또는 '실패'가 포함되어야 합니다"
+            message.contains("market order failed", ignoreCase = true) ||
+                message.contains("no executable quotes", ignoreCase = true),
+            "Error message should mention market-order failure due to missing quotes"
         )
 
         // 잔액이 원상복구되었는지 확인

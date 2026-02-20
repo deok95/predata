@@ -1,12 +1,12 @@
 package com.predata.backend.service
 
+import com.predata.backend.config.properties.PolygonProperties
 import com.predata.backend.domain.PaymentTransaction
 import com.predata.backend.repository.MemberRepository
 import com.predata.backend.repository.PaymentTransactionRepository
 import jakarta.annotation.PostConstruct
 import jakarta.persistence.OptimisticLockException
 import org.slf4j.LoggerFactory
-import org.springframework.beans.factory.annotation.Value
 import org.springframework.orm.ObjectOptimisticLockingFailureException
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Propagation
@@ -15,7 +15,6 @@ import org.web3j.crypto.Credentials
 import org.web3j.protocol.Web3j
 import org.web3j.protocol.http.HttpService
 import org.web3j.tx.RawTransactionManager
-import org.web3j.tx.gas.StaticGasProvider
 import org.web3j.abi.FunctionEncoder
 import org.web3j.abi.datatypes.Address
 import org.web3j.abi.datatypes.Function
@@ -25,16 +24,13 @@ import java.math.BigInteger
 
 @Service
 class WithdrawalService(
-    @Value("\${polygon.rpc-url}") private val rpcUrl: String,
-    @Value("\${polygon.usdc-contract}") private val usdcContract: String,
-    @Value("\${polygon.sender-private-key:}") private val senderPrivateKey: String,
-    @Value("\${polygon.chain-id:80002}") private val chainId: Long,
+    private val polygonProperties: PolygonProperties,
     private val memberRepository: MemberRepository,
     private val paymentTransactionRepository: PaymentTransactionRepository,
     private val transactionHistoryService: TransactionHistoryService
 ) {
     private val log = LoggerFactory.getLogger(javaClass)
-    private val web3j: Web3j by lazy { Web3j.build(HttpService(rpcUrl)) }
+    private val web3j: Web3j by lazy { Web3j.build(HttpService(polygonProperties.rpcUrl)) }
 
     companion object {
         val MIN_WITHDRAW = BigDecimal("1")    // 최소 $1
@@ -140,7 +136,7 @@ class WithdrawalService(
         }
 
         // 6. 프라이빗 키 확인
-        if (senderPrivateKey.isBlank()) {
+        if (polygonProperties.senderPrivateKey.isBlank()) {
             throw IllegalStateException("Withdrawal feature not configured. Please contact administrator.")
         }
 
@@ -273,8 +269,8 @@ class WithdrawalService(
     }
 
     private fun sendUSDC(toAddress: String, amount: BigDecimal): String {
-        val credentials = Credentials.create(senderPrivateKey)
-        val transactionManager = RawTransactionManager(web3j, credentials, chainId)
+        val credentials = Credentials.create(polygonProperties.senderPrivateKey)
+        val transactionManager = RawTransactionManager(web3j, credentials, polygonProperties.chainId)
 
         val amountRaw = amount.multiply(BigDecimal.TEN.pow(USDC_DECIMALS)).toBigInteger()
 
@@ -292,7 +288,7 @@ class WithdrawalService(
         val transaction = transactionManager.sendTransaction(
             gasPrice,
             gasLimit,
-            usdcContract,
+            polygonProperties.usdcContract,
             encodedFunction,
             BigInteger.ZERO
         )
