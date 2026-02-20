@@ -34,8 +34,9 @@ export default function TicketShop({ user }: VotingPassShopProps) {
       } else {
         setMessage(res.data?.message || 'Purchase failed.');
       }
-    } catch (e: any) {
-      setMessage(e?.message || 'Purchase failed.');
+    } catch (e: unknown) {
+      const error = e as { message?: string };
+      setMessage(error?.message || 'Purchase failed.');
     } finally {
       setIsLoading(false);
     }

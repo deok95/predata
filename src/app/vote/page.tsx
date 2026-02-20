@@ -112,7 +112,7 @@ function VoteContent() {
                 <AlertCircle className="w-5 h-5 text-red-500" />
                 <div className="flex-1">
                   <p className={`font-bold ${isDark ? 'text-red-400' : 'text-red-600'}`}>
-                    You've used all votes for today
+                    You&apos;ve used all votes for today
                   </p>
                   <p className="text-sm text-slate-400">You can vote again tomorrow</p>
                 </div>

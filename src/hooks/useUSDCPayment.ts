@@ -77,8 +77,9 @@ export function useUSDCPayment(): UseUSDCPaymentReturn {
         if (data.result && data.result.status === '0x0') {
           throw new Error('Transaction failed.');
         }
-      } catch (e: any) {
-        if (e.message === 'Transaction failed.') throw e;
+      } catch (e: unknown) {
+        const error = e as { message?: string };
+        if (error.message === 'Transaction failed.') throw e;
       }
     }
     throw new Error('Transaction confirmation timed out.');
@@ -102,8 +103,9 @@ export function useUSDCPayment(): UseUSDCPaymentReturn {
 
       await refreshUser();
       setStep('success');
-    } catch (e: any) {
-      setError(e?.shortMessage || e?.message || 'Deposit failed.');
+    } catch (e: unknown) {
+      const error = e as { shortMessage?: string; message?: string };
+      setError(error?.shortMessage || error?.message || 'Deposit failed.');
       setStep('error');
     }
   }, [user, address, sendUSDC, waitForTx, refreshUser, reset]);

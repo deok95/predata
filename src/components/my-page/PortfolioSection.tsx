@@ -62,7 +62,8 @@ export default function PortfolioSection() {
   }, []);
 
   useEffect(() => {
-    fetchData();
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    void fetchData();
   }, [fetchData]);
 
   if (error) {

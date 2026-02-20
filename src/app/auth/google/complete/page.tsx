@@ -110,8 +110,9 @@ function GoogleCompleteContent() {
       } else {
         setError(result.message || 'Registration failed.');
       }
-    } catch (err: any) {
-      setError(err?.data?.message || err?.message || 'An error occurred during registration.');
+    } catch (err: unknown) {
+      const error = err as { data?: { message?: string }; message?: string };
+      setError(error?.data?.message || error?.message || 'An error occurred during registration.');
     } finally {
       setLoading(false);
     }

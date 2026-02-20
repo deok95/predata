@@ -47,8 +47,9 @@ export default function WithdrawModal({ isOpen, onClose }: WithdrawModalProps) {
         setError(result.message || 'Withdrawal failed.');
         setStep('error');
       }
-    } catch (e: any) {
-      setError(e?.message || 'Withdrawal failed.');
+    } catch (e: unknown) {
+      const error = e as { message?: string };
+      setError(error?.message || 'Withdrawal failed.');
       setStep('error');
     }
   };

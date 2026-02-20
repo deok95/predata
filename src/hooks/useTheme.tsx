@@ -18,14 +18,17 @@ interface ThemeState {
 const ThemeContext = createContext<ThemeState | null>(null);
 
 export function ThemeProvider({ children }: { children: ReactNode }) {
-  const [theme, setThemeState] = useState<Theme>('dark');
+  const [theme, setThemeState] = useState<Theme>(() => {
+    if (typeof window !== 'undefined') {
+      const saved = safeLocalStorage.getItem(STORAGE_KEY) as Theme | null;
+      return saved || 'dark';
+    }
+    return 'dark';
+  });
 
   useEffect(() => {
-    const saved = safeLocalStorage.getItem(STORAGE_KEY) as Theme | null;
-    const initial = saved || 'dark';
-    setThemeState(initial);
-    document.documentElement.setAttribute('data-theme', initial);
-  }, []);
+    document.documentElement.setAttribute('data-theme', theme);
+  }, [theme]);
 
   const setTheme = useCallback((newTheme: Theme) => {
     setThemeState(newTheme);

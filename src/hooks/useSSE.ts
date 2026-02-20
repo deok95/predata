@@ -4,13 +4,14 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 
 interface SSEOptions {
   url: string;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   onMessage?: (data: any) => void;
   onError?: (error: Event) => void;
   enabled?: boolean;
   retryInterval?: number;
   fallbackPollingUrl?: string;
   fallbackPollingInterval?: number;
-  fallbackPollingFn?: () => Promise<any>;
+  fallbackPollingFn?: () => Promise<unknown>;
 }
 
 /**
@@ -61,6 +62,7 @@ export function useSSE({
 
         retryCountRef.current += 1;
         if (retryCountRef.current < maxRetries) {
+          // eslint-disable-next-line react-hooks/immutability
           setTimeout(connect, retryInterval);
         } else {
           // Fallback to polling

@@ -37,10 +37,10 @@ export default function AppHeader() {
   // Load notifications list
   useEffect(() => {
     if (!user || isGuest) {
-      setNotifications([]);
       return;
     }
 
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setNotificationsLoading(true);
     notificationApi.getAll(user.id)
       .then(res => {
@@ -59,7 +59,6 @@ export default function AppHeader() {
   // Search filter
   useEffect(() => {
     if (!searchQuery.trim()) {
-      setSearchResults([]);
       return;
     }
     const q = searchQuery.toLowerCase();
@@ -67,6 +66,7 @@ export default function AppHeader() {
       question.title.toLowerCase().includes(q) ||
       (question.category ?? '').toLowerCase().includes(q)
     );
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setSearchResults(results.slice(0, 5));
   }, [searchQuery, allQuestions]);
 

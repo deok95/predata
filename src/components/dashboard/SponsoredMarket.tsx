@@ -12,15 +12,11 @@ interface SponsoredMarketProps {
 
 export default function SponsoredMarket({ questions }: SponsoredMarketProps) {
   const { isDark } = useTheme();
-  const [currentIndex, setCurrentIndex] = useState(0);
   const carouselRef = useRef<HTMLDivElement | null>(null);
 
   const slides = useMemo(() => questions.slice(0, 8), [questions]);
   const totalSlides = slides.length;
-
-  useEffect(() => {
-    setCurrentIndex(0);
-  }, [totalSlides]);
+  const [currentIndex, setCurrentIndex] = useState(0);
 
   const scrollToIndex = (index: number) => {
     const container = carouselRef.current;

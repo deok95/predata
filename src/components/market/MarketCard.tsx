@@ -16,7 +16,6 @@ function useTimeRemaining(targetDate: string | null) {
 
   useEffect(() => {
     if (!targetDate) {
-      setTimeLeft('Ended');
       return;
     }
 

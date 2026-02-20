@@ -43,18 +43,19 @@ export default function LiveMatchesDashboard() {
   const [suspensionStatuses, setSuspensionStatuses] = useState<Map<number, BettingSuspension>>(new Map());
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    fetchLiveMatches();
-
-    // Real-time updates every 5 seconds
-    const interval = setInterval(() => {
-      fetchLiveMatches();
-    }, 5000);
-
-    return () => clearInterval(interval);
+  const checkSuspensionStatus = useCallback(async (questionId: number) => {
+    try {
+      const raw = await apiRequest<BettingSuspension>(`/api/betting/suspension/question/${questionId}`);
+      const status = unwrapApiEnvelope(raw);
+      setSuspensionStatuses(prev => new Map(prev).set(questionId, status));
+    } catch (error) {
+      if (process.env.NODE_ENV === 'development') {
+        console.error('Failed to check suspension status:', error);
+      }
+    }
   }, []);
 
-  const fetchLiveMatches = async () => {
+  const fetchLiveMatches = useCallback(async () => {
     try {
       const response = await authFetch(`${API_BASE_URL}/admin/sports/live`);
       const data = await response.json();
@@ -75,19 +76,20 @@ export default function LiveMatchesDashboard() {
       }
       setLoading(false);
     }
-  };
+  }, [checkSuspensionStatus]);
 
-  const checkSuspensionStatus = async (questionId: number) => {
-    try {
-      const raw = await apiRequest<BettingSuspension>(`/api/betting/suspension/question/${questionId}`);
-      const status = unwrapApiEnvelope(raw);
-      setSuspensionStatuses(prev => new Map(prev).set(questionId, status));
-    } catch (error) {
-      if (process.env.NODE_ENV === 'development') {
-        console.error('Failed to check suspension status:', error);
-      }
-    }
-  };
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    void fetchLiveMatches();
+
+    // Real-time updates every 5 seconds
+    const interval = setInterval(() => {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      void fetchLiveMatches();
+    }, 5000);
+
+    return () => clearInterval(interval);
+  }, [fetchLiveMatches]);
 
   if (loading) {
     return (

@@ -8,6 +8,7 @@ describe('API Request', () => {
 
   it('should handle successful API response', async () => {
     const mockResponse = { id: 1, title: 'Test Question' };
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     (global.fetch as any).mockResolvedValueOnce({
       ok: true,
       status: 200,
@@ -22,6 +23,7 @@ describe('API Request', () => {
   });
 
   it('should handle 404 error', async () => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     (global.fetch as any).mockResolvedValueOnce({
       ok: false,
       status: 404,
@@ -35,6 +37,7 @@ describe('API Request', () => {
   });
 
   it('should handle network error', async () => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     (global.fetch as any).mockRejectedValueOnce(new Error('Network error'));
 
     await expect(
@@ -83,7 +86,7 @@ describe('Field Mappers', () => {
     };
 
     const mapped = {
-      id: raw.memberId ?? (raw as any).id,
+      id: raw.memberId ?? (raw as { id?: number }).id,
       email: raw.email,
       countryCode: raw.countryCode,
       tier: raw.tier ?? 'BRONZE',

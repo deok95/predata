@@ -6,8 +6,16 @@ import { apiRequest, unwrapApiEnvelope } from '@/lib/api'
 
 const BASESCAN_URL = process.env.NEXT_PUBLIC_BASESCAN_URL || 'https://sepolia.basescan.org'
 
+interface OnChainData {
+  questionId: number;
+  totalBetPool?: number;
+  yesBetPool?: number;
+  noBetPool?: number;
+  settled?: boolean;
+}
+
 export default function BlockchainVerification({ questionId }: { questionId: number }) {
-  const [onChainData, setOnChainData] = useState<any>(null)
+  const [onChainData, setOnChainData] = useState<OnChainData | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
 
@@ -17,7 +25,7 @@ export default function BlockchainVerification({ questionId }: { questionId: num
 
     try {
       // Fetch on-chain data from backend
-      const raw = await apiRequest<Record<string, unknown>>(`/api/blockchain/question/${questionId}`)
+      const raw = await apiRequest<OnChainData>(`/api/blockchain/question/${questionId}`)
       setOnChainData(unwrapApiEnvelope(raw))
     } catch (err) {
       setError('Unable to fetch on-chain data.')

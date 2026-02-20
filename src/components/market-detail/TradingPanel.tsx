@@ -672,7 +672,7 @@ export default function TradingPanel({ question, user, onTradeComplete, votedCho
           <div className={`mb-6 px-4 py-2 rounded-xl text-xs font-bold ${
             isDark ? 'bg-slate-800 text-slate-300' : 'bg-slate-50 text-slate-700'
           }`}>
-            Choose YES if you expect home team to win, NO if you think they won't.
+            Choose YES if you expect home team to win, NO if you think they won&apos;t.
           </div>
         )}
 

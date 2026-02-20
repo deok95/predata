@@ -50,8 +50,9 @@ export default function LoginModal() {
       } else {
         setError(result.message || 'Login failed.');
       }
-    } catch (err: any) {
-      setError(err?.data?.message || err?.message || 'Login failed.');
+    } catch (err: unknown) {
+      const error = err as { data?: { message?: string }; message?: string };
+      setError(error?.data?.message || error?.message || 'Login failed.');
     } finally {
       setLoading(false);
     }

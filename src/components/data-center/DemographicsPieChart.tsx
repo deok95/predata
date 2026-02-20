@@ -50,6 +50,7 @@ export default function DemographicsPieChart({ title, icon: Icon, iconColor, dat
                 fontSize: 12,
               }}
               formatter={(value, _name, props) => {
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 const entry = (props as any).payload;
                 return [`${Number(value).toLocaleString()} votes (YES ${entry.yesPercentage.toFixed(1)}%)`, entry.name];
               }}

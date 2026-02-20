@@ -75,8 +75,9 @@ function RegisterModalInner({ onClose }: { onClose: () => void }) {
           setError(result.message || 'Failed to send code.');
         }
       }
-    } catch (err: any) {
-      const errorMsg = err?.data?.message || err?.message || 'Failed to send code.';
+    } catch (err: unknown) {
+      const error = err as { data?: { message?: string }; message?: string };
+      const errorMsg = error?.data?.message || error?.message || 'Failed to send code.';
       if (errorMsg.includes('already registered')) {
         setError('This email is already registered. Please close this window and click "Sign In".');
       } else {
@@ -101,8 +102,9 @@ function RegisterModalInner({ onClose }: { onClose: () => void }) {
       setPassword('');
       setPasswordConfirm('');
       setTimeout(() => passwordInputRef.current?.focus(), 100);
-    } catch (err: any) {
-      setError(err?.data?.message || err?.message || 'Verification failed.');
+    } catch (err: unknown) {
+      const error = err as { data?: { message?: string }; message?: string };
+      setError(error?.data?.message || error?.message || 'Verification failed.');
     } finally {
       setLoading(false);
     }
@@ -146,8 +148,9 @@ function RegisterModalInner({ onClose }: { onClose: () => void }) {
       } else {
         setError('Sign up failed.');
       }
-    } catch (err: any) {
-      setError(err?.data?.message || err?.message || 'Sign up failed.');
+    } catch (err: unknown) {
+      const error = err as { data?: { message?: string }; message?: string };
+      setError(error?.data?.message || error?.message || 'Sign up failed.');
     } finally {
       setLoading(false);
     }

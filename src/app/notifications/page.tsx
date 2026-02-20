@@ -35,11 +35,13 @@ function NotificationsContent() {
   const { t } = useI18n();
   const router = useRouter();
   const [notifications, setNotifications] = useState<Notification[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(!user || isGuest ? false : true);
   const [filter, setFilter] = useState<'all' | 'unread'>('all');
 
   useEffect(() => {
-    if (!user || isGuest) { setLoading(false); return; }
+    if (!user || isGuest) {
+      return;
+    }
     notificationApi.getAll(user.id).then(res => {
       if (res.success && res.data) setNotifications(res.data);
     }).catch(() => {}).finally(() => setLoading(false));
