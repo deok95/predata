@@ -155,6 +155,8 @@ management:
 
 app:
   frontend-url: https://predata.io
+  bot:
+    enabled: ${BOT_ENABLED:true}
 
   rate-limit:
     dev-mode: ${RATE_LIMIT_DEV_MODE:true}
