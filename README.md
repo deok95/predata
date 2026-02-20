@@ -1,227 +1,125 @@
-# PRE(D)ATA - Prediction Market Platform
+# PRE(D)ATA
 
-A decentralized prediction market platform built with Next.js and Spring Boot, enabling users to vote and bet on real-world events.
+PRE(D)ATA는 투표자와 베팅자를 분리해 운영하는 예측 시장 플랫폼입니다.  
+플랫폼 운영 과정에서 축적되는 결과를 B2B 인구통계 데이터로 활용하는 것이 핵심 목적입니다.  
+현재 구조는 단일 백엔드 + 단일 프론트엔드 기준으로 운영됩니다.
 
-## Architecture
+## 1) 기술 스택
 
-PRE(D)ATA uses a **monolithic architecture** for simplicity and rapid development:
+- Backend: Spring Boot 3.2.1 + Kotlin 1.9.22 + MariaDB
+- Frontend: Next.js 16 + React 19 + TypeScript + TailwindCSS
+- 인증: JWT (kid 기반 로테이션)
+- 베팅 엔진: AMM (FPMM)
+- 투표: Commit-Reveal
+- 블록체인: Polygon (Web3j) - 결제/정산
+- 캐시 서버: 사용 안 함
 
-- **Frontend**: Next.js 15 (React, TypeScript, TailwindCSS)
-- **Backend**: Spring Boot 3.2.1 + Kotlin
-- **Database**: MariaDB 10.11
-- **Cache**: Redis 7
-- **Blockchain**: Web3j integration for on-chain settlements
+## 2) 필수 도구
 
-```
-Frontend (3000) → Backend (8080) → MariaDB + Redis
-```
-
-## Project Structure
-
-```
-predata/
-├── src/                    # Next.js frontend source
-│   ├── app/               # App router pages
-│   ├── components/        # React components
-│   └── lib/               # Utilities and API clients
-├── backend/               # Spring Boot monolithic backend
-│   ├── src/main/kotlin/   # Kotlin source code
-│   ├── build.gradle.kts   # Gradle build configuration
-│   └── README.md          # Backend documentation
-├── blockchain/            # Smart contracts (Solidity)
-├── public/                # Static assets
-├── docker-compose.yml     # Docker orchestration
-└── run-local.sh          # Local development script
-```
-
-## Quick Start
-
-### Prerequisites
-
-- Node.js 18+ and npm
 - Java 17+
+- Node.js 18+
 - MariaDB 10.11+
-- Redis 7+
+- npm
 
-### Option 1: Local Development (Recommended)
+## 3) Quick Start
 
-Run backend and infrastructure without Docker:
+### Step 1. 저장소 클론
 
 ```bash
-# Start MariaDB, Redis, and backend
-./run-local.sh
+git clone <YOUR_REPO_URL>
+cd predata
+```
 
-# In a separate terminal, start frontend
+### Step 2. MariaDB 설정
+
+`init-db.sql` 사용:
+
+```bash
+mysql -u root -p < init-db.sql
+```
+
+또는 수동 생성:
+
+```sql
+CREATE DATABASE predata CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+```
+
+### Step 3. 환경변수 설정
+
+```bash
+cp .env.example .env
+```
+
+최소 필수값:
+
+```env
+DB_PASSWORD=your_password
+JWT_SECRET=your_generated_secret
+AUTH_DEMO_MODE=true
+```
+
+`JWT_SECRET` 생성 예시:
+
+```bash
+openssl rand -hex 64
+```
+
+### Step 4. 백엔드 기동
+
+```bash
+cd backend
+SPRING_PROFILES_ACTIVE=local ../gradlew bootRun
+```
+
+- 백엔드 주소: http://localhost:8080
+- Flyway가 시작 시 마이그레이션을 자동 적용합니다.
+
+### Step 5. 프론트엔드 기동
+
+프로젝트 루트(`predata/`)에서:
+
+```bash
 npm install
 npm run dev
 ```
 
-- Frontend: http://localhost:3000
-- Backend API: http://localhost:8080
+- 프론트 주소: http://localhost:3000
 
-### Option 2: Full Docker Setup
+## 4) 프로젝트 구조
 
-Run everything in Docker containers:
-
-```bash
-# Build and start all services
-docker-compose up --build
-
-# Or run in detached mode
-docker-compose up -d
+```text
+predata/
+├── src/            # Next.js 프론트엔드
+├── backend/        # Spring Boot 백엔드
+├── .env.example    # 환경변수 템플릿
+├── init-db.sql     # DB 초기화
+└── CLAUDE.md       # AI 개발 가이드
 ```
 
-### Option 3: Frontend Development Only
+`gateway/`, `services/`는 비활성 아카이브이며 현재 실행 경로에서 사용하지 않습니다.
 
-If you only need to work on the frontend:
-
-```bash
-# Make sure backend is running (via run-local.sh or Docker)
-npm run dev
-```
-
-## Core Features
-
-### 5-Lock Voting System
-- Daily 5-vote ticket allocation
-- Anti-spam latency checks
-- Duplicate vote prevention
-- Automatic midnight ticket reset
-
-### Betting System
-- Point-based prediction market
-- Pessimistic locking for concurrency control
-- Real-time pool updates
-- Duplicate bet prevention
-
-### Global Persona System
-- User classification by country, occupation, age
-- Tier system (BRONZE, SILVER, GOLD, PLATINUM, DIAMOND)
-- Weighted voting based on tier
-
-### Blockchain Integration
-- On-chain settlement recording
-- Web3 wallet connection (MetaMask)
-- Transparent result finalization
-
-## Environment Configuration
-
-Create `.env.local` in the project root:
-
-```env
-# Database
-DB_PASSWORD=your_mariadb_password
-
-# API Configuration
-NEXT_PUBLIC_API_URL=http://localhost:8080
-
-# Google OAuth (optional)
-GOOGLE_CLIENT_ID=your_client_id
-GOOGLE_CLIENT_SECRET=your_client_secret
-```
-
-For backend configuration, see [backend/README.md](backend/README.md).
-
-## API Documentation
-
-The backend exposes RESTful APIs at `http://localhost:8080/api`:
-
-- `POST /api/vote` - Submit a vote
-- `POST /api/bet` - Place a bet
-- `GET /api/questions` - List all questions
-- `GET /api/questions/{id}` - Get question details
-- `GET /api/tickets/{memberId}` - Check remaining tickets
-
-Full API documentation: [backend/README.md](backend/README.md)
-
-## Database Schema
-
-The application uses a unified MariaDB database with the following core tables:
-
-- `members` - User accounts and profiles
-- `questions` - Prediction questions
-- `activities` - Vote and bet records
-- `daily_tickets` - 5-lock ticket management
-
-Schema initialization is handled automatically via `init-db.sql`.
-
-## Development Workflow
-
-1. **Start infrastructure**: Run `./run-local.sh` to start MariaDB, Redis, and backend
-2. **Start frontend**: Run `npm run dev` in a separate terminal
-3. **Make changes**: Edit frontend code in `src/` or backend code in `backend/src/`
-4. **Test**: Frontend hot-reloads automatically; backend requires `./gradlew bootRun` restart
-
-## Testing
+## 5) 테스트
 
 ```bash
-# Frontend tests
-npm run test
-
-# Backend tests
-cd backend && ./gradlew test
-```
-
-## Deployment
-
-### Frontend (Vercel)
-
-```bash
-# Deploy to Vercel
-npm run build
-vercel deploy
-```
-
-### Backend (Docker)
-
-```bash
-# Build backend Docker image
 cd backend
-docker build -t predata-backend .
-
-# Run with environment variables
-docker run -p 8080:8080 \
-  -e SPRING_DATASOURCE_URL=jdbc:mariadb://host:3306/predata \
-  -e SPRING_DATASOURCE_PASSWORD=password \
-  predata-backend
+SPRING_PROFILES_ACTIVE=local ./gradlew test
 ```
 
-## Tech Stack
+## 6) 배포
 
-### Frontend
-- Next.js 15 (App Router)
-- React 19
-- TypeScript
-- TailwindCSS
-- Radix UI components
+- Backend: Mac Mini + Cloudflare Tunnel
+- Frontend: Vercel
 
-### Backend
-- Spring Boot 3.2.1
-- Kotlin 1.9.22
-- Spring Data JPA
-- Spring Security + OAuth2
-- Web3j (blockchain)
+## 7) 환경변수 상세
 
-### Infrastructure
-- MariaDB 10.11 (primary database)
-- Redis 7 (caching)
-- Docker & Docker Compose
+전체 환경변수는 `.env.example`를 기준으로 관리합니다.
 
-## Additional Resources
+## 8) 주요 API 엔드포인트
 
-- [Backend Documentation](backend/README.md) - Detailed Spring Boot API docs
-- [Betting Suspension System](BETTING_SUSPENSION_SYSTEM.md) - Real-time betting logic
-- [Ultra Realtime System](ULTRA_REALTIME_SYSTEM.md) - Performance optimization
-- [Web3 Integration](WEB3_INTEGRATION_COMPLETE.md) - Blockchain connection guide
+- `POST /api/auth/send-code`
+- `POST /api/swap`
+- `POST /api/vote/commit`
+- `GET /api/questions`
+- `POST /api/admin/settle/{questionId}`
 
-## License
-
-MIT License
-
-## Contributing
-
-1. Fork the repository
-2. Create your feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit your changes (`git commit -m 'Add amazing feature'`)
-4. Push to the branch (`git push origin feature/amazing-feature`)
-5. Open a Pull Request
+추가 API 목록은 `PREDATA_API_Collection.postman_collection.json`를 사용하세요.

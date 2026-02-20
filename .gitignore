@@ -28,6 +28,37 @@
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
+
+# Backend
+backend/build/
+backend/.gradle/
+backend/out/
+
+# Environment
+.env
+.env.local
+
+# IDE
+.idea/
+*.iml
+.vscode/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+
+# Dumps
+dump.rdb
+
+# Claude
+.claude/
+
+# Gradle
+.gradle/
+build/
 .pnpm-debug.log*
 
 # env files
