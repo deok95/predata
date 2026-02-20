@@ -35,6 +35,10 @@ class PortfolioService(
 
         val bets = activityRepository.findByMemberIdAndActivityType(memberId, ActivityType.BET)
 
+        // 배치 조회: N+1 → 1회
+        val questionIds = bets.map { it.questionId }.distinct()
+        val questionsMap = questionRepository.findAllById(questionIds).associateBy { it.id!! }
+
         val totalInvested = bets.sumOf { it.amount }
 
         var totalReturns = 0L
@@ -45,7 +49,7 @@ class PortfolioService(
         var settledBets = 0
 
         for (bet in bets) {
-            val question = questionRepository.findById(bet.questionId).orElse(null) ?: continue
+            val question = questionsMap[bet.questionId] ?: continue
 
             when (question.status) {
                 QuestionStatus.SETTLED -> {
@@ -107,8 +111,12 @@ class PortfolioService(
     fun getOpenPositions(memberId: Long): List<OpenPositionResponse> {
         val bets = activityRepository.findByMemberIdAndActivityType(memberId, ActivityType.BET)
 
+        // 배치 조회: N+1 → 1회
+        val questionIds = bets.map { it.questionId }.distinct()
+        val questionsMap = questionRepository.findAllById(questionIds).associateBy { it.id!! }
+
         return bets.mapNotNull { bet ->
-            val question = questionRepository.findById(bet.questionId).orElse(null) ?: return@mapNotNull null
+            val question = questionsMap[bet.questionId] ?: return@mapNotNull null
             if (question.status !in listOf(QuestionStatus.VOTING, QuestionStatus.BREAK, QuestionStatus.BETTING)) return@mapNotNull null
 
             val totalPool = question.totalBetPool.toDouble()
@@ -147,6 +155,10 @@ class PortfolioService(
     fun getCategoryBreakdown(memberId: Long): List<CategoryPerformanceResponse> {
         val bets = activityRepository.findByMemberIdAndActivityType(memberId, ActivityType.BET)
 
+        // 배치 조회: N+1 → 1회
+        val questionIds = bets.map { it.questionId }.distinct()
+        val questionsMap = questionRepository.findAllById(questionIds).associateBy { it.id!! }
+
         data class CategoryAccum(
             var totalBets: Int = 0,
             var wins: Int = 0,
@@ -159,7 +171,7 @@ class PortfolioService(
         val categoryMap = mutableMapOf<String, CategoryAccum>()
 
         for (bet in bets) {
-            val question = questionRepository.findById(bet.questionId).orElse(null) ?: continue
+            val question = questionsMap[bet.questionId] ?: continue
             val category = question.category ?: "OTHER"
             val accum = categoryMap.getOrPut(category) { CategoryAccum() }
 
@@ -211,6 +223,10 @@ class PortfolioService(
     fun getAccuracyTrend(memberId: Long): List<AccuracyTrendPointResponse> {
         val bets = activityRepository.findByMemberIdAndActivityType(memberId, ActivityType.BET)
 
+        // 배치 조회: N+1 → 1회
+        val questionIds = bets.map { it.questionId }.distinct()
+        val questionsMap = questionRepository.findAllById(questionIds).associateBy { it.id!! }
+
         data class MonthAccum(
             var total: Int = 0,
             var correct: Int = 0
@@ -219,7 +235,7 @@ class PortfolioService(
         val monthMap = sortedMapOf<String, MonthAccum>()
 
         for (bet in bets) {
-            val question = questionRepository.findById(bet.questionId).orElse(null) ?: continue
+            val question = questionsMap[bet.questionId] ?: continue
             if (question.status != QuestionStatus.SETTLED) continue
 
             val monthKey = question.createdAt.format(MONTH_FORMATTER)

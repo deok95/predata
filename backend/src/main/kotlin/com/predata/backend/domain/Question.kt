@@ -26,6 +26,7 @@ data class Question(
     @Column(length = 20, nullable = false)
     var status: QuestionStatus = QuestionStatus.VOTING,
 
+    @Deprecated("Use marketType instead. Kept for DB column compatibility.")
     @Enumerated(EnumType.STRING)
     @Column(length = 20, nullable = false)
     var type: QuestionType = QuestionType.VERIFIABLE,
@@ -120,6 +121,7 @@ enum class QuestionStatus {
     CANCELLED   // 블록체인 실패 등으로 취소됨
 }
 
+@Deprecated("Use MarketType instead.")
 enum class QuestionType {
     VERIFIABLE,  // 검증 가능한 질문 (스포츠 결과 등)
     OPINION      // 의견 기반 질문

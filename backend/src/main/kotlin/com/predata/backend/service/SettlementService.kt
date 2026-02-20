@@ -4,6 +4,7 @@ import com.predata.backend.domain.Activity
 import com.predata.backend.domain.ActivityType
 import com.predata.backend.domain.Choice
 import com.predata.backend.domain.FinalResult
+import com.predata.backend.domain.Member
 import com.predata.backend.domain.PoolStatus
 import com.predata.backend.domain.Question
 import com.predata.backend.domain.QuestionStatus
@@ -12,7 +13,7 @@ import com.predata.backend.domain.VotingPhase
 import com.predata.backend.repository.ActivityRepository
 import com.predata.backend.repository.MemberRepository
 import com.predata.backend.repository.QuestionRepository
-import com.predata.backend.service.settlement.SettlementPolicyFactory
+import com.predata.backend.service.settlement.SettlementCalculator
 import org.springframework.stereotype.Service
 import org.springframework.transaction.PlatformTransactionManager
 import org.springframework.transaction.TransactionDefinition
@@ -32,7 +33,7 @@ class SettlementService(
     private val blockchainService: BlockchainService,
     private val badgeService: BadgeService,
     private val transactionHistoryService: TransactionHistoryService,
-    private val settlementPolicyFactory: SettlementPolicyFactory,
+    private val settlementCalculator: SettlementCalculator,
     private val resolutionAdapterRegistry: com.predata.backend.service.settlement.adapters.ResolutionAdapterRegistry,
     private val auditService: AuditService,
     private val feePoolService: FeePoolService,
@@ -268,12 +269,17 @@ class SettlementService(
         // 2) 해당 question의 모든 user_shares 조회
         val allShares = userSharesRepository.findByQuestionId(questionId)
 
+        // 배치 조회: N+1 → 1회
+        val memberIds = allShares.map { it.memberId }.distinct()
+        val membersMap = memberRepository.findAllByIdIn(memberIds).associateBy { it.id!! }
+
         var totalWinners = 0
         var totalPayout = BigDecimal.ZERO
+        val updatedMembers = mutableListOf<Member>()
 
         // 3) 정산 실행
         allShares.forEach { userShare ->
-            val member = memberRepository.findById(userShare.memberId).orElse(null) ?: return@forEach
+            val member = membersMap[userShare.memberId] ?: return@forEach
 
             when {
                 // 승패가 있는 경우
@@ -282,6 +288,7 @@ class SettlementService(
                         // 승자: 1 share = 1 USDC (수수료 없음, 스왑 시 이미 징수)
                         val payout = userShare.shares.setScale(18, RoundingMode.DOWN)
                         member.usdcBalance = member.usdcBalance.add(payout)
+                        updatedMembers.add(member)
 
                         // TransactionHistory 기록
                         transactionHistoryService.record(
@@ -333,6 +340,9 @@ class SettlementService(
             userShare.costBasisUsdc = BigDecimal.ZERO
             userSharesRepository.save(userShare)
         }
+
+        // 일괄 저장
+        memberRepository.saveAll(updatedMembers)
 
         // 4) 풀 상태 변경 및 collateralLocked 차감
         val pool = marketPoolRepository.findById(questionId).orElse(null)
@@ -444,8 +454,12 @@ class SettlementService(
     fun getSettlementHistory(memberId: Long): List<SettlementHistoryItem> {
         val bets = activityRepository.findByMemberIdAndActivityType(memberId, ActivityType.BET)
 
+        // 배치 조회: N+1 → 1회
+        val questionIds = bets.map { it.questionId }.distinct()
+        val questionsMap = questionRepository.findAllById(questionIds).associateBy { it.id!! }
+
         return bets.mapNotNull { bet ->
-            val question = questionRepository.findById(bet.questionId).orElse(null)
+            val question = questionsMap[bet.questionId]
             if (question == null || question.status != QuestionStatus.SETTLED) return@mapNotNull null
 
             val winningChoice = when (question.finalResult) {

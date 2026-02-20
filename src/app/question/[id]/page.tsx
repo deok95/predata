@@ -283,7 +283,7 @@ function QuestionDetailContent() {
             {question.status !== 'VOTING' && (
               <span className="font-bold">Vol. {question.totalBetPool.toLocaleString()} USDC</span>
             )}
-            {(question.matchId || (question.category === 'SPORTS' && question.type === 'VERIFIABLE')) ? (
+            {(question.matchId || question.category === 'SPORTS') ? (
               question.bettingStartAt && (
                 <span className="flex items-center gap-1">
                   <Clock size={14} />
@@ -411,7 +411,7 @@ function QuestionDetailContent() {
               {question.title}
             </h1>
             <div className="space-y-2">
-              {(question.matchId || (question.category === 'SPORTS' && question.type === 'VERIFIABLE')) ? (
+              {(question.matchId || question.category === 'SPORTS') ? (
                 question.bettingStartAt && (
                   <div className={`flex items-center gap-2 text-sm ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
                     <Clock size={16} />
