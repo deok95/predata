@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Activity, Trophy, Clock, AlertTriangle } from 'lucide-react';
 import { useTheme } from '@/hooks/useTheme';
 import { API_BASE_URL, authFetch, apiRequest, unwrapApiEnvelope } from '@/lib/api';
