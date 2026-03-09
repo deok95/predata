@@ -1,9 +1,12 @@
 package com.predata.backend.controller
 
+import io.swagger.v3.oas.annotations.tags.Tag
+
 import com.predata.backend.dto.ApiEnvelope
 import com.predata.backend.repository.QuestionRepository
 import com.predata.backend.sports.domain.Match
 import com.predata.backend.sports.domain.MatchStatus
+import com.predata.backend.sports.provider.football.FootballLeagueCatalog
 import com.predata.backend.sports.repository.MatchRepository
 import com.predata.backend.sports.scheduler.LivePollResult
 import com.predata.backend.sports.scheduler.MatchSyncResult
@@ -17,6 +20,7 @@ import java.time.LocalDateTime
 import java.time.ZoneOffset
 
 @RestController
+@Tag(name = "ops-admin", description = "Sports admin APIs")
 @RequestMapping("/api/admin/sports")
 class SportsManagementController(
     private val matchSyncScheduler: MatchSyncScheduler,
@@ -26,6 +30,23 @@ class SportsManagementController(
     @Value("\${sports.football-data.fetch-window-days:7}")
     private val fetchWindowDays: Long
 ) {
+    /**
+     * 우선 리그 세부 카테고리 목록 조회 (관리자용)
+     * GET /api/admin/sports/subcategories
+     */
+    @GetMapping("/subcategories")
+    fun getPrioritySubCategories(): ResponseEntity<ApiEnvelope<List<SportsSubCategoryInfo>>> {
+        val data = FootballLeagueCatalog.priorityLeagues.map {
+            SportsSubCategoryInfo(
+                subCategory = it.subCategory,
+                leagueCode = it.externalLeagueId,
+                leagueName = it.name,
+                countryCode = it.countryCode
+            )
+        }
+        return ResponseEntity.ok(ApiEnvelope.ok(data))
+    }
+
 
     /**
      * 수동으로 경기 동기화 + 질문 자동 생성 트리거
@@ -77,10 +98,13 @@ class SportsManagementController(
             end
         ).sortedBy { it.matchTime }
             .map { match ->
+                val leagueCode = match.league.externalLeagueId
                 UpcomingMatchInfo(
                     matchId = match.id ?: 0,
                     questionId = questionIdByMatch[match.id],
                     leagueName = match.league.name,
+                    leagueCode = leagueCode,
+                    subCategory = FootballLeagueCatalog.subCategoryByCode(leagueCode),
                     homeTeam = match.homeTeam,
                     awayTeam = match.awayTeam,
                     matchTime = match.matchTime.toString(),
@@ -108,6 +132,8 @@ class SportsManagementController(
                 questionId = q.id!!,
                 title = q.title,
                 category = q.category,
+                subCategory = FootballLeagueCatalog.subCategoryByCode(q.match?.league?.externalLeagueId),
+                leagueCode = q.match?.league?.externalLeagueId,
                 status = q.status.name,
                 phase = q.phase?.name,
                 matchId = q.match?.id,
@@ -145,6 +171,8 @@ class SportsManagementController(
             matchId = match.id ?: 0,
             questionId = questionId,
             leagueName = match.league.name,
+            leagueCode = match.league.externalLeagueId,
+            subCategory = FootballLeagueCatalog.subCategoryByCode(match.league.externalLeagueId),
             homeTeam = match.homeTeam,
             awayTeam = match.awayTeam,
             homeScore = match.homeScore ?: 0,
@@ -159,6 +187,8 @@ data class LiveMatchInfo(
     val matchId: Long,
     val questionId: Long?,
     val leagueName: String,
+    val leagueCode: String?,
+    val subCategory: String,
     val homeTeam: String,
     val awayTeam: String,
     val homeScore: Int,
@@ -171,6 +201,8 @@ data class MatchQuestionView(
     val questionId: Long,
     val title: String,
     val category: String?,
+    val subCategory: String,
+    val leagueCode: String?,
     val status: String,
     val phase: String?,
     val matchId: Long?,
@@ -182,8 +214,17 @@ data class UpcomingMatchInfo(
     val matchId: Long,
     val questionId: Long?,
     val leagueName: String,
+    val leagueCode: String?,
+    val subCategory: String,
     val homeTeam: String,
     val awayTeam: String,
     val matchTime: String,
     val status: String
+)
+
+data class SportsSubCategoryInfo(
+    val subCategory: String,
+    val leagueCode: String,
+    val leagueName: String,
+    val countryCode: String
 )

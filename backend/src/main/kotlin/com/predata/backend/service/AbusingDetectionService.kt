@@ -3,6 +3,7 @@ package com.predata.backend.service
 import com.predata.backend.domain.Activity
 import com.predata.backend.domain.ActivityType
 import com.predata.backend.domain.Choice
+import com.predata.backend.domain.policy.AbusingDetectionPolicy
 import com.predata.backend.dto.AbusingReport
 import com.predata.backend.dto.RiskLevel
 import com.predata.backend.dto.SuspiciousGroup
@@ -36,34 +37,32 @@ class AbusingDetectionService(
         val suspiciousGroups = mutableListOf<SuspiciousGroup>()
 
         // 1. 국가별 괴리율 분석 (findIdsByCountryCode 사용)
-        val countries = listOf("KR", "US", "JP", "SG", "VN")
-        countries.forEach { country ->
+        AbusingDetectionPolicy.defaultCountries.forEach { country ->
             val gap = calculateGapByCountry(votes, bets, country)
-            if (gap.gapIndex > 15.0) {
+            if (AbusingDetectionPolicy.shouldIncludeGap(gap.gapIndex)) {
                 suspiciousGroups.add(gap)
             }
         }
 
         // 2. 직업별 괴리율 분석 (findIdsByJobCategory 사용)
-        val jobs = listOf("IT", "Finance", "Student", "Medical", "Service")
-        jobs.forEach { job ->
+        AbusingDetectionPolicy.defaultJobs.forEach { job ->
             val gap = calculateGapByJob(votes, bets, job)
-            if (gap.gapIndex > 15.0) {
+            if (AbusingDetectionPolicy.shouldIncludeGap(gap.gapIndex)) {
                 suspiciousGroups.add(gap)
             }
         }
 
         // 3. 연령대별 괴리율 분석 (findIdsByAgeGroupBetween 사용)
-        listOf(20, 30, 40, 50).forEach { ageGroup ->
+        AbusingDetectionPolicy.defaultAgeGroups.forEach { ageGroup ->
             val gap = calculateGapByAge(votes, bets, ageGroup)
-            if (gap.gapIndex > 15.0) {
+            if (AbusingDetectionPolicy.shouldIncludeGap(gap.gapIndex)) {
                 suspiciousGroups.add(gap)
             }
         }
 
         // 4. Latency 기반 봇 탐지 (이미 votes 로드됨)
         val fastClickers = detectFastClickers(votes)
-        if (fastClickers.memberCount > 500) {
+        if (AbusingDetectionPolicy.shouldIncludeFastClickers(fastClickers.memberCount)) {
             suspiciousGroups.add(fastClickers)
         }
 
@@ -81,7 +80,11 @@ class AbusingDetectionService(
             overallGap = overallGap,
             totalMembers = votes.map { it.memberId }.distinct().size,
             suspiciousMembers = suspiciousMemberIds.size,
-            recommendation = generateRecommendation(suspiciousGroups, overallGap)
+            recommendation = AbusingDetectionPolicy.recommendation(
+                criticalCount = suspiciousGroups.count { it.riskLevel == RiskLevel.CRITICAL },
+                highCount = suspiciousGroups.count { it.riskLevel == RiskLevel.HIGH },
+                overallGap = overallGap
+            )
         )
     }
 
@@ -109,11 +112,11 @@ class AbusingDetectionService(
 
         return SuspiciousGroup(
             criteria = "country=$countryCode",
-            voteYesPercentage = "%.2f".format(voteYesPct).toDouble(),
-            betYesPercentage = "%.2f".format(betYesPct).toDouble(),
-            gapIndex = "%.2f".format(gap).toDouble(),
+            voteYesPercentage = AbusingDetectionPolicy.format2(voteYesPct),
+            betYesPercentage = AbusingDetectionPolicy.format2(betYesPct),
+            gapIndex = AbusingDetectionPolicy.format2(gap),
             memberCount = memberCount,
-            riskLevel = classifyRisk(gap)
+            riskLevel = AbusingDetectionPolicy.classifyGapRisk(gap)
         )
     }
 
@@ -141,11 +144,11 @@ class AbusingDetectionService(
 
         return SuspiciousGroup(
             criteria = "job=$jobCategory",
-            voteYesPercentage = "%.2f".format(voteYesPct).toDouble(),
-            betYesPercentage = "%.2f".format(betYesPct).toDouble(),
-            gapIndex = "%.2f".format(gap).toDouble(),
+            voteYesPercentage = AbusingDetectionPolicy.format2(voteYesPct),
+            betYesPercentage = AbusingDetectionPolicy.format2(betYesPct),
+            gapIndex = AbusingDetectionPolicy.format2(gap),
             memberCount = memberCount,
-            riskLevel = classifyRisk(gap)
+            riskLevel = AbusingDetectionPolicy.classifyGapRisk(gap)
         )
     }
 
@@ -173,11 +176,11 @@ class AbusingDetectionService(
 
         return SuspiciousGroup(
             criteria = "age=${ageGroup}s",
-            voteYesPercentage = "%.2f".format(voteYesPct).toDouble(),
-            betYesPercentage = "%.2f".format(betYesPct).toDouble(),
-            gapIndex = "%.2f".format(gap).toDouble(),
+            voteYesPercentage = AbusingDetectionPolicy.format2(voteYesPct),
+            betYesPercentage = AbusingDetectionPolicy.format2(betYesPct),
+            gapIndex = AbusingDetectionPolicy.format2(gap),
             memberCount = memberCount,
-            riskLevel = classifyRisk(gap)
+            riskLevel = AbusingDetectionPolicy.classifyGapRisk(gap)
         )
     }
 
@@ -196,9 +199,7 @@ class AbusingDetectionService(
      * 빠른 클릭 탐지 (봇 의심)
      */
     private fun detectFastClickers(votes: List<Activity>): SuspiciousGroup {
-        val fastClickers = votes.filter {
-            it.latencyMs != null && it.latencyMs < 1000
-        }
+        val fastClickers = votes.filter { AbusingDetectionPolicy.isFastClicker(it.latencyMs) }
 
         val voteYesPct = if (fastClickers.isNotEmpty()) {
             fastClickers.count { it.choice == Choice.YES } * 100.0 / fastClickers.size
@@ -206,15 +207,11 @@ class AbusingDetectionService(
 
         return SuspiciousGroup(
             criteria = "latency<1000ms",
-            voteYesPercentage = "%.2f".format(voteYesPct).toDouble(),
+            voteYesPercentage = AbusingDetectionPolicy.format2(voteYesPct),
             betYesPercentage = 0.0,
             gapIndex = 0.0,
             memberCount = fastClickers.size,
-            riskLevel = when {
-                fastClickers.size > 2000 -> RiskLevel.CRITICAL
-                fastClickers.size > 1000 -> RiskLevel.HIGH
-                else -> RiskLevel.MEDIUM
-            }
+            riskLevel = AbusingDetectionPolicy.classifyFastClickerRisk(fastClickers.size)
         )
     }
 
@@ -228,42 +225,6 @@ class AbusingDetectionService(
         val betYesPct = calculateBetYesPercentage(bets)
 
         return abs(voteYesPct - betYesPct)
-    }
-
-    /**
-     * 위험도 분류
-     */
-    private fun classifyRisk(gap: Double): RiskLevel {
-        return when {
-            gap > 50 -> RiskLevel.CRITICAL
-            gap > 30 -> RiskLevel.HIGH
-            gap > 15 -> RiskLevel.MEDIUM
-            else -> RiskLevel.LOW
-        }
-    }
-
-    /**
-     * 권장 사항 생성
-     */
-    private fun generateRecommendation(
-        groups: List<SuspiciousGroup>,
-        overallGap: Double
-    ): String {
-        val criticalCount = groups.count { it.riskLevel == RiskLevel.CRITICAL }
-        val highCount = groups.count { it.riskLevel == RiskLevel.HIGH }
-
-        return when {
-            criticalCount > 0 ->
-                "⚠️ CRITICAL: ${criticalCount}개 그룹에서 극단적 괴리 발견. 해당 그룹 데이터 제외 권장."
-            highCount > 2 ->
-                "⚠️ HIGH: ${highCount}개 그룹에서 높은 괴리 발견. 필터링 후 사용 권장."
-            overallGap > 20 ->
-                "⚠️ 전체 괴리율 ${"%.1f".format(overallGap)}%. Latency 필터링 권장."
-            overallGap < 10 ->
-                "✅ 전체 괴리율 ${"%.1f".format(overallGap)}%. 데이터 품질 양호."
-            else ->
-                "✅ 전체 괴리율 ${"%.1f".format(overallGap)}%. 사용 가능한 수준."
-        }
     }
 
     /**

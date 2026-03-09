@@ -1,5 +1,7 @@
 package com.predata.backend.controller
 
+import io.swagger.v3.oas.annotations.tags.Tag
+
 import com.predata.backend.dto.ApiEnvelope
 import com.predata.backend.service.SybilDetectionService
 import com.predata.backend.service.SybilSuspiciousAccount
@@ -11,6 +13,7 @@ import org.springframework.web.bind.annotation.*
  * - 의심스러운 계정 조회
  */
 @RestController
+@Tag(name = "ops-admin", description = "Sybil admin APIs")
 @RequestMapping("/api/admin/sybil")
 class SybilAdminController(
     private val sybilDetectionService: SybilDetectionService

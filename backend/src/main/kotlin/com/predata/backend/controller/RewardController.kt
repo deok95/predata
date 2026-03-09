@@ -1,5 +1,7 @@
 package com.predata.backend.controller
 
+import io.swagger.v3.oas.annotations.tags.Tag
+
 import com.predata.backend.dto.ApiEnvelope
 import com.predata.backend.service.RewardService
 import com.predata.backend.service.TotalRewardResponse
@@ -7,6 +9,7 @@ import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.*
 
 @RestController
+@Tag(name = "settlement-reward", description = "Reward APIs")
 @RequestMapping("/api/rewards")
 class RewardController(
     private val rewardService: RewardService

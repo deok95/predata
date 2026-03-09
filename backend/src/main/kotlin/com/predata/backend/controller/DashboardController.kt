@@ -1,5 +1,7 @@
 package com.predata.backend.controller
 
+import io.swagger.v3.oas.annotations.tags.Tag
+
 import com.predata.backend.dto.ApiEnvelope
 import com.predata.backend.service.VotingDashboardService
 import org.springframework.http.ResponseEntity
@@ -11,6 +13,7 @@ import org.springframework.web.bind.annotation.*
  * - 질문별 상태 조회
  */
 @RestController
+@Tag(name = "ops-admin", description = "Admin dashboard APIs")
 @RequestMapping("/api/admin/dashboard")
 class DashboardController(
     private val votingDashboardService: VotingDashboardService

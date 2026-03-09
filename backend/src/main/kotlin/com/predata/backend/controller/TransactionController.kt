@@ -1,27 +1,34 @@
 package com.predata.backend.controller
 
+import io.swagger.v3.oas.annotations.tags.Tag
+
 import com.predata.backend.dto.ApiEnvelope
 import com.predata.backend.service.TransactionHistoryService
+import com.predata.backend.util.authenticatedMemberId
+import jakarta.servlet.http.HttpServletRequest
 import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.*
 
 @RestController
+@Tag(name = "finance-wallet", description = "Transaction APIs")
 @RequestMapping("/api/transactions")
 class TransactionController(
     private val transactionHistoryService: TransactionHistoryService
 ) {
 
     /**
-     * GET /api/transactions/my?memberId=1&type=BET&page=0&size=20
+     * GET /api/transactions/my?type=BET&page=0&size=20
      * Returns paginated transaction history for the authenticated user.
+     * memberId는 JWT claim에서 추출한다 (쿼리 파라미터로 받지 않음).
      */
     @GetMapping("/my")
     fun getMyTransactions(
-        @RequestParam memberId: Long,
         @RequestParam(required = false) type: String?,
         @RequestParam(defaultValue = "0") page: Int,
-        @RequestParam(defaultValue = "20") size: Int
+        @RequestParam(defaultValue = "20") size: Int,
+        httpRequest: HttpServletRequest,
     ): ResponseEntity<ApiEnvelope<TransactionHistoryResponse>> {
+        val memberId = httpRequest.authenticatedMemberId()
         val result = transactionHistoryService.getHistory(memberId, type, page, size)
 
         val items = result.content.map { tx ->

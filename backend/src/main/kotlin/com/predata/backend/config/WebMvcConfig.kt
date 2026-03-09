@@ -1,8 +1,10 @@
 package com.predata.backend.config
 
+import com.predata.backend.config.properties.SystemProperties
 import org.springframework.context.annotation.Configuration
 import org.springframework.web.servlet.config.annotation.CorsRegistry
 import org.springframework.web.servlet.config.annotation.InterceptorRegistry
+import org.springframework.web.servlet.config.annotation.ResourceHandlerRegistry
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer
 
 @Configuration
@@ -10,8 +12,16 @@ class WebMvcConfig(
     private val rateLimitInterceptor: RateLimitInterceptor,
     private val banCheckInterceptor: BanCheckInterceptor,
     private val jwtAuthInterceptor: JwtAuthInterceptor,
-    private val adminAuthInterceptor: AdminAuthInterceptor
+    private val adminAuthInterceptor: AdminAuthInterceptor,
+    private val systemProperties: SystemProperties,
 ) : WebMvcConfigurer {
+
+    override fun addResourceHandlers(registry: ResourceHandlerRegistry) {
+        // 업로드 파일(아바타 등) 정적 서빙: GET /uploads/** → {uploadDir}/
+        val uploadLocation = "file:${systemProperties.uploadDir}/"
+        registry.addResourceHandler("/uploads/**")
+            .addResourceLocations(uploadLocation)
+    }
 
     override fun addInterceptors(registry: InterceptorRegistry) {
         // 1. Rate limiting (모든 API)

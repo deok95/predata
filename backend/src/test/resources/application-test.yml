@@ -2,8 +2,13 @@ spring:
   application:
     name: predata-backend-test
 
+  data:
+    redis:
+      host: localhost
+      port: 6379
+
   datasource:
-    url: jdbc:h2:mem:testdb;MODE=MySQL;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE
+    url: "jdbc:h2:mem:testdb;MODE=MySQL;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE;INIT=CREATE ALIAS IF NOT EXISTS UTC_TIMESTAMP FOR 'com.predata.backend.util.H2Functions.utcTimestamp'"
     username: sa
     password:
     driver-class-name: org.h2.Driver
@@ -69,6 +74,47 @@ logging:
     org.hibernate.SQL: WARN
 
 app:
+  voting:
+    daily-limit: 5
+    commit-reveal-enabled: true   # 테스트에서 commit-reveal 엔드포인트 활성화
+
+  relay:
+    enabled: false   # 테스트 중 스케줄러 자동 실행 방지
+    mode: mock
+    batch-size: 50
+    max-retry: 8
+
+  settlement:
+    retry-interval-ms: 999999999  # 테스트 중 재시도 스케줄러 자동 실행 방지
+
+  market-batch:
+    enabled: false   # 테스트 중 스케줄러 자동 실행 방지
+    top3-per-category: 3
+    min-open-per-category: 1
+    seed-usdc: 100
+    fee-rate: 0.01
+
+  question-credit:
+    yearly-budget: 365
+    draft-expire-minutes: 30
+    draft-rate-limit-per-minute: 100
+    submit-rate-limit-per-minute: 100
+
+  lifecycle:
+    cron: "0 * * * * *"
+
+  finance:
+    withdrawal:
+      min-usdc: 1
+      max-usdc: 100
+      fee-usdc: 0.10
+    deposit-indexer:
+      enabled: false
+      poll-interval-ms: 30000
+      confirmations: 12
+      scan-window-blocks: 500
+      min-deposit-usdc: 1
+
   risk:
     max-position-per-market: 1000
     max-order-value: 500

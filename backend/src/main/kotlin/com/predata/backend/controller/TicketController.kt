@@ -1,5 +1,7 @@
 package com.predata.backend.controller
 
+import io.swagger.v3.oas.annotations.tags.Tag
+
 import com.predata.backend.dto.ApiEnvelope
 import com.predata.backend.service.TicketService
 import com.predata.backend.util.authenticatedMemberId
@@ -7,13 +9,14 @@ import jakarta.servlet.http.HttpServletRequest
 import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.*
 import java.time.LocalDate
-import java.time.ZoneId
+import java.time.ZoneOffset
 
 /**
  * 투표 티켓 컨트롤러
  * - GET /api/tickets/status: 남은 티켓 조회
  */
 @RestController
+@Tag(name = "voting", description = "Ticket APIs")
 @RequestMapping("/api/tickets")
 class TicketController(
     private val ticketService: TicketService
@@ -31,16 +34,17 @@ class TicketController(
         val authenticatedMemberId = httpRequest.authenticatedMemberId()
 
         val remainingTickets = ticketService.getRemainingTickets(authenticatedMemberId)
-        val resetAt = LocalDate.now()
+        val maxTickets = ticketService.getMaxTickets(authenticatedMemberId)
+        val resetAt = LocalDate.now(ZoneOffset.UTC)
             .plusDays(1)
-            .atStartOfDay(ZoneId.of("UTC"))
+            .atStartOfDay(ZoneOffset.UTC)
             .toString()
 
         return ResponseEntity.ok(
             ApiEnvelope.ok(
                 TicketStatusResponse(
                     remainingTickets = remainingTickets,
-                    maxTickets = 5,
+                    maxTickets = maxTickets,
                     resetAt = resetAt
                 )
             )

@@ -36,7 +36,7 @@ services:
     ports:
       - "8080:8080"
     environment:
-      SPRING_DATASOURCE_URL: jdbc:mariadb://mariadb:3306/predata
+      SPRING_DATASOURCE_URL: jdbc:mariadb://mariadb:3306/predata?useUnicode=true&characterEncoding=utf8&connectionCollation=utf8mb4_unicode_ci
       SPRING_DATASOURCE_USERNAME: root
       SPRING_DATASOURCE_PASSWORD: ${DB_PASSWORD:-changeme}
       SPRING_REDIS_HOST: redis

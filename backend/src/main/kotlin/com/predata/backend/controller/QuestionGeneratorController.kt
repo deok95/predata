@@ -1,5 +1,7 @@
 package com.predata.backend.controller
 
+import io.swagger.v3.oas.annotations.tags.Tag
+
 import com.predata.backend.dto.*
 import com.predata.backend.exception.NotFoundException
 import com.predata.backend.service.QuestionGeneratorService
@@ -9,6 +11,7 @@ import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.*
 
 @RestController
+@Tag(name = "question", description = "Question generation admin APIs")
 @RequestMapping("/api/admin")
 class QuestionGeneratorController(
     private val questionGeneratorService: QuestionGeneratorService,

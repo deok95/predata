@@ -268,6 +268,9 @@ java -jar build/libs/predata-backend-0.0.1-SNAPSHOT.jar
 
 ## API 엔드포인트
 
+최신 조회 API 파라미터(`page/size/sortBy/sortDir`) 계약은 아래 문서를 기준으로 합니다.
+- `backend/docs/pagination-sort-api-contract.md`
+
 ### 투표/베팅
 
 - `POST /api/vote` - 투표 실행

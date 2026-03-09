@@ -8,7 +8,8 @@ import java.math.BigDecimal
 @Service
 class VotingPassService(
     private val memberRepository: MemberRepository,
-    private val transactionHistoryService: TransactionHistoryService
+    private val transactionHistoryService: TransactionHistoryService,
+    private val walletBalanceService: WalletBalanceService,
 ) {
 
     companion object {
@@ -28,11 +29,19 @@ class VotingPassService(
             throw IllegalArgumentException("Already have voting pass.")
         }
 
-        if (member.usdcBalance < VOTING_PASS_PRICE) {
-            throw IllegalArgumentException("Insufficient balance. (required: \$${VOTING_PASS_PRICE}, balance: \$${member.usdcBalance})")
+        val availableBalance = walletBalanceService.getAvailableBalance(memberId)
+        if (availableBalance < VOTING_PASS_PRICE) {
+            throw IllegalArgumentException("Insufficient balance. (required: \$${VOTING_PASS_PRICE}, balance: \$$availableBalance)")
         }
 
-        member.usdcBalance = member.usdcBalance.subtract(VOTING_PASS_PRICE)
+        val wallet = walletBalanceService.debit(
+            memberId = memberId,
+            amount = VOTING_PASS_PRICE,
+            txType = "VOTING_PASS",
+            referenceType = "MEMBER",
+            referenceId = memberId,
+            description = "투표 패스 구매",
+        )
         member.hasVotingPass = true
         memberRepository.save(member)
 
@@ -40,14 +49,14 @@ class VotingPassService(
             memberId = memberId,
             type = "VOTING_PASS",
             amount = VOTING_PASS_PRICE.negate(),
-            balanceAfter = member.usdcBalance,
+            balanceAfter = wallet.availableBalance,
             description = "투표 패스 구매"
         )
 
         return VotingPassPurchaseResponse(
             success = true,
             hasVotingPass = true,
-            remainingBalance = member.usdcBalance.toDouble(),
+            remainingBalance = wallet.availableBalance.toDouble(),
             message = "Voting pass purchased successfully."
         )
     }

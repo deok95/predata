@@ -1,5 +1,7 @@
 package com.predata.backend.controller
 
+import io.swagger.v3.oas.annotations.tags.Tag
+
 import com.predata.backend.dto.ApiEnvelope
 import com.predata.backend.service.NotificationResponse
 import com.predata.backend.service.NotificationService
@@ -9,6 +11,7 @@ import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.*
 
 @RestController
+@Tag(name = "member-social", description = "Notification APIs")
 @RequestMapping("/api/notifications")
 class NotificationController(
     private val notificationService: NotificationService

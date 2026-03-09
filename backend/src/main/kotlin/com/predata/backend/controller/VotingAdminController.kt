@@ -1,5 +1,7 @@
 package com.predata.backend.controller
 
+import io.swagger.v3.oas.annotations.tags.Tag
+
 import com.predata.backend.dto.ApiEnvelope
 import com.predata.backend.service.PauseService
 import com.predata.backend.service.VotingCircuitBreaker
@@ -12,6 +14,7 @@ import org.springframework.web.bind.annotation.*
  * - 서킷브레이커 상태 조회
  */
 @RestController
+@Tag(name = "voting", description = "Voting admin APIs")
 @RequestMapping("/api/admin/voting")
 class VotingAdminController(
     private val pauseService: PauseService,

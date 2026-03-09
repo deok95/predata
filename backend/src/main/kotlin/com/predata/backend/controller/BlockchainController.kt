@@ -1,5 +1,7 @@
 package com.predata.backend.controller
 
+import io.swagger.v3.oas.annotations.tags.Tag
+
 import com.predata.backend.dto.ApiEnvelope
 import com.predata.backend.dto.BlockchainStatusResponse
 import com.predata.backend.dto.QuestionOnChain
@@ -12,6 +14,7 @@ import org.springframework.web.bind.annotation.*
  * 블록체인 관련 API
  */
 @RestController
+@Tag(name = "finance-wallet", description = "Blockchain wallet APIs")
 @RequestMapping("/api/blockchain")
 class BlockchainController(
     private val blockchainService: BlockchainService

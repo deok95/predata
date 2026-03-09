@@ -45,6 +45,8 @@ class SportsApiService(
         LeagueConfig("Ligue 1", 61, 2025),         // Ligue 1 (France)
         LeagueConfig("K-League", 292, 2026),       // K-League 1 (South Korea) - 캘린더 연도
         LeagueConfig("UCL", 2, 2025),              // UEFA Champions League
+        LeagueConfig("UEL", 3, 2025),              // UEFA Europa League
+        LeagueConfig("UECL", 4, 2025),             // UEFA Europa Conference League
     )
 
     /**

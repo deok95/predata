@@ -1,5 +1,7 @@
 package com.predata.backend.controller
 
+import io.swagger.v3.oas.annotations.tags.Tag
+
 import com.predata.backend.domain.AuditAction
 import com.predata.backend.domain.AuditLog
 import com.predata.backend.dto.ApiEnvelope
@@ -16,6 +18,7 @@ import java.time.LocalDateTime
  * - AdminAuthInterceptor를 통해 ADMIN 권한 체크
  */
 @RestController
+@Tag(name = "ops-admin", description = "Audit admin APIs")
 @RequestMapping("/api/admin")
 class AuditController(
     private val auditService: AuditService

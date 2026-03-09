@@ -6,11 +6,14 @@
     "dev": "next dev",
     "build": "next build --webpack",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint src/",
+    "qa:api-contract": "node scripts/qa/run-api-contract-checklist.mjs",
+    "qa:api-unit": "node scripts/qa/unit-api-integration-check.mjs",
+    "qa:openapi-match": "node scripts/qa/check-openapi-contract-match.mjs"
   },
   "dependencies": {
-    "@metamask/sdk": "^0.34.0",
     "@rainbow-me/rainbowkit": "^2.2.10",
+    "@stomp/stompjs": "^7.3.0",
     "@supabase/supabase-js": "^2.93.3",
     "@tanstack/react-query": "^5.90.20",
     "@walletconnect/ethereum-provider": "^2.23.5",
@@ -18,11 +21,10 @@
     "next": "16.1.6",
     "react": "19.2.3",
     "react-dom": "19.2.3",
-    "recharts": "^3.7.0",
-    "viem": "^2.45.1",
-    "wagmi": "^3.4.1"
+    "recharts": "^3.7.0"
   },
   "devDependencies": {
+    "@playwright/test": "^1.58.2",
     "@tailwindcss/postcss": "^4",
     "@types/node": "^20",
     "@types/react": "^19",

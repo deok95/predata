@@ -1,5 +1,7 @@
 package com.predata.backend.controller
 
+import io.swagger.v3.oas.annotations.tags.Tag
+
 import com.predata.backend.dto.ApiEnvelope
 import com.predata.backend.service.BettingSuspensionService
 import com.predata.backend.service.BettingSuspensionStatus
@@ -7,6 +9,7 @@ import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.*
 
 @RestController
+@Tag(name = "ops-admin", description = "Betting suspension APIs")
 @RequestMapping("/api/betting")
 class BettingSuspensionController(
     private val bettingSuspensionService: BettingSuspensionService

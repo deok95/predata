@@ -3,13 +3,14 @@ package com.predata.backend.service
 import com.predata.backend.domain.FeePool
 import com.predata.backend.domain.FeePoolAction
 import com.predata.backend.domain.FeePoolLedger
+import com.predata.backend.domain.policy.FeeDistributionPolicy
 import com.predata.backend.repository.FeePoolLedgerRepository
 import com.predata.backend.repository.FeePoolRepository
+import com.predata.backend.repository.QuestionRepository
 import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import java.math.BigDecimal
-import java.math.RoundingMode
 import java.time.LocalDateTime
 
 /**
@@ -21,25 +22,23 @@ import java.time.LocalDateTime
 class FeePoolService(
     private val feePoolRepository: FeePoolRepository,
     private val feePoolLedgerRepository: FeePoolLedgerRepository,
+    private val questionRepository: QuestionRepository,
     private val auditService: AuditService
 ) {
     private val logger = LoggerFactory.getLogger(FeePoolService::class.java)
 
-    companion object {
-        // 분배 비율: 플랫폼 30%, 리워드 풀 60%, 리저브 10%
-        private val PLATFORM_RATIO = BigDecimal("0.30")
-        private val REWARD_POOL_RATIO = BigDecimal("0.60")
-        private val RESERVE_RATIO = BigDecimal("0.10")
-    }
-
     /**
      * 수수료 수집 및 자동 분배
-     * - 총 수수료를 30/60/10 비율로 자동 분배
+     * - 질문에 저장된 분배 비율(platform/creator/voter)을 사용
+     * - 라운딩 잔여분은 reserve로 누적
      * - FeePoolLedger에 FEE_COLLECTED 기록
      */
     @Transactional
     fun collectFee(questionId: Long, amount: BigDecimal): FeePool {
         require(amount > BigDecimal.ZERO) { "수수료는 0보다 커야 합니다." }
+        val question = questionRepository.findById(questionId).orElseThrow {
+            IllegalArgumentException("Question not found.")
+        }
 
         // 1. FeePool 조회 또는 생성
         val feePool = feePoolRepository.findByQuestionId(questionId).orElseGet {
@@ -47,15 +46,27 @@ class FeePoolService(
             feePoolRepository.save(newPool)
         }
 
-        // 2. 분배 계산 (6자리 소수점, HALF_UP 반올림)
-        val platformAmount = amount.multiply(PLATFORM_RATIO).setScale(6, RoundingMode.HALF_UP)
-        val rewardPoolAmount = amount.multiply(REWARD_POOL_RATIO).setScale(6, RoundingMode.HALF_UP)
-        val reserveAmount = amount.multiply(RESERVE_RATIO).setScale(6, RoundingMode.HALF_UP)
+        // 2. 질문별 분배 계산 (6자리 소수점, HALF_UP 반올림)
+        val platformRatio = question.platformFeeShare
+        val creatorRatio = question.creatorFeeShare
+        val voterRatio = question.voterFeeShare
+        val distribution = FeeDistributionPolicy.distribute(
+            totalFee = amount,
+            platformRatio = platformRatio,
+            creatorRatio = creatorRatio,
+            voterRatio = voterRatio,
+            scale = 6,
+        )
+        val platformAmount = distribution.platformAmount
+        val creatorAmount = distribution.creatorAmount
+        val voterAmount = distribution.voterAmount
+        val reserveAmount = distribution.reserveAmount
 
         // 3. FeePool 업데이트
         feePool.totalFees = feePool.totalFees.add(amount)
         feePool.platformShare = feePool.platformShare.add(platformAmount)
-        feePool.rewardPoolShare = feePool.rewardPoolShare.add(rewardPoolAmount)
+        feePool.creatorShare = feePool.creatorShare.add(creatorAmount)
+        feePool.rewardPoolShare = feePool.rewardPoolShare.add(voterAmount)
         feePool.reserveShare = feePool.reserveShare.add(reserveAmount)
         feePool.updatedAt = LocalDateTime.now()
 
@@ -67,11 +78,11 @@ class FeePoolService(
             action = FeePoolAction.FEE_COLLECTED,
             amount = amount,
             balance = updated.totalFees,
-            description = "수수료 수집 - 플랫폼: $platformAmount, 리워드: $rewardPoolAmount, 리저브: $reserveAmount"
+            description = "수수료 수집 - 플랫폼: $platformAmount, 생성자: $creatorAmount, 투표자: $voterAmount, 리저브: $reserveAmount"
         )
         feePoolLedgerRepository.save(ledger)
 
-        logger.info("Fee collected: questionId=$questionId, amount=$amount, platform=$platformAmount, reward=$rewardPoolAmount, reserve=$reserveAmount")
+        logger.info("Fee collected: questionId=$questionId, amount=$amount, platform=$platformAmount, creator=$creatorAmount, voter=$voterAmount, reserve=$reserveAmount")
 
         // 감사 로그 기록
         auditService.log(
@@ -83,6 +94,38 @@ class FeePoolService(
         )
 
         return updated
+    }
+
+    /**
+     * 생성자 몫 지급
+     * - 지급 시 creatorShare를 0으로 초기화
+     * - 호출부에서 실제 잔고 반영/원장 기록 수행
+     */
+    @Transactional
+    fun distributeCreatorShare(questionId: Long): BigDecimal {
+        val feePool = feePoolRepository.findByQuestionId(questionId).orElseThrow {
+            IllegalArgumentException("Fee pool not found.")
+        }
+        val creatorAmount = feePool.creatorShare
+        if (creatorAmount <= BigDecimal.ZERO) {
+            return BigDecimal.ZERO
+        }
+
+        feePool.creatorShare = BigDecimal.ZERO
+        feePool.updatedAt = LocalDateTime.now()
+        feePoolRepository.save(feePool)
+
+        feePoolLedgerRepository.save(
+            FeePoolLedger(
+                feePoolId = feePool.id!!,
+                action = FeePoolAction.CREATOR_DISTRIBUTED,
+                amount = creatorAmount,
+                balance = feePool.totalFees,
+                description = "생성자 몫 지급"
+            )
+        )
+
+        return creatorAmount
     }
 
     /**
@@ -195,6 +238,7 @@ class FeePoolService(
             "questionId" to questionId,
             "totalFees" to feePool.totalFees,
             "platformShare" to feePool.platformShare,
+            "creatorShare" to feePool.creatorShare,
             "rewardPoolShare" to feePool.rewardPoolShare,
             "availableRewardPool" to availableReward,
             "reserveShare" to feePool.reserveShare,

@@ -1,5 +1,6 @@
 package com.predata.backend.service
 
+import com.predata.backend.domain.policy.SybilGuardPolicy
 import com.predata.backend.repository.MemberRepository
 import com.predata.backend.repository.VoteCommitRepository
 import org.springframework.boot.context.properties.ConfigurationProperties
@@ -43,18 +44,17 @@ class SybilGuardService(
         val member = memberRepository.findById(memberId).orElse(null) ?: return false
 
         // 1. 계정 생성 후 최소 일수 경과 체크
-        val accountAge = java.time.Duration.between(member.createdAt, LocalDateTime.now(ZoneOffset.UTC)).toDays()
-        if (accountAge < config.minAccountAgeDays) {
-            return false
-        }
+        val accountAgeDays = SybilGuardPolicy.accountAgeDays(member.createdAt, LocalDateTime.now(ZoneOffset.UTC))
 
         // 2. 최소 투표 이력 체크 (다른 질문에 투표한 수)
         val voteCount = voteCommitRepository.countDistinctQuestionsByMemberId(memberId)
-        if (voteCount < config.minVoteHistory) {
-            return false
-        }
 
-        return true
+        return SybilGuardPolicy.isEligibleForReward(
+            accountAgeDays = accountAgeDays,
+            voteCount = voteCount,
+            minAccountAgeDays = config.minAccountAgeDays,
+            minVoteHistory = config.minVoteHistory
+        )
     }
 
     /**

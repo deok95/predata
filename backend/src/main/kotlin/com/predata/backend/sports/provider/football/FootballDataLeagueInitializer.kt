@@ -16,27 +16,45 @@ class FootballDataLeagueInitializer(
     private val logger = LoggerFactory.getLogger(FootballDataLeagueInitializer::class.java)
 
     override fun run(args: ApplicationArguments?) {
-        initPremierLeague()
+        initPriorityLeagues()
     }
 
-    private fun initPremierLeague() {
-        val existing = leagueRepository.findByExternalLeagueIdAndProvider(
-            "PL", FootballDataProvider.PROVIDER_NAME
-        )
-        if (existing != null) {
-            logger.info("[FootballDataInit] Premier League already exists (id=${existing.id})")
-            return
-        }
+    private fun initPriorityLeagues() {
+        FootballLeagueCatalog.priorityLeagues.forEach { seed ->
+            val existing = leagueRepository.findByExternalLeagueIdAndProvider(
+                seed.externalLeagueId, FootballDataProvider.PROVIDER_NAME
+            )
+            if (existing != null) {
+                logger.info("[FootballDataInit] {} already exists (id={})", seed.name, existing.id)
+                return@forEach
+            }
 
-        val league = League(
-            name = "Premier League",
-            sportType = Sport.FOOTBALL,
-            countryCode = "GB",
-            externalLeagueId = "PL",
-            provider = FootballDataProvider.PROVIDER_NAME,
-            active = true
-        )
-        leagueRepository.save(league)
-        logger.info("[FootballDataInit] Premier League created successfully")
+            // Legacy football-data.org code migration (PL/PD/SA/...)
+            val legacy = seed.legacyCode?.let {
+                leagueRepository.findByExternalLeagueIdAndProvider(it, FootballDataProvider.PROVIDER_NAME)
+            }
+            if (legacy != null) {
+                val migrated = legacy.copy(
+                    name = seed.name,
+                    countryCode = seed.countryCode,
+                    externalLeagueId = seed.externalLeagueId,
+                    active = true
+                )
+                leagueRepository.save(migrated)
+                logger.info("[FootballDataInit] {} migrated from legacy code {} -> {}", seed.name, seed.legacyCode, seed.externalLeagueId)
+                return@forEach
+            }
+
+            val league = League(
+                name = seed.name,
+                sportType = Sport.FOOTBALL,
+                countryCode = seed.countryCode,
+                externalLeagueId = seed.externalLeagueId,
+                provider = FootballDataProvider.PROVIDER_NAME,
+                active = true
+            )
+            leagueRepository.save(league)
+            logger.info("[FootballDataInit] {} created successfully", seed.name)
+        }
     }
 }

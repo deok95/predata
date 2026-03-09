@@ -15,7 +15,8 @@ class ReferralService(
     private val referralRepository: ReferralRepository,
     private val memberRepository: MemberRepository,
     private val notificationService: NotificationService,
-    private val transactionHistoryService: TransactionHistoryService
+    private val transactionHistoryService: TransactionHistoryService,
+    private val walletBalanceService: WalletBalanceService,
 ) {
     @org.springframework.context.annotation.Lazy
     @org.springframework.beans.factory.annotation.Autowired
@@ -107,26 +108,41 @@ class ReferralService(
         referralRepository.save(referral)
 
         // 8. USDC 보상 지급
-        referrer.usdcBalance = referrer.usdcBalance.add(BigDecimal(REFERRER_REWARD))
-        memberRepository.save(referrer)
+        val referrerWallet = walletBalanceService.credit(
+            memberId = referrer.id!!,
+            amount = BigDecimal(REFERRER_REWARD),
+            txType = "REFERRAL_REWARD",
+            referenceType = "REFERRAL",
+            referenceId = referral.id,
+            description = "추천 보상 (추천인)",
+            treasuryInflow = true,
+        )
 
         transactionHistoryService.record(
             memberId = referrer.id!!,
             type = "DEPOSIT",
             amount = BigDecimal(REFERRER_REWARD),
-            balanceAfter = referrer.usdcBalance,
+            balanceAfter = referrerWallet.availableBalance,
             description = "추천 보상 (추천인)"
         )
 
         referee.referredBy = referrer.id
-        referee.usdcBalance = referee.usdcBalance.add(BigDecimal(REFEREE_REWARD))
         memberRepository.save(referee)
+        val refereeWallet = walletBalanceService.credit(
+            memberId = refereeId,
+            amount = BigDecimal(REFEREE_REWARD),
+            txType = "REFERRAL_REWARD",
+            referenceType = "REFERRAL",
+            referenceId = referral.id,
+            description = "추천 보상 (피추천인)",
+            treasuryInflow = true,
+        )
 
         transactionHistoryService.record(
             memberId = refereeId,
             type = "DEPOSIT",
             amount = BigDecimal(REFEREE_REWARD),
-            balanceAfter = referee.usdcBalance,
+            balanceAfter = refereeWallet.availableBalance,
             description = "추천 보상 (피추천인)"
         )
 

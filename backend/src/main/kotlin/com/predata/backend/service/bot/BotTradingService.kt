@@ -2,9 +2,9 @@ package com.predata.backend.service.bot
 
 import com.predata.backend.domain.Choice
 import com.predata.backend.domain.QuestionStatus
-import com.predata.backend.domain.ShareOutcome
 import com.predata.backend.domain.SwapAction
 import com.predata.backend.domain.VotingPhase
+import com.predata.backend.domain.policy.BotTradingPolicy
 import com.predata.backend.dto.VoteCommitRequest
 import com.predata.backend.dto.VoteRevealRequest
 import com.predata.backend.dto.amm.SwapRequest
@@ -14,8 +14,6 @@ import com.predata.backend.service.amm.SwapService
 import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
-import java.math.BigDecimal
-import java.security.MessageDigest
 import java.util.UUID
 import java.util.concurrent.ConcurrentHashMap
 
@@ -41,17 +39,17 @@ class BotTradingService(
 
             when (question.votingPhase) {
                 VotingPhase.VOTING_COMMIT_OPEN -> {
-                    val voterCount = (5..15).random()
+                    val voterCount = BotTradingPolicy.pickVotingBotCount(bots.size)
                     val selectedBots = bots.shuffled().take(voterCount)
 
                     for (bot in selectedBots) {
                         try {
                             val botId = bot.id ?: continue
-                            val choice = if ((0..1).random() == 0) Choice.YES else Choice.NO
+                            val choice = BotTradingPolicy.pickChoice()
                             val salt = UUID.randomUUID().toString()
-                            val commitHash = generateCommitHash(questionId, botId, choice, salt)
+                            val commitHash = BotTradingPolicy.generateCommitHash(questionId, botId, choice, salt)
 
-                            botSaltStore["${questionId}_${botId}"] = Pair(choice, salt)
+                            botSaltStore[BotTradingPolicy.voteCommitKey(questionId, botId)] = Pair(choice, salt)
 
                             voteCommitService.commit(
                                 botId,
@@ -69,7 +67,7 @@ class BotTradingService(
                 VotingPhase.VOTING_REVEAL_OPEN -> {
                     for (bot in bots) {
                         val botId = bot.id ?: continue
-                        val key = "${questionId}_${botId}"
+                        val key = BotTradingPolicy.voteCommitKey(questionId, botId)
                         val stored = botSaltStore[key] ?: continue
 
                         try {
@@ -104,14 +102,14 @@ class BotTradingService(
 
         for (question in bettingQuestions) {
             val questionId = question.id ?: continue
-            val traderCount = (3..8).random()
+            val traderCount = BotTradingPolicy.pickTradingBotCount(bots.size)
             val selectedBots = bots.shuffled().take(traderCount)
 
             for (bot in selectedBots) {
                 try {
                     val botId = bot.id ?: continue
-                    val outcome = if ((0..1).random() == 0) ShareOutcome.YES else ShareOutcome.NO
-                    val amount = BigDecimal((10..500).random())
+                    val outcome = BotTradingPolicy.pickOutcome()
+                    val amount = BotTradingPolicy.pickTradeAmount()
 
                     swapService.executeSwap(
                         botId,
@@ -129,12 +127,5 @@ class BotTradingService(
                 }
             }
         }
-    }
-
-    private fun generateCommitHash(questionId: Long, memberId: Long, choice: Choice, salt: String): String {
-        val input = "$questionId:$memberId:${choice.name}:$salt"
-        return MessageDigest.getInstance("SHA-256")
-            .digest(input.toByteArray())
-            .joinToString("") { "%02x".format(it) }
     }
 }

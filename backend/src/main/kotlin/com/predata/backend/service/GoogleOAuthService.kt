@@ -80,7 +80,9 @@ class GoogleOAuthService(
                 return GoogleAuthResponse(
                     success = true,
                     message = "Additional information required",
-                    needsAdditionalInfo = true
+                    needsAdditionalInfo = true,
+                    googleId = googleId,
+                    email = email
                 )
             }
 

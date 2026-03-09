@@ -163,3 +163,12 @@
 - Ticket H: ApiEnvelope 통일 (대기)
 - Ticket I: 컨트롤러 응답 패턴 통일 (대기)
 - Ticket J: 프론트엔드 동기화 (대기)
+
+### P1-2: Wallet/Treasury 운영 가시성 강화 ✅
+- `MemberController` 인증 응답 잔액을 wallet 기준으로 통일
+- `RewardService` 보상풀 계산을 legacy `totalBetPool`에서 `market_pools.total_fees_usdc` 기반으로 전환
+- 운영 API 추가:
+  - `GET /api/admin/finance/wallets/{memberId}`
+  - `GET /api/admin/finance/wallet-ledgers`
+  - `GET /api/admin/finance/treasury-ledgers`
+- 정합성 SQL 추가: `backend/src/main/resources/check_wallet_treasury_integrity.sql`

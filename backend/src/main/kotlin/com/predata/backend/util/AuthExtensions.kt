@@ -8,6 +8,9 @@ fun HttpServletRequest.authenticatedMemberId(): Long =
     getAttribute(JwtAuthInterceptor.ATTR_MEMBER_ID) as? Long
         ?: throw UnauthorizedException("Authentication required.")
 
+fun HttpServletRequest.authenticatedMemberIdOrNull(): Long? =
+    getAttribute(JwtAuthInterceptor.ATTR_MEMBER_ID) as? Long
+
 fun HttpServletRequest.authenticatedEmail(): String =
     getAttribute(JwtAuthInterceptor.ATTR_EMAIL) as? String
         ?: throw UnauthorizedException("Authentication required.")

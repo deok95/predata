@@ -1,5 +1,7 @@
 package com.predata.backend.controller
 
+import io.swagger.v3.oas.annotations.tags.Tag
+
 import com.predata.backend.dto.ApiEnvelope
 import com.predata.backend.service.bot.BotMemberService
 import com.predata.backend.service.bot.BotTradingService
@@ -9,6 +11,7 @@ import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RestController
 
 @RestController
+@Tag(name = "ops-admin", description = "Bot admin APIs")
 @RequestMapping("/api/admin/bot")
 class BotController(
     private val botMemberService: BotMemberService,

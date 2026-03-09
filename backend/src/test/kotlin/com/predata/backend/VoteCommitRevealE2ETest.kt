@@ -9,11 +9,15 @@ import com.predata.backend.domain.QuestionType
 import com.predata.backend.domain.VotingPhase
 import com.predata.backend.dto.VoteCommitRequest
 import com.predata.backend.dto.VoteRevealRequest
+import com.predata.backend.exception.AlreadyVotedException
+import com.predata.backend.exception.BadRequestException
+import com.predata.backend.exception.ForbiddenException
 import com.predata.backend.repository.DailyTicketRepository
 import com.predata.backend.repository.MemberRepository
 import com.predata.backend.repository.QuestionRepository
 import com.predata.backend.service.VoteCommitService
 import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.assertThrows
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.test.context.ActiveProfiles
@@ -21,7 +25,6 @@ import java.security.MessageDigest
 import java.time.LocalDate
 import java.time.LocalDateTime
 import kotlin.test.assertEquals
-import kotlin.test.assertFalse
 import kotlin.test.assertNotNull
 import kotlin.test.assertTrue
 
@@ -96,28 +99,22 @@ class VoteCommitRevealE2ETest {
         assertNotNull(commitSuccess.voteCommitId)
         assertEquals(4, commitSuccess.remainingTickets)
 
-        // 2. commit 중복
-        val commitDuplicate = voteCommitService.commit(
-            memberId,
-            VoteCommitRequest(questionAId, hashA)
-        )
-        assertFalse(commitDuplicate.success)
+        // 2. commit 중복 — 서비스가 AlreadyVotedException 을 던짐
+        assertThrows<AlreadyVotedException> {
+            voteCommitService.commit(memberId, VoteCommitRequest(questionAId, hashA))
+        }
 
-        // 3. commit 투표패스 없는 유저
+        // 3. commit 투표패스 없는 유저 — ForbiddenException
         val noPassHash = computeHash(questionAId, noPassMemberId, "YES", "salt-nopass")
-        val commitNoPass = voteCommitService.commit(
-            noPassMemberId,
-            VoteCommitRequest(questionAId, noPassHash)
-        )
-        assertFalse(commitNoPass.success)
+        assertThrows<ForbiddenException> {
+            voteCommitService.commit(noPassMemberId, VoteCommitRequest(questionAId, noPassHash))
+        }
 
-        // 4. commit 밴 유저
+        // 4. commit 밴 유저 — ForbiddenException
         val bannedHash = computeHash(questionAId, bannedMemberId, "YES", "salt-banned")
-        val commitBanned = voteCommitService.commit(
-            bannedMemberId,
-            VoteCommitRequest(questionAId, bannedHash)
-        )
-        assertFalse(commitBanned.success)
+        assertThrows<ForbiddenException> {
+            voteCommitService.commit(bannedMemberId, VoteCommitRequest(questionAId, bannedHash))
+        }
 
         // 5. reveal 전에 question.votingPhase를 VOTING_REVEAL_OPEN으로 변경
         questionA.votingPhase = VotingPhase.VOTING_REVEAL_OPEN
@@ -130,7 +127,7 @@ class VoteCommitRevealE2ETest {
         )
         assertTrue(revealSuccess.success)
 
-        // 7. reveal 잘못된 salt
+        // 7. reveal 잘못된 salt — BadRequestException
         val saltB = "salt-b"
         val hashB = computeHash(questionBId, memberId, "NO", saltB)
         val commitForWrongSalt = voteCommitService.commit(
@@ -141,13 +138,11 @@ class VoteCommitRevealE2ETest {
         questionB.votingPhase = VotingPhase.VOTING_REVEAL_OPEN
         questionRepository.save(questionB)
 
-        val revealWrongSalt = voteCommitService.reveal(
-            memberId,
-            VoteRevealRequest(questionBId, Choice.NO, "wrong-salt")
-        )
-        assertFalse(revealWrongSalt.success)
+        assertThrows<BadRequestException> {
+            voteCommitService.reveal(memberId, VoteRevealRequest(questionBId, Choice.NO, "wrong-salt"))
+        }
 
-        // 8. reveal 중복
+        // 8. reveal 중복 — AlreadyVotedException
         val saltC = "salt-c"
         val hashC = computeHash(questionCId, memberId, "YES", saltC)
         val commitForDuplicateReveal = voteCommitService.commit(
@@ -164,11 +159,9 @@ class VoteCommitRevealE2ETest {
         )
         assertTrue(revealFirst.success)
 
-        val revealDuplicate = voteCommitService.reveal(
-            memberId,
-            VoteRevealRequest(questionCId, Choice.YES, saltC)
-        )
-        assertFalse(revealDuplicate.success)
+        assertThrows<AlreadyVotedException> {
+            voteCommitService.reveal(memberId, VoteRevealRequest(questionCId, Choice.YES, saltC))
+        }
     }
 
     private fun createQuestion(votingPhase: VotingPhase): Question {
@@ -178,6 +171,7 @@ class VoteCommitRevealE2ETest {
                 category = "TEST",
                 status = QuestionStatus.VOTING,
                 type = QuestionType.VERIFIABLE,
+                voteResultSettlement = true,
                 votingPhase = votingPhase,
                 votingEndAt = LocalDateTime.now().plusHours(2),
                 bettingStartAt = LocalDateTime.now().plusHours(3),

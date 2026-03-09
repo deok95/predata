@@ -8,10 +8,19 @@ import com.predata.backend.dto.VoteCommitRequest
 import com.predata.backend.dto.VoteCommitResponse
 import com.predata.backend.dto.VoteRevealRequest
 import com.predata.backend.dto.VoteRevealResponse
+import com.predata.backend.exception.AlreadyVotedException
+import com.predata.backend.exception.BadRequestException
+import com.predata.backend.exception.ConflictException
+import com.predata.backend.exception.ErrorCode
+import com.predata.backend.exception.ForbiddenException
+import com.predata.backend.exception.NotFoundException
 import com.predata.backend.exception.ServiceUnavailableException
+import com.predata.backend.exception.VotingClosedException
+import com.predata.backend.exception.DailyLimitExceededException
 import com.predata.backend.repository.MemberRepository
 import com.predata.backend.repository.QuestionRepository
 import com.predata.backend.repository.VoteCommitRepository
+import com.predata.backend.repository.VoteSummaryRepository
 import org.slf4j.LoggerFactory
 import org.springframework.dao.DataIntegrityViolationException
 import org.springframework.stereotype.Service
@@ -30,6 +39,7 @@ class VoteCommitService(
     private val voteCommitRepository: VoteCommitRepository,
     private val questionRepository: QuestionRepository,
     private val memberRepository: MemberRepository,
+    private val voteSummaryRepository: VoteSummaryRepository,
     private val votingConfig: com.predata.backend.config.VotingConfig,
     private val auditService: AuditService,
     private val pauseService: PauseService,
@@ -52,55 +62,38 @@ class VoteCommitService(
 
         // 1. 회원 존재 확인
         val member = memberRepository.findById(memberId).orElse(null)
-            ?: run {
-                return VoteCommitResponse(
-                    success = false,
-                    message = "Member not found."
-                )
-            }
+            ?: throw NotFoundException(message = "Member not found.")
 
         // 2. 밴 체크
         if (member.isBanned) {
-            return VoteCommitResponse(
-                success = false,
-                message = "Account has been suspended. Reason: ${member.banReason ?: "Terms of Service violation"}"
+            throw ForbiddenException(
+                message = ErrorCode.ACCOUNT_BANNED.message,
+                code = ErrorCode.ACCOUNT_BANNED.name,
             )
         }
 
         // 2-1. 투표 패스 확인 (미구매 계정은 투표 불가)
         if (!member.hasVotingPass) {
-            return VoteCommitResponse(
-                success = false,
-                message = "Voting pass required. Please purchase one from your My Page."
-            )
-        }
-
-        // 2-2. 티켓 차감 (5개 제한)
-        val ticketConsumed = ticketService.consumeTicket(memberId)
-        if (!ticketConsumed) {
-            throw IllegalStateException("You have used all available votes for today")
+            throw ForbiddenException(message = "Voting pass required. Please purchase one from your My Page.")
         }
 
         // 3. 질문 존재 확인
         val question = questionRepository.findById(request.questionId).orElse(null)
-            ?: run {
-                return VoteCommitResponse(
-                    success = false,
-                    message = "Question not found."
-                )
-            }
+            ?: throw NotFoundException()
+
+        // 3-1. OBJECTIVE_RULE 질문은 커밋-리빌 불가 → 오픈 투표 경로로 안내
+        if (!question.voteResultSettlement) {
+            throw BadRequestException(ErrorCode.COMMIT_REVEAL_NOT_ELIGIBLE.message, ErrorCode.COMMIT_REVEAL_NOT_ELIGIBLE.name)
+        }
 
         // 4. 투표 단계 확인 (VOTING_COMMIT_OPEN만 가능)
         if (question.votingPhase != VotingPhase.VOTING_COMMIT_OPEN) {
-            throw IllegalStateException("Not currently in voting commit period.")
+            throw VotingClosedException()
         }
 
         // 5. 중복 투표 체크 (UNIQUE 제약으로 자동 방지)
         if (voteCommitRepository.existsByMemberIdAndQuestionId(memberId, request.questionId)) {
-            return VoteCommitResponse(
-                success = false,
-                message = "You have already voted."
-            )
+            throw AlreadyVotedException()
         }
 
         // 6. 일일 투표 한도 체크 (UTC 기준)
@@ -114,10 +107,13 @@ class VoteCommitService(
 
         if (todayCount >= votingConfig.dailyLimit) {
             logger.warn("Daily vote limit exceeded: memberId=$memberId, count=$todayCount, limit=${votingConfig.dailyLimit}")
-            return VoteCommitResponse(
-                success = false,
-                message = "Daily vote limit (${votingConfig.dailyLimit}) exceeded."
-            )
+            throw DailyLimitExceededException()
+        }
+
+        // 6-1. 티켓 차감 — 모든 검증 통과 후에 실행 (검증 실패 시 차감 없음)
+        val ticketConsumed = ticketService.consumeTicket(memberId)
+        if (!ticketConsumed) {
+            throw ConflictException(message = "You have used all available votes for today.")
         }
 
         // 7. VoteCommit 저장 (salt는 클라이언트가 보관)
@@ -129,7 +125,7 @@ class VoteCommitService(
                 status = VoteCommitStatus.COMMITTED
             )
 
-            val saved = voteCommitRepository.save(voteCommit)
+            val saved = voteCommitRepository.saveAndFlush(voteCommit)
             logger.info("Vote commit successful: memberId=$memberId, questionId=${request.questionId}")
 
             // 감사 로그 기록
@@ -154,11 +150,9 @@ class VoteCommitService(
                 remainingTickets = remainingTickets
             )
         } catch (e: DataIntegrityViolationException) {
-            logger.warn("Duplicate vote commit attempt: memberId=$memberId, questionId=${request.questionId}")
-            VoteCommitResponse(
-                success = false,
-                message = "You have already voted."
-            )
+            // 동시 요청 경쟁 조건으로 UNIQUE 제약 위반 — 예외를 던져 트랜잭션 롤백 확정
+            logger.warn("Duplicate vote commit attempt (race condition): memberId=$memberId, questionId=${request.questionId}")
+            throw AlreadyVotedException()
         } catch (e: Exception) {
             circuitBreaker.recordFailure()
             throw e
@@ -179,58 +173,39 @@ class VoteCommitService(
 
         // 0-1. 투표 패스 확인 (미구매 계정은 투표 불가)
         val member = memberRepository.findById(memberId).orElse(null)
-            ?: run {
-                return VoteRevealResponse(
-                    success = false,
-                    message = "Member not found."
-                )
-            }
+            ?: throw NotFoundException(message = "Member not found.")
         if (!member.hasVotingPass) {
-            return VoteRevealResponse(
-                success = false,
-                message = "Voting pass required. Please purchase one from your My Page."
-            )
+            throw ForbiddenException(message = "Voting pass required. Please purchase one from your My Page.")
         }
 
         // 1. VoteCommit 조회
         val voteCommit = voteCommitRepository.findByMemberIdAndQuestionId(memberId, request.questionId)
-            ?: run {
-                return VoteRevealResponse(
-                    success = false,
-                    message = "Committed vote not found."
-                )
-            }
+            ?: throw NotFoundException(message = "Committed vote not found.")
 
         // 2. 이미 공개했는지 확인
         if (voteCommit.status == VoteCommitStatus.REVEALED) {
-            return VoteRevealResponse(
-                success = false,
-                message = "Vote already revealed."
-            )
+            throw AlreadyVotedException()
         }
 
         // 3. 질문 존재 확인
         val question = questionRepository.findById(request.questionId).orElse(null)
-            ?: run {
-                return VoteRevealResponse(
-                    success = false,
-                    message = "Question not found."
-                )
-            }
+            ?: throw NotFoundException()
+
+        // 3-1. OBJECTIVE_RULE 질문은 커밋-리빌 불가
+        if (!question.voteResultSettlement) {
+            throw BadRequestException(ErrorCode.COMMIT_REVEAL_NOT_ELIGIBLE.message, ErrorCode.COMMIT_REVEAL_NOT_ELIGIBLE.name)
+        }
 
         // 4. 투표 단계 확인 (VOTING_REVEAL_OPEN만 가능)
         if (question.votingPhase != VotingPhase.VOTING_REVEAL_OPEN) {
-            throw IllegalStateException("Not currently in vote reveal period.")
+            throw VotingClosedException()
         }
 
         // 5. commitHash 검증: SHA-256(questionId:memberId:choice:salt) == commitHash
         val computedHash = hashChoiceWithSalt(request.questionId, memberId, request.choice.name, request.salt)
         if (computedHash != voteCommit.commitHash) {
             logger.warn("Vote reveal hash mismatch: memberId=$memberId, questionId=${request.questionId}")
-            return VoteRevealResponse(
-                success = false,
-                message = "Vote verification failed (hash mismatch)."
-            )
+            throw BadRequestException(message = "Vote verification failed (hash mismatch).")
         }
 
         return try {
@@ -241,6 +216,12 @@ class VoteCommitService(
 
             voteCommitRepository.save(voteCommit)
             logger.info("Vote reveal successful: memberId=$memberId, questionId=${request.questionId}, status=${voteCommit.status}")
+
+            // vote_summary UPSERT (critical: OpinionResolutionAdapter가 이 집계를 읽어 정산 결과 결정)
+            when (request.choice) {
+                Choice.YES -> voteSummaryRepository.upsertIncrementYes(request.questionId)
+                Choice.NO  -> voteSummaryRepository.upsertIncrementNo(request.questionId)
+            }
 
             // 감사 로그 기록
             auditService.log(

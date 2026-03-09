@@ -1,5 +1,7 @@
 package com.predata.backend.controller
 
+import io.swagger.v3.oas.annotations.tags.Tag
+
 import com.predata.backend.dto.ApiEnvelope
 import com.predata.backend.service.BanService
 import com.predata.backend.service.IpTrackingService
@@ -10,6 +12,7 @@ import org.springframework.web.bind.annotation.*
  * 어뷰징 관리 API (관리자용)
  */
 @RestController
+@Tag(name = "ops-admin", description = "Abuse ban admin APIs")
 @RequestMapping("/api/admin/abuse")
 class BanController(
     private val banService: BanService,

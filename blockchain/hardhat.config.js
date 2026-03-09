@@ -1,7 +1,7 @@
 import "@nomicfoundation/hardhat-toolbox";
 
 /** @type import('hardhat/config').HardhatUserConfig */
-export default {
+const config = {
   solidity: {
     version: "0.8.20",
     settings: {
@@ -32,3 +32,5 @@ export default {
     }
   }
 };
+
+export default config;

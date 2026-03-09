@@ -10,6 +10,7 @@ import com.predata.backend.exception.NotFoundException
 import com.predata.backend.service.amm.SwapService
 import com.predata.backend.util.authenticatedMemberId
 import com.predata.backend.util.authenticatedRole
+import io.swagger.v3.oas.annotations.tags.Tag
 import jakarta.servlet.http.HttpServletRequest
 import org.springframework.dao.OptimisticLockingFailureException
 import org.springframework.http.ResponseEntity
@@ -20,6 +21,7 @@ import java.math.BigDecimal
 
 @RestController
 @RequestMapping("/api")
+@Tag(name = "market-amm", description = "AMM swap/pool APIs")
 class SwapController(
     private val retryableSwapFacade: com.predata.backend.service.amm.RetryableSwapFacade,
     private val swapService: SwapService

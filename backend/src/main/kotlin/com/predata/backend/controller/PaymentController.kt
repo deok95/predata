@@ -5,6 +5,7 @@ import com.predata.backend.service.PaymentVerificationService
 import com.predata.backend.service.WithdrawalService
 import com.predata.backend.service.WithdrawResponse
 import com.predata.backend.util.authenticatedMemberId
+import io.swagger.v3.oas.annotations.tags.Tag
 import jakarta.servlet.http.HttpServletRequest
 import org.slf4j.LoggerFactory
 import org.springframework.http.ResponseEntity
@@ -13,11 +14,27 @@ import java.math.BigDecimal
 
 @RestController
 @RequestMapping("/api/payments")
+@Tag(name = "finance-wallet", description = "Deposit/withdraw wallet APIs")
 class PaymentController(
     private val paymentVerificationService: PaymentVerificationService,
-    private val withdrawalService: WithdrawalService
+    private val withdrawalService: WithdrawalService,
+    @org.springframework.beans.factory.annotation.Value("\${polygon.receiver-wallet}") private val receiverWallet: String,
+    @org.springframework.beans.factory.annotation.Value("\${polygon.usdc-contract}") private val usdcContract: String,
+    @org.springframework.beans.factory.annotation.Value("\${polygon.chain-id}") private val chainId: Int,
 ) {
     private val log = LoggerFactory.getLogger(javaClass)
+
+    /**
+     * 프론트엔드에서 USDC 입금 시 필요한 체인 설정 반환 (인증 불필요)
+     * GET /api/payments/config
+     */
+    @GetMapping("/config")
+    fun getPaymentConfig(): ResponseEntity<ApiEnvelope<Map<String, Any>>> =
+        ResponseEntity.ok(ApiEnvelope.ok(mapOf(
+            "receiverWallet" to receiverWallet,
+            "usdcContract" to usdcContract,
+            "chainId" to chainId,
+        )))
 
     /**
      * $ 잔액 충전 — USDC 트랜잭션 검증 후 잔액 반영

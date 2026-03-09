@@ -5,6 +5,7 @@ import com.predata.backend.sports.domain.MatchStatus
 import com.predata.backend.sports.event.MatchCancelledEvent
 import com.predata.backend.sports.event.MatchFinishedEvent
 import com.predata.backend.sports.event.MatchGoalEvent
+import com.predata.backend.sports.provider.football.FootballLeagueCatalog
 import com.predata.backend.sports.provider.football.FootballDataProvider
 import com.predata.backend.sports.repository.LeagueRepository
 import com.predata.backend.sports.repository.MatchRepository
@@ -18,6 +19,7 @@ import org.springframework.transaction.annotation.Transactional
 import java.time.LocalDate
 import java.time.LocalDateTime
 import java.time.ZoneId
+import com.predata.backend.sports.domain.Sport
 
 @Component
 class MatchSyncScheduler(
@@ -95,17 +97,19 @@ class MatchSyncScheduler(
     }
 
     /**
-     * PL 경기 동기화 (신규 insert, 기존 update)
+     * 우선 리그(UCL/UEL/UECL + 5대 리그 + K리그) 경기 동기화 (신규 insert, 기존 update)
      */
     @Transactional
     fun syncUpcomingMatches(): MatchSyncResult {
-        logger.info("[MatchSync] 매일 동기화 시작")
+        logger.info("[MatchSync] 우선 리그 동기화 시작")
 
-        val league = leagueRepository.findByExternalLeagueIdAndProvider(
-            "PL", FootballDataProvider.PROVIDER_NAME
-        )
-        if (league == null) {
-            logger.warn("[MatchSync] PL 리그를 찾을 수 없습니다. (provider=${FootballDataProvider.PROVIDER_NAME})")
+        val targetCodes = FootballLeagueCatalog.priorityLeagues.map { it.externalLeagueId.uppercase() }.toSet()
+        val leagues = leagueRepository.findBySportTypeAndActiveTrue(Sport.FOOTBALL)
+            .filter { it.provider == FootballDataProvider.PROVIDER_NAME }
+            .filter { (it.externalLeagueId ?: "").uppercase() in targetCodes }
+
+        if (leagues.isEmpty()) {
+            logger.warn("[MatchSync] 대상 리그가 없습니다. provider={}", FootballDataProvider.PROVIDER_NAME)
             return MatchSyncResult(
                 fetched = 0,
                 inserted = 0,
@@ -115,38 +119,42 @@ class MatchSyncScheduler(
             )
         }
 
-        val fetched = footballDataProvider.fetchUpcomingMatches(league)
-        logger.info("[MatchSync] API에서 가져온 경기 수: ${fetched.size}")
-
+        var totalFetched = 0
         var inserted = 0
         var updated = 0
 
-        for (apiMatch in fetched) {
-            val externalId = apiMatch.externalMatchId ?: continue
-            val existing = matchRepository.findByExternalMatchIdAndProvider(
-                externalId, FootballDataProvider.PROVIDER_NAME
-            )
+        leagues.forEach { league ->
+            val fetched = footballDataProvider.fetchUpcomingMatches(league)
+            totalFetched += fetched.size
+            logger.info("[MatchSync] 리그={}({}) fetched={}", league.name, league.externalLeagueId, fetched.size)
 
-            if (existing != null) {
-                existing.homeScore = apiMatch.homeScore
-                existing.awayScore = apiMatch.awayScore
-                existing.matchStatus = apiMatch.matchStatus
-                matchRepository.save(existing)
-                updated++
-            } else {
-                matchRepository.save(apiMatch)
-                inserted++
+            for (apiMatch in fetched) {
+                val externalId = apiMatch.externalMatchId ?: continue
+                val existing = matchRepository.findByExternalMatchIdAndProvider(
+                    externalId, FootballDataProvider.PROVIDER_NAME
+                )
+
+                if (existing != null) {
+                    existing.homeScore = apiMatch.homeScore
+                    existing.awayScore = apiMatch.awayScore
+                    existing.matchStatus = apiMatch.matchStatus
+                    matchRepository.save(existing)
+                    updated++
+                } else {
+                    matchRepository.save(apiMatch)
+                    inserted++
+                }
             }
         }
 
-        logger.info("[MatchSync] 동기화 완료 - 신규: ${inserted}건, 업데이트: ${updated}건")
+        logger.info("[MatchSync] 동기화 완료 - fetched: {}건, 신규: {}건, 업데이트: {}건", totalFetched, inserted, updated)
 
         // 동기화 후 Question 자동 생성
         val genResult = matchQuestionGeneratorService.generateQuestions()
         logger.info("[MatchSync] Question 자동 생성 - 신규: ${genResult.created}건, 스킵: ${genResult.skipped}건")
 
         return MatchSyncResult(
-            fetched = fetched.size,
+            fetched = totalFetched,
             inserted = inserted,
             updated = updated,
             questionCreated = genResult.created,

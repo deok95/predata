@@ -2,6 +2,7 @@ package com.predata.backend.controller
 
 import com.predata.backend.dto.ApiEnvelope
 import com.predata.backend.service.*
+import io.swagger.v3.oas.annotations.tags.Tag
 import jakarta.validation.Valid
 import org.springframework.data.domain.Page
 import org.springframework.data.domain.PageRequest
@@ -9,10 +10,12 @@ import org.springframework.data.domain.Sort
 import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.*
+import org.springframework.web.server.ResponseStatusException
 
 
 @RestController
 @RequestMapping("/api/admin/questions")
+@Tag(name = "question", description = "Question admin APIs")
 class QuestionManagementController(
     private val questionManagementService: QuestionManagementService
 ) {
@@ -32,10 +35,13 @@ class QuestionManagementController(
      * 질문 생성 (레거시 - expiredAt 기반)
      * POST /api/admin/questions/legacy
      */
+    @Deprecated("Legacy question creation is disabled in V2.")
     @PostMapping("/legacy")
     fun createQuestionLegacy(@Valid @RequestBody request: CreateQuestionRequest): ResponseEntity<ApiEnvelope<QuestionCreationResponse>> {
-        val response = questionManagementService.createQuestion(request)
-        return ResponseEntity.status(HttpStatus.CREATED).body(ApiEnvelope.ok(response))
+        throw ResponseStatusException(
+            HttpStatus.GONE,
+            "This endpoint is deprecated. Use POST /api/questions/drafts/* or POST /api/admin/questions.",
+        )
     }
 
     /**

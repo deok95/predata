@@ -1,68 +1,122 @@
 package com.predata.backend.service.settlement.adapters
 
-import com.predata.backend.domain.Question
-import com.predata.backend.domain.MarketType
+import com.fasterxml.jackson.databind.ObjectMapper
 import com.predata.backend.domain.FinalResult
+import com.predata.backend.domain.MarketType
+import com.predata.backend.domain.Question
+import com.predata.backend.service.MatchResult
+import com.predata.backend.service.SportsApiService
+import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Component
 
 /**
- * 스포츠 결과 정산 어댑터
- * football-data.org API를 통해 경기 결과를 조회하여 정산
+ * 스포츠 경기 결과 기반 정산 어댑터.
+ *
+ * resolutionSource 형식:
+ *   sports://12345  |  match://12345  |  12345 (순수 숫자 — 하위 호환)
+ *
+ * resolutionRule 형식: HOME_WIN | AWAY_WIN | DRAW (대소문자 무시)
+ *
+ * 경기 미종료(status != FINISHED) 또는 데이터 미존재 시:
+ *   result=null, confidence=0.0 → 자동정산 보류
+ *
+ * 경기 종료 + 규칙 판정 성공 시:
+ *   result=YES/NO, confidence=1.0
  */
 @Component
-class SportsResolutionAdapter : ResolutionAdapter {
+class SportsResolutionAdapter(
+    private val sportsApiService: SportsApiService,
+) : ResolutionAdapter {
 
-    override fun supports(marketType: MarketType): Boolean {
-        return marketType == MarketType.VERIFIABLE
+    private val log = LoggerFactory.getLogger(SportsResolutionAdapter::class.java)
+    private val objectMapper = ObjectMapper()
+
+    private val NUMERIC_ID = Regex("""^\d+$""")
+
+    override fun supports(marketType: MarketType): Boolean = marketType == MarketType.VERIFIABLE
+
+    override fun supportsSource(resolutionSource: String?): Boolean {
+        if (resolutionSource == null) return false
+        return resolutionSource.startsWith("sports://") ||
+               resolutionSource.startsWith("match://") ||
+               resolutionSource.matches(NUMERIC_ID)
     }
 
     override fun resolve(question: Question): ResolutionResult {
-        // TODO: football-data.org API 연동 구현
-        // 1. resolutionSource에서 경기 ID 파싱
-        // 2. football-data.org API 호출하여 경기 결과 조회
-        // 3. resolutionRule 파싱하여 YES/NO 판정 로직 적용
-        // 예: resolutionRule = "맨체스터 유나이티드가 승리할까?" → homeTeam.score > awayTeam.score
+        val source = question.resolutionSource
+            ?: return pendingResult("resolutionSource is null")
 
-        val resolutionSource = question.resolutionSource
-            ?: throw IllegalArgumentException("resolutionSource is missing for sports settlement.")
+        val matchId = parseMatchId(source)
+            ?: return pendingResult("matchId parse failed: $source")
 
-        // resolveAt 체크: 경기 종료 시간이 지나지 않았으면 null 반환
-        val resolveAt = question.resolveAt
-        if (resolveAt != null && java.time.LocalDateTime.now().isBefore(resolveAt)) {
-            // 경기 미종료: 자동 정산 불가
-            return ResolutionResult(
-                result = null,
-                sourcePayload = null,
-                sourceUrl = null,
-                confidence = 0.0
-            )
+        val expectedOutcome = parseOutcome(question.resolutionRule)
+            ?: return pendingResult("resolutionRule parse failed: '${question.resolutionRule}'")
+
+        val matchResult = sportsApiService.fetchMatchResult(matchId)
+            ?: return pendingResult("match data not available for matchId=$matchId")
+
+        if (matchResult.status != "FINISHED") {
+            return pendingResult("match not finished (status=${matchResult.status}, matchId=$matchId)")
         }
 
-        // TODO: 실제 football-data.org API 호출
-        // 현재는 stub 구현: sourcePayload에 더미 데이터 저장
-        val dummyApiResponse = """
-            {
-              "match": {
-                "id": "${resolutionSource}",
-                "homeTeam": "팀A",
-                "awayTeam": "팀B",
-                "homeScore": 2,
-                "awayScore": 1,
-                "status": "FINISHED"
-              }
-            }
-        """.trimIndent()
+        val actualOutcome = matchResult.result
+        val finalResult = if (actualOutcome == expectedOutcome) FinalResult.YES else FinalResult.NO
 
-        // TODO: 실제 resolutionRule 파싱 및 결과 판정 로직 구현
-        // 현재는 더미로 결과 반환 (confidence < 0.99로 설정하여 자동 정산 비활성화)
-        // 실제 API 연동 후 confidence = 1.0으로 변경
-        val result = FinalResult.YES
+        log.info(
+            "[SportsAdapter] matchId={} outcome={} expected={} → {}",
+            matchId, actualOutcome, expectedOutcome, finalResult,
+        )
+
+        val sourceUrl = "https://v3.football.api-sports.io/fixtures?id=$matchId"
+        val payload = buildPayload(matchId, matchResult, actualOutcome, expectedOutcome, finalResult)
 
         return ResolutionResult(
-            result = result,
-            sourcePayload = dummyApiResponse,
-            sourceUrl = "https://api.football-data.org/v4/matches/${resolutionSource}",
-            confidence = 0.95  // 실제 API 연동 전까지는 자동 정산 비활성화
+            result = finalResult,
+            sourcePayload = payload,
+            sourceUrl = sourceUrl,
+            confidence = 1.0,
         )
+    }
+
+    // ─── private helpers ─────────────────────────────────────────────────────
+
+    private fun parseMatchId(source: String): String? {
+        val id = when {
+            source.startsWith("sports://") -> source.removePrefix("sports://")
+            source.startsWith("match://")  -> source.removePrefix("match://")
+            source.matches(NUMERIC_ID)     -> source
+            else                           -> return null
+        }.trim()
+        return id.ifBlank { null }
+    }
+
+    private fun parseOutcome(rule: String): String? = when (rule.trim().uppercase()) {
+        "HOME_WIN" -> "HOME_WIN"
+        "AWAY_WIN" -> "AWAY_WIN"
+        "DRAW"     -> "DRAW"
+        else       -> null
+    }
+
+    private fun buildPayload(
+        matchId: String,
+        matchResult: MatchResult,
+        actualOutcome: String,
+        expectedOutcome: String,
+        finalResult: FinalResult,
+    ): String = objectMapper.writeValueAsString(
+        mapOf(
+            "matchId"         to matchId,
+            "status"          to matchResult.status,
+            "homeScore"       to matchResult.homeScore,
+            "awayScore"       to matchResult.awayScore,
+            "actualOutcome"   to actualOutcome,
+            "expectedOutcome" to expectedOutcome,
+            "result"          to finalResult.name,
+        )
+    )
+
+    private fun pendingResult(reason: String): ResolutionResult {
+        log.info("[SportsAdapter] 보류: {}", reason)
+        return ResolutionResult(result = null, sourcePayload = null, sourceUrl = null, confidence = 0.0)
     }
 }

@@ -8,6 +8,7 @@ import com.predata.backend.repository.QuestionRepository
 import com.predata.backend.sports.domain.Match
 import com.predata.backend.sports.domain.MatchStatus
 import com.predata.backend.sports.domain.QuestionPhase
+import com.predata.backend.sports.provider.football.FootballLeagueCatalog
 import com.predata.backend.sports.repository.MatchRepository
 import org.slf4j.LoggerFactory
 import org.springframework.beans.factory.annotation.Value
@@ -28,17 +29,24 @@ class MatchQuestionGeneratorService(
     private val logger = LoggerFactory.getLogger(MatchQuestionGeneratorService::class.java)
 
     /**
-     * SCHEDULED 상태 Match에 대해 Question 자동 생성
+     * 종료 전 상태(SCHEDULED/LIVE/HALFTIME) Match에 대해 Question 자동 생성
      * - 이미 해당 Match에 Question 있으면 skip (중복 방지)
      * - phase = UPCOMING, status = VOTING
      * - QuestionPhaseScheduler가 D-2 → VOTING, D-1 → BETTING 자동 전환
      */
     @Transactional
     fun generateQuestions(): MatchQuestionGenerateResult {
-        val start = LocalDateTime.now(ZoneOffset.UTC)
-        val end = start.plusDays(fetchWindowDays)
-        val matches = matchRepository.findByMatchStatusAndMatchTimeBetween(
+        val now = LocalDateTime.now(ZoneOffset.UTC)
+        // 이미 시작된 경기(LIVE/HT)도 질문 생성 대상에 포함하기 위해 lookback 창을 둔다.
+        val start = now.minusDays(1)
+        val end = now.plusDays(fetchWindowDays)
+        val openStatuses = listOf(
             MatchStatus.SCHEDULED,
+            MatchStatus.LIVE,
+            MatchStatus.HALFTIME
+        )
+        val matches = matchRepository.findByMatchStatusInAndMatchTimeBetween(
+            openStatuses,
             start,
             end
         ).sortedBy { it.matchTime }
@@ -66,26 +74,37 @@ class MatchQuestionGeneratorService(
 
     private fun createQuestion(match: Match): Question {
         val leagueName = match.league.name
-        val title = "[$leagueName] ${match.homeTeam} vs ${match.awayTeam} - 승자는?"
+        val leagueCode = match.league.externalLeagueId
+        val subCategory = FootballLeagueCatalog.subCategoryByCode(leagueCode)
+        val title = "[$leagueName] ${match.homeTeam} vs ${match.awayTeam} - Who will win?"
+        val isLiveMatch = match.matchStatus == MatchStatus.LIVE || match.matchStatus == MatchStatus.HALFTIME
 
+        val now = LocalDateTime.now(ZoneOffset.UTC)
         val matchTime = match.matchTime
-        val votingEndAt = matchTime.minusHours(24)
-        val bettingStartAt = votingEndAt
-        val bettingEndAt = matchTime.plusHours(2)
+        val votingEndAt = now
+        val bettingStartAt = now
+        val defaultBettingEndAt = matchTime.plusHours(2)
+        // 라이브 경기에서 늦게 생성되더라도 최소 유효 베팅 시간이 남도록 보정.
+        val bettingEndAt = if (defaultBettingEndAt.isAfter(now.plusMinutes(10))) {
+            defaultBettingEndAt
+        } else {
+            now.plusMinutes(10)
+        }
         val expiredAt = bettingEndAt
 
         return Question(
             title = title,
-            category = "SPORTS",
+            category = if (isLiveMatch) "LIVE" else "SPORTS",
             categoryWeight = BigDecimal("1.00"),
-            status = QuestionStatus.VOTING,
+            status = QuestionStatus.BETTING,
             type = QuestionType.VERIFIABLE,
             votingEndAt = votingEndAt,
             bettingStartAt = bettingStartAt,
             bettingEndAt = bettingEndAt,
             expiredAt = expiredAt,
+            tagsJson = """["football","$subCategory","${leagueCode ?: "UNKNOWN"}"]""",
             finalResult = FinalResult.PENDING,
-            phase = QuestionPhase.UPCOMING,
+            phase = if (isLiveMatch) QuestionPhase.LIVE else QuestionPhase.BETTING,
             match = match
         )
     }

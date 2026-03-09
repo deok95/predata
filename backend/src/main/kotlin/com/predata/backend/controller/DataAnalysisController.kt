@@ -1,5 +1,7 @@
 package com.predata.backend.controller
 
+import io.swagger.v3.oas.annotations.tags.Tag
+
 import com.predata.backend.domain.Choice
 import com.predata.backend.domain.VotingPhase
 import com.predata.backend.dto.*
@@ -12,6 +14,7 @@ import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.*
 
 @RestController
+@Tag(name = "settlement-reward", description = "Data analysis APIs")
 @RequestMapping("/api/analysis")
 class DataAnalysisController(
     private val abusingDetectionService: AbusingDetectionService,

@@ -1,5 +1,6 @@
 package com.predata.backend.service.bot
 
+import com.predata.backend.domain.policy.BotSchedulerPolicy
 import jakarta.annotation.PostConstruct
 import org.slf4j.LoggerFactory
 import org.springframework.beans.factory.annotation.Value
@@ -17,7 +18,7 @@ class BotScheduler(
 
     @PostConstruct
     fun init() {
-        if (!botEnabled) {
+        if (!BotSchedulerPolicy.shouldRun(botEnabled)) {
             logger.info("[Bot] Bot system disabled")
             return
         }
@@ -28,7 +29,7 @@ class BotScheduler(
 
     @Scheduled(fixedDelay = 30000)
     fun runBotVoting() {
-        if (!botEnabled) return
+        if (!BotSchedulerPolicy.shouldRun(botEnabled)) return
 
         try {
             botTradingService.executeBotVoting()
@@ -39,7 +40,7 @@ class BotScheduler(
 
     @Scheduled(fixedDelay = 60000)
     fun runBotTrading() {
-        if (!botEnabled) return
+        if (!BotSchedulerPolicy.shouldRun(botEnabled)) return
 
         try {
             botTradingService.executeBotTrading()

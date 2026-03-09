@@ -31,10 +31,14 @@ dependencies {
     implementation("org.springframework.boot:spring-boot-starter-cache")
     implementation("com.github.ben-manes.caffeine:caffeine:3.1.8")
 
+    // Redis (크레딧 캐시 / draft 세션 / idempotency / rate-limit)
+    implementation("org.springframework.boot:spring-boot-starter-data-redis")
+
     // OAuth2 and Security (Google Login)
     implementation("org.springframework.boot:spring-boot-starter-oauth2-client")
     implementation("org.springframework.boot:spring-boot-starter-security")
     implementation("com.google.api-client:google-api-client:2.2.0")
+    implementation("org.springdoc:springdoc-openapi-starter-webmvc-ui:2.3.0")
 
     // JWT
     implementation("io.jsonwebtoken:jjwt-api:0.12.3")
@@ -46,6 +50,9 @@ dependencies {
     implementation("org.jetbrains.kotlin:kotlin-stdlib-jdk8")
     implementation("com.fasterxml.jackson.module:jackson-module-kotlin")
     
+    // WebSocket (STOMP real-time)
+    implementation("org.springframework.boot:spring-boot-starter-websocket")
+
     // Spring Retry
     implementation("org.springframework.retry:spring-retry")
     implementation("org.springframework.boot:spring-boot-starter-aop")
@@ -67,6 +74,7 @@ dependencies {
     // Test
     testImplementation("org.springframework.boot:spring-boot-starter-test")
     testImplementation("org.jetbrains.kotlin:kotlin-test-junit5")
+    testImplementation("org.mockito.kotlin:mockito-kotlin:5.2.1")
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")
     testRuntimeOnly("com.h2database:h2")
 }

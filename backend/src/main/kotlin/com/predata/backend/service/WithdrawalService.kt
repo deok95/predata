@@ -1,7 +1,9 @@
 package com.predata.backend.service
 
 import com.predata.backend.config.properties.PolygonProperties
+import com.predata.backend.config.properties.FinanceProperties
 import com.predata.backend.domain.PaymentTransaction
+import com.predata.backend.domain.policy.WithdrawalPolicy
 import com.predata.backend.repository.MemberRepository
 import com.predata.backend.repository.PaymentTransactionRepository
 import jakarta.annotation.PostConstruct
@@ -25,16 +27,16 @@ import java.math.BigInteger
 @Service
 class WithdrawalService(
     private val polygonProperties: PolygonProperties,
+    private val financeProperties: FinanceProperties,
     private val memberRepository: MemberRepository,
     private val paymentTransactionRepository: PaymentTransactionRepository,
-    private val transactionHistoryService: TransactionHistoryService
+    private val transactionHistoryService: TransactionHistoryService,
+    private val walletBalanceService: WalletBalanceService,
 ) {
     private val log = LoggerFactory.getLogger(javaClass)
     private val web3j: Web3j by lazy { Web3j.build(HttpService(polygonProperties.rpcUrl)) }
 
     companion object {
-        val MIN_WITHDRAW = BigDecimal("1")    // 최소 $1
-        val MAX_WITHDRAW = BigDecimal("100")  // 최대 $100
         const val USDC_DECIMALS = 6
     }
 
@@ -112,27 +114,23 @@ class WithdrawalService(
         }
 
         // 2. 금액 검증
-        if (amount < MIN_WITHDRAW || amount > MAX_WITHDRAW) {
-            throw IllegalArgumentException("Withdrawal amount must be between \$${MIN_WITHDRAW} and \$${MAX_WITHDRAW}.")
-        }
+        val minWithdraw = financeProperties.withdrawal.minUsdc
+        val maxWithdraw = financeProperties.withdrawal.maxUsdc
+        val withdrawalFee = financeProperties.withdrawal.feeUsdc
+        WithdrawalPolicy.validateAmount(amount, minWithdraw, maxWithdraw)
+        WithdrawalPolicy.validateFee(withdrawalFee)
 
         // 3. 지갑 주소 검증
-        if (!walletAddress.matches(Regex("^0x[a-fA-F0-9]{40}$"))) {
-            throw IllegalArgumentException("Invalid wallet address.")
-        }
+        WithdrawalPolicy.validateWalletAddressFormat(walletAddress)
 
         // 4. DB에 등록된 지갑 주소와 일치하는지 확인
-        if (member.walletAddress != null) {
-            if (!walletAddress.equals(member.walletAddress, ignoreCase = true)) {
-                throw IllegalArgumentException("Wallet address does not match registered address. Please connect your wallet in My Page.")
-            }
-        } else {
-            throw IllegalArgumentException("No wallet address registered. Please connect your wallet in My Page first.")
-        }
+        WithdrawalPolicy.validateRegisteredWallet(member.walletAddress, walletAddress)
 
         // 5. 잔액 확인
-        if (member.usdcBalance < amount) {
-            throw IllegalArgumentException("Insufficient balance. (balance: \$${member.usdcBalance}, requested: \$${amount})")
+        val totalDebit = WithdrawalPolicy.totalDebit(amount, withdrawalFee)
+        val availableBalance = walletBalanceService.getAvailableBalance(memberId)
+        if (availableBalance < totalDebit) {
+            throw IllegalArgumentException("Insufficient balance. (balance: \$$availableBalance, required: \$${totalDebit})")
         }
 
         // 6. 프라이빗 키 확인
@@ -140,9 +138,15 @@ class WithdrawalService(
             throw IllegalStateException("Withdrawal feature not configured. Please contact administrator.")
         }
 
-        // 7. 잔액 차감
-        member.usdcBalance = member.usdcBalance.subtract(amount)
-        memberRepository.save(member)
+        // 7. 잔액 차감 (wallet ledger + member 잔액 동기화)
+        walletBalanceService.lockForWithdrawal(
+            memberId = memberId,
+            amount = totalDebit,
+            txType = "WITHDRAW_LOCK",
+            referenceType = "WITHDRAWAL",
+            referenceId = null,
+            description = "USDC 출금 잠금 (amount=${amount}, fee=${withdrawalFee})",
+        )
 
         // 8. USDC 전송
         val txHash: String
@@ -151,9 +155,15 @@ class WithdrawalService(
             log.info("USDC 전송 성공: memberId=$memberId, txHash=$txHash, amount=\$$amount")
         } catch (e: Exception) {
             // 전송 실패 시 잔액 복구
-            member.usdcBalance = member.usdcBalance.add(amount)
-            memberRepository.save(member)
-            log.error("USDC 전송 실패, 잔액 복구: memberId=$memberId, amount=$amount", e)
+            walletBalanceService.unlockWithdrawal(
+                memberId = memberId,
+                amount = totalDebit,
+                txType = "WITHDRAW_UNLOCK",
+                referenceType = "WITHDRAWAL",
+                referenceId = null,
+                description = "출금 실패 잠금해제",
+            )
+            log.error("USDC 전송 실패, 잠금해제: memberId=$memberId, amount=$amount, fee=$withdrawalFee", e)
             throw IllegalArgumentException("USDC transfer failed: ${e.message}")
         }
 
@@ -203,19 +213,48 @@ class WithdrawalService(
         amount: BigDecimal
     ): WithdrawResponse {
         val txHash = transaction.txHash
+        val withdrawalFee = financeProperties.withdrawal.feeUsdc
+        val totalDebit = WithdrawalPolicy.totalDebit(amount, withdrawalFee)
 
         if (newStatus == "CONFIRMED") {
             // CONFIRMED: 거래 내역 기록
             transaction.status = "CONFIRMED"
             paymentTransactionRepository.save(transaction)
 
-            val member = memberRepository.findById(memberId).orElseThrow()
+            // 잠금 정산: 전송금액 + 수수료 모두 locked에서 차감
+            val settled = walletBalanceService.settleLockedWithdrawal(
+                memberId = memberId,
+                amount = totalDebit,
+                txType = "WITHDRAW_SETTLE",
+                referenceType = "PAYMENT_TX",
+                referenceId = transaction.id,
+                description = "출금 확정 정산",
+            )
+
+            // 실제 온체인 출금분은 트레저리 아웃플로우
+            walletBalanceService.recordTreasuryOutflow(
+                amount = amount,
+                txType = "WITHDRAW",
+                referenceType = "PAYMENT_TX",
+                referenceId = transaction.id,
+                description = "USDC 출금 확정",
+            )
+            // 출금 수수료는 트레저리 인플로우
+            if (withdrawalFee > BigDecimal.ZERO) {
+                walletBalanceService.recordTreasuryInflow(
+                    amount = withdrawalFee,
+                    txType = "WITHDRAW_FEE",
+                    referenceType = "PAYMENT_TX",
+                    referenceId = transaction.id,
+                    description = "출금 수수료 수익",
+                )
+            }
             transactionHistoryService.record(
                 memberId = memberId,
                 type = "WITHDRAW",
-                amount = amount.negate(),
-                balanceAfter = member.usdcBalance,
-                description = "USDC 출금",
+                amount = totalDebit.negate(),
+                balanceAfter = settled.availableBalance,
+                description = "USDC 출금 (수수료 ${withdrawalFee} 포함)",
                 txHash = txHash
             )
 
@@ -225,21 +264,28 @@ class WithdrawalService(
                 success = true,
                 txHash = txHash,
                 amount = amount.toDouble(),
-                newBalance = member.usdcBalance.toDouble(),
+                fee = withdrawalFee.toDouble(),
+                totalDebited = totalDebit.toDouble(),
+                newBalance = settled.availableBalance.toDouble(),
                 message = "Withdrawal of \$${amount} completed."
             )
         } else {
-            // FAILED: 잔액 복구
+            // FAILED: 잠금 해제
             transaction.status = "FAILED"
             paymentTransactionRepository.save(transaction)
 
-            val member = memberRepository.findById(memberId).orElseThrow()
-            member.usdcBalance = member.usdcBalance.add(amount)
-            memberRepository.save(member)
+            val snapshot = walletBalanceService.unlockWithdrawal(
+                memberId = memberId,
+                amount = totalDebit,
+                txType = "WITHDRAW_UNLOCK",
+                referenceType = "PAYMENT_TX",
+                referenceId = transaction.id,
+                description = "출금 트랜잭션 실패 잠금 해제",
+            )
 
-            log.error("출금 트랜잭션 실패, 잔액 복구: memberId=$memberId, amount=$amount, txHash=$txHash")
+            log.error("출금 트랜잭션 실패, 잠금 해제: memberId=$memberId, amount=$amount, fee=$withdrawalFee, txHash=$txHash")
 
-            throw IllegalArgumentException("Blockchain transaction failed. Balance has been restored.")
+            throw IllegalArgumentException("Blockchain transaction failed. Balance has been restored. current=\$${snapshot.availableBalance}")
         }
     }
 
@@ -305,6 +351,8 @@ data class WithdrawResponse(
     val success: Boolean,
     val txHash: String? = null,
     val amount: Double? = null,
+    val fee: Double? = null,
+    val totalDebited: Double? = null,
     val newBalance: Double? = null,
     val message: String
 )

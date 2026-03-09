@@ -2,14 +2,18 @@ package com.predata.backend.exception
 
 import org.slf4j.LoggerFactory
 import org.springframework.dao.DataIntegrityViolationException
+import org.springframework.dao.OptimisticLockingFailureException
 import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
 import org.springframework.http.converter.HttpMessageNotReadableException
+import org.springframework.orm.ObjectOptimisticLockingFailureException
+import org.springframework.web.HttpRequestMethodNotSupportedException
 import org.springframework.web.bind.MethodArgumentNotValidException
 import org.springframework.web.bind.MissingServletRequestParameterException
 import org.springframework.web.bind.annotation.ControllerAdvice
 import org.springframework.web.bind.annotation.ExceptionHandler
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException
+import org.springframework.web.servlet.resource.NoResourceFoundException
 
 @ControllerAdvice
 class GlobalExceptionHandler {
@@ -35,6 +39,56 @@ class GlobalExceptionHandler {
         }
         return ResponseEntity.status(ex.httpStatus).body(
             ErrorResponse(code = ex.code, message = ex.message, status = ex.httpStatus)
+        )
+    }
+
+    // === Vote-specific exceptions (fixed status codes per API contract) ===
+
+    @ExceptionHandler(VotingClosedException::class)
+    fun handleVotingClosed(ex: VotingClosedException): ResponseEntity<ErrorResponse> {
+        logger.info("Voting closed: ${ex.message}")
+        return ResponseEntity.status(HttpStatus.CONFLICT).body(
+            ErrorResponse.of(ErrorCode.VOTING_CLOSED, customMessage = ex.message)
+        )
+    }
+
+    @ExceptionHandler(AlreadyVotedException::class)
+    fun handleAlreadyVoted(ex: AlreadyVotedException): ResponseEntity<ErrorResponse> {
+        logger.info("Already voted: ${ex.message}")
+        return ResponseEntity.status(HttpStatus.CONFLICT).body(
+            ErrorResponse.of(ErrorCode.ALREADY_VOTED, customMessage = ex.message)
+        )
+    }
+
+    @ExceptionHandler(DailyLimitExceededException::class)
+    fun handleDailyLimitExceeded(ex: DailyLimitExceededException): ResponseEntity<ErrorResponse> {
+        logger.info("Daily limit exceeded: ${ex.message}")
+        return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS).body(
+            ErrorResponse.of(ErrorCode.DAILY_LIMIT_EXCEEDED, customMessage = ex.message)
+        )
+    }
+
+    @ExceptionHandler(RelayRetryExhaustedException::class)
+    fun handleRelayRetryExhausted(ex: RelayRetryExhaustedException): ResponseEntity<ErrorResponse> {
+        logger.warn("Relay retry exhausted: ${ex.message}")
+        return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE).body(
+            ErrorResponse.of(ErrorCode.RELAY_RETRY_EXHAUSTED, customMessage = ex.message)
+        )
+    }
+
+    @ExceptionHandler(SettlementDelayActiveException::class)
+    fun handleSettlementDelayActive(ex: SettlementDelayActiveException): ResponseEntity<ErrorResponse> {
+        logger.info("Settlement delay active: ${ex.message}")
+        return ResponseEntity.status(HttpStatus.CONFLICT).body(
+            ErrorResponse.of(ErrorCode.SETTLEMENT_DELAY_ACTIVE, customMessage = ex.message)
+        )
+    }
+
+    @ExceptionHandler(SettlementCancellationDisabledException::class)
+    fun handleSettlementCancellationDisabled(ex: SettlementCancellationDisabledException): ResponseEntity<ErrorResponse> {
+        logger.info("Settlement cancellation disabled: ${ex.message}")
+        return ResponseEntity.status(HttpStatus.GONE).body(
+            ErrorResponse.of(ErrorCode.SETTLEMENT_CANCELLATION_DISABLED, customMessage = ex.message)
         )
     }
 
@@ -112,6 +166,37 @@ class GlobalExceptionHandler {
         }
         return ResponseEntity.status(HttpStatus.CONFLICT).body(
             ErrorResponse.of(ErrorCode.DUPLICATE_ENTRY, customMessage = message)
+        )
+    }
+
+    @ExceptionHandler(
+        OptimisticLockingFailureException::class,
+        ObjectOptimisticLockingFailureException::class,
+    )
+    fun handleOptimisticLock(ex: Exception): ResponseEntity<ErrorResponse> {
+        logger.warn("Optimistic lock conflict: ${ex.message}")
+        return ResponseEntity.status(HttpStatus.CONFLICT).body(
+            ErrorResponse.of(
+                ErrorCode.CONFLICT,
+                customMessage = ErrorCode.CREDIT_LOCK_TIMEOUT.message
+            )
+        )
+    }
+
+    // === HTTP infrastructure exceptions ===
+
+    @ExceptionHandler(HttpRequestMethodNotSupportedException::class)
+    fun handleMethodNotAllowed(ex: HttpRequestMethodNotSupportedException): ResponseEntity<ErrorResponse> {
+        logger.warn("Method not allowed: ${ex.method}")
+        return ResponseEntity.status(HttpStatus.METHOD_NOT_ALLOWED).body(
+            ErrorResponse.of(ErrorCode.BAD_REQUEST, customMessage = "HTTP method '${ex.method}' is not supported for this endpoint.")
+        )
+    }
+
+    @ExceptionHandler(NoResourceFoundException::class)
+    fun handleNoResource(ex: NoResourceFoundException): ResponseEntity<ErrorResponse> {
+        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(
+            ErrorResponse.of(ErrorCode.NOT_FOUND, customMessage = "Endpoint not found.")
         )
     }
 

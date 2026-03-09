@@ -2,9 +2,18 @@ package com.predata.backend.domain
 
 import jakarta.persistence.*
 import java.time.LocalDateTime
+import java.time.ZoneOffset
 
 @Entity
-@Table(name = "vote_records")
+@Table(
+    name = "vote_records",
+    uniqueConstraints = [
+        UniqueConstraint(name = "uk_vr_member_question", columnNames = ["member_id", "question_id"])
+    ],
+    indexes = [
+        Index(name = "idx_vr_member_id", columnList = "member_id")
+    ]
+)
 data class VoteRecord(
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -20,12 +29,12 @@ data class VoteRecord(
     val questionId: Long,
 
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
+    @Column(nullable = false, length = 3)  // YES(3) / NO(2)
     val choice: Choice,
 
-    @Column(name = "recorded_at", nullable = false)
-    val recordedAt: LocalDateTime = LocalDateTime.now(),
+    @Column(name = "recorded_at", nullable = false, updatable = false)
+    val recordedAt: LocalDateTime = LocalDateTime.now(ZoneOffset.UTC),
 
     @Column(name = "tx_hash", nullable = false, length = 64)
-    val txHash: String
+    val txHash: String,
 )

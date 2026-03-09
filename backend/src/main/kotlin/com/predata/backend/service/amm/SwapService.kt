@@ -1,6 +1,7 @@
 package com.predata.backend.service.amm
 
 import com.predata.backend.domain.*
+import com.predata.backend.domain.policy.AmmTradePolicy
 import com.predata.backend.dto.amm.*
 import com.predata.backend.repository.MemberRepository
 import com.predata.backend.repository.QuestionRepository
@@ -8,6 +9,8 @@ import com.predata.backend.repository.amm.MarketPoolRepository
 import com.predata.backend.repository.amm.SwapHistoryRepository
 import com.predata.backend.repository.amm.UserSharesRepository
 import com.predata.backend.service.FeePoolService
+import com.predata.backend.service.MarketWebSocketService
+import com.predata.backend.service.WalletBalanceService
 import org.slf4j.LoggerFactory
 import org.springframework.data.domain.PageRequest
 import org.springframework.stereotype.Service
@@ -23,7 +26,9 @@ class SwapService(
     private val swapHistoryRepository: SwapHistoryRepository,
     private val questionRepository: QuestionRepository,
     private val memberRepository: MemberRepository,
-    private val feePoolService: FeePoolService
+    private val feePoolService: FeePoolService,
+    private val walletBalanceService: WalletBalanceService,
+    private val marketWebSocketService: MarketWebSocketService,
 ) {
     private val logger = LoggerFactory.getLogger(SwapService::class.java)
 
@@ -44,21 +49,14 @@ class SwapService(
             IllegalArgumentException("질문을 찾을 수 없습니다: ${request.questionId}")
         }
 
-        require(question.executionModel == ExecutionModel.AMM_FPMM) {
-            "해당 질문은 AMM 실행 모델이 아닙니다."
-        }
-
-        require(question.status == QuestionStatus.BETTING) {
-            "베팅 기간이 아닙니다. 현재 상태: ${question.status}"
-        }
+        AmmTradePolicy.ensureAmmQuestion(question.executionModel)
+        AmmTradePolicy.ensureBettingStatus(question.status)
 
         val pool = marketPoolRepository.findByIdWithLock(request.questionId).orElseThrow {
             IllegalArgumentException("마켓 풀을 찾을 수 없습니다.")
         }
 
-        require(pool.status == PoolStatus.ACTIVE) {
-            "마켓 풀이 활성화되지 않았습니다. 현재 상태: ${pool.status}"
-        }
+        AmmTradePolicy.ensurePoolActive(pool.status)
 
         val member = memberRepository.findById(memberId).orElseThrow {
             IllegalArgumentException("회원을 찾을 수 없습니다.")
@@ -73,14 +71,10 @@ class SwapService(
 
     private fun executeBuy(member: Member, pool: MarketPool, request: SwapRequest): SwapResponse {
         val usdcIn = request.usdcIn ?: throw IllegalArgumentException("usdcIn is required for BUY.")
+        AmmTradePolicy.ensureBuyInput(usdcIn, MIN_AMOUNT)
 
-        require(usdcIn >= MIN_AMOUNT) {
-            "최소 거래 금액은 $MIN_AMOUNT USDC입니다."
-        }
-
-        require(member.usdcBalance >= usdcIn) {
-            "USDC 잔액이 부족합니다. 보유: ${member.usdcBalance}, 필요: $usdcIn"
-        }
+        val availableBalance = walletBalanceService.getAvailableBalance(member.id!!)
+        AmmTradePolicy.ensureUsdcBalance(availableBalance, usdcIn)
 
         // Before 스냅샷 캡처 (pool 업데이트 전)
         val yesBefore = pool.yesShares
@@ -105,9 +99,7 @@ class SwapService(
 
         // 슬리피지 보호
         request.minSharesOut?.let { minShares ->
-            require(buyResult.sharesOut >= minShares) {
-                "슬리피지 초과: 예상 최소 $minShares shares, 실제 ${buyResult.sharesOut} shares"
-            }
+            AmmTradePolicy.ensureMinSharesOut(buyResult.sharesOut, minShares)
         }
 
         // 상태 업데이트
@@ -120,13 +112,20 @@ class SwapService(
         pool.updatedAt = LocalDateTime.now()
 
         marketPoolRepository.save(pool)
+        marketWebSocketService.broadcastPoolUpdate(request.questionId, buyResult.yAfter, buyResult.nAfter)
 
-        // 회원 USDC 차감
-        member.usdcBalance = member.usdcBalance.subtract(usdcIn)
-        memberRepository.save(member)
+        // 회원 USDC 차감 (wallet ledger 반영 + member.usdcBalance 동기화)
+        walletBalanceService.debit(
+            memberId = member.id,
+            amount = usdcIn,
+            txType = "AMM_BUY",
+            referenceType = "QUESTION",
+            referenceId = request.questionId,
+            description = "AMM BUY ${request.outcome}"
+        )
 
         // UserShares 업데이트
-        val userSharesId = UserSharesId(member.id!!, request.questionId, request.outcome)
+        val userSharesId = UserSharesId(member.id, request.questionId, request.outcome)
         val userShares = userSharesRepository.findById(userSharesId).orElse(
             UserShares(
                 memberId = member.id,
@@ -186,10 +185,7 @@ class SwapService(
 
     private fun executeSell(member: Member, pool: MarketPool, request: SwapRequest): SwapResponse {
         val sharesIn = request.sharesIn ?: throw IllegalArgumentException("sharesIn is required for SELL.")
-
-        require(sharesIn >= MIN_AMOUNT) {
-            "최소 거래 금액은 $MIN_AMOUNT shares입니다."
-        }
+        AmmTradePolicy.ensureSellInput(sharesIn, MIN_AMOUNT)
 
         // UserShares 확인
         val userSharesId = UserSharesId(member.id!!, request.questionId, request.outcome)
@@ -197,9 +193,7 @@ class SwapService(
             IllegalArgumentException("보유한 shares가 없습니다.")
         }
 
-        require(userShares.shares >= sharesIn) {
-            "shares 잔액이 부족합니다. 보유: ${userShares.shares}, 필요: $sharesIn"
-        }
+        AmmTradePolicy.ensureOwnedShares(userShares.shares, sharesIn)
 
         // Before 스냅샷 캡처 (pool 업데이트 전)
         val yesBefore = pool.yesShares
@@ -224,9 +218,7 @@ class SwapService(
 
         // 슬리피지 보호
         request.minUsdcOut?.let { minUsdc ->
-            require(sellResult.usdcOut >= minUsdc) {
-                "슬리피지 초과: 예상 최소 $minUsdc USDC, 실제 ${sellResult.usdcOut} USDC"
-            }
+            AmmTradePolicy.ensureMinUsdcOut(sellResult.usdcOut, minUsdc)
         }
 
         // c_out_gross 계산 (net + fee)
@@ -241,10 +233,17 @@ class SwapService(
         pool.updatedAt = LocalDateTime.now()
 
         marketPoolRepository.save(pool)
+        marketWebSocketService.broadcastPoolUpdate(request.questionId, sellResult.yAfter, sellResult.nAfter)
 
-        // 회원 USDC 증가
-        member.usdcBalance = member.usdcBalance.add(sellResult.usdcOut)
-        memberRepository.save(member)
+        // 회원 USDC 증가 (wallet ledger 반영 + member.usdcBalance 동기화)
+        walletBalanceService.credit(
+            memberId = member.id,
+            amount = sellResult.usdcOut,
+            txType = "AMM_SELL",
+            referenceType = "QUESTION",
+            referenceId = request.questionId,
+            description = "AMM SELL ${request.outcome}"
+        )
 
         // UserShares 업데이트
         userShares.shares = userShares.shares.subtract(sharesIn)
@@ -349,21 +348,14 @@ class SwapService(
             IllegalArgumentException("질문을 찾을 수 없습니다.")
         }
 
-        require(question.executionModel == ExecutionModel.AMM_FPMM) {
-            "해당 질문은 AMM 실행 모델이 아닙니다."
-        }
-
-        require(question.status == QuestionStatus.BETTING) {
-            "베팅 기간이 아닙니다. 현재 상태: ${question.status}"
-        }
+        AmmTradePolicy.ensureAmmQuestion(question.executionModel)
+        AmmTradePolicy.ensureBettingStatus(question.status)
 
         val pool = marketPoolRepository.findById(questionId).orElseThrow {
             IllegalArgumentException("마켓 풀을 찾을 수 없습니다.")
         }
 
-        require(pool.status == PoolStatus.ACTIVE) {
-            "마켓 풀이 활성화되지 않았습니다. 현재 상태: ${pool.status}"
-        }
+        AmmTradePolicy.ensurePoolActive(pool.status)
 
         val priceBefore = FpmmMathEngine.calculatePrice(pool.yesShares, pool.noShares)
         val k = pool.yesShares.multiply(pool.noShares)
@@ -445,13 +437,7 @@ class SwapService(
      */
     @Transactional
     fun seedPool(request: SeedPoolRequest): SeedPoolResponse {
-        require(request.seedUsdc > ZERO) {
-            "시드 금액은 0보다 커야 합니다."
-        }
-
-        require(request.feeRate >= ZERO && request.feeRate < ONE) {
-            "수수료율은 [0, 1) 범위여야 합니다."
-        }
+        AmmTradePolicy.ensureSeedRequest(request.seedUsdc, request.feeRate, ZERO, ONE)
 
         // 이미 풀이 있는지 확인
         val existingPool = marketPoolRepository.findById(request.questionId)
@@ -463,9 +449,7 @@ class SwapService(
             IllegalArgumentException("질문을 찾을 수 없습니다.")
         }
 
-        require(question.status != QuestionStatus.SETTLED && question.status != QuestionStatus.CANCELLED) {
-            "정산 완료되거나 취소된 질문에는 풀을 생성할 수 없습니다."
-        }
+        AmmTradePolicy.ensureSeedableQuestion(question.status)
 
         // 풀 생성
         val yShares = request.seedUsdc
@@ -623,8 +607,7 @@ class SwapService(
     @Transactional(readOnly = true)
     fun getPriceHistory(questionId: Long, limit: Int = 100): List<PricePointResponse> {
         // 질문 존재 여부 확인 - 없으면 빈 리스트 반환
-        val question = questionRepository.findById(questionId).orElse(null)
-            ?: return emptyList()
+        if (!questionRepository.existsById(questionId)) return emptyList()
 
         // 풀 존재 여부 확인 - 없으면 빈 리스트 반환 (ORDERBOOK_LEGACY 등)
         val pool = marketPoolRepository.findById(questionId).orElse(null)

@@ -1,5 +1,7 @@
 package com.predata.backend.controller
 
+import io.swagger.v3.oas.annotations.tags.Tag
+
 import com.predata.backend.dto.ApiEnvelope
 import com.predata.backend.domain.BadgeDefinition
 import com.predata.backend.repository.BadgeDefinitionRepository
@@ -9,6 +11,7 @@ import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.*
 
 @RestController
+@Tag(name = "member-social", description = "Badge APIs")
 @RequestMapping("/api/badges")
 class BadgeController(
     private val badgeService: BadgeService,

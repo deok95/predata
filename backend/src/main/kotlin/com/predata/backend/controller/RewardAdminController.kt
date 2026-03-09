@@ -1,5 +1,7 @@
 package com.predata.backend.controller
 
+import io.swagger.v3.oas.annotations.tags.Tag
+
 import com.predata.backend.dto.ApiEnvelope
 import com.predata.backend.service.VoteRewardDistributionService
 import org.springframework.http.ResponseEntity
@@ -11,6 +13,7 @@ import org.springframework.web.bind.annotation.*
  * - 실패분 재시도
  */
 @RestController
+@Tag(name = "settlement-reward", description = "Reward admin APIs")
 @RequestMapping("/api/admin/rewards")
 class RewardAdminController(
     private val voteRewardDistributionService: VoteRewardDistributionService

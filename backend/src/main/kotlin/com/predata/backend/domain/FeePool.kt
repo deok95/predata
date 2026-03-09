@@ -7,7 +7,11 @@ import java.time.LocalDateTime
 /**
  * 수수료 풀 엔티티
  * - 질문별 수수료 총액 및 분배 현황 관리
- * - 30% 플랫폼 / 60% 리워드 풀 / 10% 리저브
+ * - 질문별 분배 비율:
+ *   - platform_share: 플랫폼 몫
+ *   - creator_share: 질문 생성자 몫
+ *   - reward_pool_share: 투표자 분배 풀
+ *   - reserve_share: 반올림 잔여/운영 리저브
  */
 @Entity
 @Table(name = "fee_pools")
@@ -25,6 +29,9 @@ data class FeePool(
 
     @Column(name = "platform_share", precision = 18, scale = 6, nullable = false)
     var platformShare: BigDecimal = BigDecimal.ZERO,
+
+    @Column(name = "creator_share", precision = 18, scale = 6, nullable = false)
+    var creatorShare: BigDecimal = BigDecimal.ZERO,
 
     @Column(name = "reward_pool_share", precision = 18, scale = 6, nullable = false)
     var rewardPoolShare: BigDecimal = BigDecimal.ZERO,

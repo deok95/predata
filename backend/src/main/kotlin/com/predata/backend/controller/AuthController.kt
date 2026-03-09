@@ -1,5 +1,7 @@
 package com.predata.backend.controller
 
+import io.swagger.v3.oas.annotations.tags.Tag
+
 import com.predata.backend.dto.ApiEnvelope
 import com.predata.backend.dto.CompleteGoogleRegistrationRequest
 import com.predata.backend.dto.CompleteSignupRequest
@@ -8,12 +10,15 @@ import com.predata.backend.dto.GoogleAuthResponse
 import com.predata.backend.dto.LoginRequest
 import com.predata.backend.dto.SendCodeRequest
 import com.predata.backend.dto.VerifyCodeRequest
+import com.predata.backend.dto.WalletLoginRequest
+import com.predata.backend.dto.WalletNonceRequest
 import com.predata.backend.service.AuthService
 import com.predata.backend.service.GoogleOAuthService
 import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.*
 
 @RestController
+@Tag(name = "auth", description = "Authentication APIs")
 @RequestMapping("/api/auth")
 class AuthController(
     private val authService: AuthService,
@@ -95,6 +100,51 @@ class AuthController(
         val result = authService.login(request.email, request.password)
         if (result["success"] != true) {
             throw IllegalArgumentException(result["message"] as? String ?: "Login failed.")
+        }
+        return ResponseEntity.ok(ApiEnvelope.ok(result))
+    }
+
+    /**
+     * JWT refresh
+     * POST /api/auth/refresh
+     */
+    @PostMapping("/refresh")
+    fun refresh(@RequestHeader("Authorization", required = false) authHeader: String?): ResponseEntity<ApiEnvelope<Map<String, Any>>> {
+        if (authHeader == null || !authHeader.startsWith("Bearer ")) {
+            throw IllegalArgumentException("Authorization Bearer token is required.")
+        }
+        val result = authService.refreshToken(authHeader.substring(7))
+        if (result["success"] != true) {
+            throw IllegalArgumentException(result["message"] as? String ?: "Token refresh failed.")
+        }
+        return ResponseEntity.ok(ApiEnvelope.ok(result))
+    }
+
+    /**
+     * Wallet login nonce
+     * POST /api/auth/wallet/nonce
+     */
+    @PostMapping("/wallet/nonce")
+    fun walletLoginNonce(@RequestBody request: WalletNonceRequest): ResponseEntity<ApiEnvelope<Map<String, Any>>> {
+        if (request.walletAddress.isBlank()) {
+            throw IllegalArgumentException("Wallet address is required.")
+        }
+        val result = authService.issueWalletLoginNonce(request.walletAddress)
+        return ResponseEntity.ok(ApiEnvelope.ok(result))
+    }
+
+    /**
+     * Wallet login
+     * POST /api/auth/wallet
+     */
+    @PostMapping("/wallet")
+    fun walletLogin(@RequestBody request: WalletLoginRequest): ResponseEntity<ApiEnvelope<Map<String, Any>>> {
+        if (request.walletAddress.isBlank() || request.nonce.isBlank() || request.message.isBlank() || request.signature.isBlank()) {
+            throw IllegalArgumentException("Wallet login signature payload is required.")
+        }
+        val result = authService.loginWithWallet(request)
+        if (result["success"] != true) {
+            throw IllegalArgumentException(result["message"] as? String ?: "Wallet login failed.")
         }
         return ResponseEntity.ok(ApiEnvelope.ok(result))
     }

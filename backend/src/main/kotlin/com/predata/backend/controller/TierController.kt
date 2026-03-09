@@ -1,5 +1,7 @@
 package com.predata.backend.controller
 
+import io.swagger.v3.oas.annotations.tags.Tag
+
 import com.predata.backend.dto.ApiEnvelope
 import com.predata.backend.service.TierProgressResponse
 import com.predata.backend.service.TierService
@@ -8,6 +10,7 @@ import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.*
 
 @RestController
+@Tag(name = "member-social", description = "Tier APIs")
 @RequestMapping("/api/tiers")
 class TierController(
     private val tierService: TierService

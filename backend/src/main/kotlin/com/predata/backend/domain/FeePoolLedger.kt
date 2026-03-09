@@ -46,6 +46,9 @@ enum class FeePoolAction {
     /** 플랫폼 몫 인출 */
     PLATFORM_WITHDRAWN,
 
+    /** 생성자 몫 지급 */
+    CREATOR_DISTRIBUTED,
+
     /** 리워드 분배 */
     REWARD_DISTRIBUTED,
 
