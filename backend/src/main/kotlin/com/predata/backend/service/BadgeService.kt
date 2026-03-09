@@ -81,9 +81,9 @@ class BadgeService(
 
             // Category diversity: count distinct categories from bets
             val bets = activityRepository.findByMemberIdAndActivityType(memberId, ActivityType.BET)
-            val distinctCategories = bets.mapNotNull { bet ->
-                questionRepository.findById(bet.questionId).orElse(null)?.category
-            }.distinct()
+            val questionIds = bets.map { it.questionId }.distinct()
+            val questionsMap = questionRepository.findAllById(questionIds).associateBy { it.id!! }
+            val distinctCategories = bets.mapNotNull { questionsMap[it.questionId]?.category }.distinct()
 
             val commonCategories = setOf("ECONOMY", "SPORTS", "POLITICS", "TECH", "CULTURE")
             if (commonCategories.all { it in distinctCategories }) {
@@ -114,9 +114,11 @@ class BadgeService(
 
             // Win streak calculation: query recent settled bets and count consecutive wins
             val allBets = activityRepository.findByMemberIdAndActivityType(memberId, ActivityType.BET)
+            val questionIds = allBets.map { it.questionId }.distinct()
+            val questionsMap = questionRepository.findAllById(questionIds).associateBy { it.id!! }
             val settledBets = allBets
                 .mapNotNull { bet ->
-                    val q = questionRepository.findById(bet.questionId).orElse(null)
+                    val q = questionsMap[bet.questionId]
                     if (q != null && q.status == QuestionStatus.SETTLED) {
                         val winningChoice = if (q.finalResult == FinalResult.YES) Choice.YES else Choice.NO
                         Pair(bet.createdAt, bet.choice == winningChoice)

@@ -2,6 +2,7 @@ package com.predata.backend.sports.scheduler
 
 import com.predata.backend.domain.QuestionStatus
 import com.predata.backend.repository.QuestionRepository
+import com.predata.backend.sports.domain.MatchStatus
 import com.predata.backend.sports.domain.QuestionPhase
 import org.slf4j.LoggerFactory
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
@@ -9,6 +10,7 @@ import org.springframework.scheduling.annotation.Scheduled
 import org.springframework.stereotype.Component
 import org.springframework.transaction.annotation.Transactional
 import java.time.LocalDateTime
+import java.time.ZoneOffset
 
 @Component
 @ConditionalOnProperty(
@@ -24,8 +26,7 @@ class QuestionPhaseScheduler(
 
     /**
      * 5분 간격으로 Match 연결 Question의 phase 자동 전환
-     *   matchTime - 48h → VOTING
-     *   matchTime - 24h → BETTING
+     *   pre-match      → BETTING
      *   matchTime      → LIVE
      */
     @Scheduled(fixedDelayString = "\${sports.scheduler.phase-check-interval-ms}")
@@ -37,7 +38,7 @@ class QuestionPhaseScheduler(
             return
         }
 
-        val now = LocalDateTime.now()
+        val now = LocalDateTime.now(ZoneOffset.UTC)
         var transitioned = 0
 
         for (question in questions) {
@@ -45,22 +46,32 @@ class QuestionPhaseScheduler(
             val matchTime = match.matchTime
             val currentPhase = question.phase
 
-            val newPhase = when {
-                !now.isBefore(matchTime) -> QuestionPhase.LIVE
-                !now.isBefore(matchTime.minusHours(24)) -> QuestionPhase.BETTING
-                !now.isBefore(matchTime.minusHours(48)) -> QuestionPhase.VOTING
-                else -> null
+            val newPhase = when (match.matchStatus) {
+                MatchStatus.LIVE, MatchStatus.HALFTIME -> QuestionPhase.LIVE
+                MatchStatus.FINISHED, MatchStatus.CANCELLED, MatchStatus.POSTPONED -> QuestionPhase.FINISHED
+                else -> if (!now.isBefore(matchTime)) QuestionPhase.LIVE else QuestionPhase.BETTING
             }
 
-            if (newPhase != null && newPhase != currentPhase) {
+            if (newPhase != currentPhase) {
                 val oldPhase = currentPhase?.name ?: "NULL"
                 question.phase = newPhase
 
                 // phase에 맞춰 status도 동기화
                 when (newPhase) {
-                    QuestionPhase.VOTING -> question.status = QuestionStatus.VOTING
-                    QuestionPhase.BETTING -> question.status = QuestionStatus.BETTING
-                    else -> {} // LIVE에서는 status 변경 안 함
+                    QuestionPhase.BETTING -> {
+                        question.status = QuestionStatus.BETTING
+                        question.category = "SPORTS"
+                    }
+                    QuestionPhase.LIVE -> {
+                        // LIVE 탭 노출용 카테고리 전환 (match 연결 질문만)
+                        question.status = QuestionStatus.BETTING
+                        question.category = "LIVE"
+                    }
+                    QuestionPhase.FINISHED -> {
+                        // 종료된 경기는 LIVE에서 즉시 비노출 (정산 완료 전/후 공통)
+                        question.category = "SPORTS"
+                    }
+                    else -> {}
                 }
 
                 questionRepository.save(question)

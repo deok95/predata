@@ -1,5 +1,8 @@
 package com.predata.backend.service
 
+import com.predata.backend.domain.policy.DepositPolicy
+import com.predata.backend.domain.policy.OnChainTransferPolicy
+import com.predata.backend.domain.policy.TransferEventCandidate
 import com.predata.backend.domain.PaymentTransaction
 import com.predata.backend.repository.MemberRepository
 import com.predata.backend.repository.PaymentTransactionRepository
@@ -26,7 +29,8 @@ class PaymentVerificationService(
     @Value("\${polygon.usdc-contract}") private val usdcContract: String,
     private val paymentTransactionRepository: PaymentTransactionRepository,
     private val memberRepository: MemberRepository,
-    private val transactionHistoryService: TransactionHistoryService
+    private val transactionHistoryService: TransactionHistoryService,
+    private val walletBalanceService: WalletBalanceService,
 ) {
     private val log = LoggerFactory.getLogger(javaClass)
     private val web3j: Web3j by lazy { Web3j.build(HttpService(rpcUrl)) }
@@ -81,34 +85,23 @@ class PaymentVerificationService(
         val member = memberRepository.findById(memberId)
             .orElseThrow { IllegalArgumentException("회원을 찾을 수 없습니다.") }
 
-        // 2. fromAddress 필수 검증
-        if (fromAddress.isNullOrBlank()) {
-            throw IllegalArgumentException("Sender wallet address (fromAddress) is required.")
-        }
-
-        // 3. DB에 등록된 지갑 주소 확인
-        if (member.walletAddress == null) {
-            throw IllegalArgumentException("No registered wallet address. Please connect your wallet in My Page first.")
-        }
-
-        // 4. 지갑 주소 검증 (DB에 등록된 지갑 주소와 일치해야 함)
-        if (!fromAddress.equals(member.walletAddress, ignoreCase = true)) {
-            throw IllegalArgumentException("Wallet address does not match registered address. (registered: ${member.walletAddress}, requested: $fromAddress)")
-        }
+        // 2~4. 도메인 정책 검증
+        DepositPolicy.ensureFromAddressProvided(fromAddress)
+        val senderAddress = fromAddress!!
+        DepositPolicy.ensureRegisteredWallet(member.walletAddress)
+        DepositPolicy.ensureWalletAddressMatches(member.walletAddress!!, senderAddress)
 
         // 5. 중복 검증 방지
         if (paymentTransactionRepository.existsByTxHash(txHash)) {
             throw IllegalArgumentException("Transaction already processed: $txHash")
         }
 
-        if (amount < BigDecimal.ONE) {
-            throw IllegalArgumentException("Deposit amount must be at least \$1.")
-        }
+        DepositPolicy.ensureMinimumDeposit(amount)
 
-        val expectedAmountRaw = amount.multiply(BigDecimal.TEN.pow(USDC_DECIMALS)).toBigInteger()
+        val expectedAmountRaw = DepositPolicy.expectedAmountRaw(amount)
 
         // 6. 온체인 트랜잭션 검증 (실제 from 주소도 검증)
-        val verifiedAmount = verifyOnChainTransfer(txHash, expectedAmountRaw, fromAddress)
+        verifyOnChainTransfer(txHash, expectedAmountRaw, senderAddress)
 
         // 7. 결제 기록 저장
         val payment = PaymentTransaction(
@@ -120,15 +113,22 @@ class PaymentVerificationService(
         )
         paymentTransactionRepository.save(payment)
 
-        // 8. 잔액 충전
-        member.usdcBalance = member.usdcBalance.add(amount)
-        memberRepository.save(member)
+        // 8. 잔액 충전 (wallet ledger + member 잔액 동기화)
+        val wallet = walletBalanceService.credit(
+            memberId = memberId,
+            amount = amount,
+            txType = "DEPOSIT",
+            referenceType = "PAYMENT_TX",
+            referenceId = payment.id,
+            description = "USDC 충전",
+            treasuryInflow = true,
+        )
 
         transactionHistoryService.record(
             memberId = memberId,
             type = "DEPOSIT",
             amount = amount,
-            balanceAfter = member.usdcBalance,
+            balanceAfter = wallet.availableBalance,
             description = "USDC 충전",
             txHash = txHash
         )
@@ -139,7 +139,7 @@ class PaymentVerificationService(
             success = true,
             txHash = txHash,
             amount = amount.toDouble(),
-            newBalance = member.usdcBalance.toDouble(),
+            newBalance = wallet.availableBalance.toDouble(),
             message = "\$${amount} has been deposited."
         )
     }
@@ -150,58 +150,37 @@ class PaymentVerificationService(
     fun verifyOnChainTransfer(txHash: String, expectedAmountRaw: BigInteger, expectedFromAddress: String): BigInteger {
         val receipt = web3j.ethGetTransactionReceipt(txHash).send()
 
-        if (receipt.transactionReceipt.isEmpty) {
-            throw IllegalArgumentException("Transaction not found. It may not be confirmed yet: $txHash")
-        }
+        OnChainTransferPolicy.ensureReceiptPresent(receipt.transactionReceipt.isPresent, txHash)
 
         val txReceipt = receipt.transactionReceipt.get()
 
-        // 트랜잭션 성공 여부 확인
-        if (txReceipt.status != "0x1") {
-            throw IllegalArgumentException("Transaction failed: $txHash")
-        }
+        OnChainTransferPolicy.ensureTransactionSucceeded(txReceipt.status, txHash)
 
-        // USDC 컨트랙트로의 트랜잭션인지 확인
-        if (!txReceipt.to.equals(usdcContract, ignoreCase = true)) {
-            throw IllegalArgumentException("Not a transaction to USDC contract.")
-        }
+        OnChainTransferPolicy.ensureTargetContract(txReceipt.to, usdcContract)
 
         // Transfer 이벤트 로그 파싱
         val transferLogs = txReceipt.logs.filter { logEntry ->
             logEntry.topics.isNotEmpty() && logEntry.topics[0] == transferEventSignature
         }
 
-        if (transferLogs.isEmpty()) {
-            throw IllegalArgumentException("Transfer event not found.")
-        }
-
-        // 발신자, 수신자, 금액 검증
-        for (logEntry in transferLogs) {
-            if (logEntry.topics.size < 3) continue
-
+        val candidates = transferLogs.mapNotNull { logEntry ->
+            if (logEntry.topics.size < 3) return@mapNotNull null
             val fromAddress = "0x" + logEntry.topics[1].removePrefix("0x").takeLast(40)
             val toAddress = "0x" + logEntry.topics[2].removePrefix("0x").takeLast(40)
             val transferValue = BigInteger(logEntry.data.removePrefix("0x"), 16)
-
-            if (toAddress.equals(receiverWallet, ignoreCase = true)) {
-                // 발신 주소 검증
-                if (!fromAddress.equals(expectedFromAddress, ignoreCase = true)) {
-                    throw IllegalArgumentException(
-                        "On-chain sender address mismatch. (expected: $expectedFromAddress, actual: $fromAddress)"
-                    )
-                }
-
-                // 금액 검증
-                if (transferValue < expectedAmountRaw) {
-                    throw IllegalArgumentException(
-                        "Insufficient transfer amount. (required: $expectedAmountRaw, actual: $transferValue)"
-                    )
-                }
-                return transferValue
-            }
+            TransferEventCandidate(
+                fromAddress = fromAddress,
+                toAddress = toAddress,
+                amountRaw = transferValue,
+            )
         }
 
-        throw IllegalArgumentException("USDC transfer to receiver wallet not found.")
+        return OnChainTransferPolicy.selectAndValidateTransfer(
+            candidates = candidates,
+            expectedReceiver = receiverWallet,
+            expectedSender = expectedFromAddress,
+            expectedAmountRaw = expectedAmountRaw,
+        )
     }
 }
 

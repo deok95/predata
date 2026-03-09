@@ -1,21 +1,15 @@
--- Predata MSA 데이터베이스 초기화
+-- PRE(D)ATA 모놀리식 데이터베이스 초기화
+-- 사용법: mysql -u root -p < init-db.sql
 
--- 서비스별 데이터베이스 생성
-CREATE DATABASE IF NOT EXISTS predata_member;
-CREATE DATABASE IF NOT EXISTS predata_question;
-CREATE DATABASE IF NOT EXISTS predata_betting;
-CREATE DATABASE IF NOT EXISTS predata_settlement;
-CREATE DATABASE IF NOT EXISTS predata_data;
-CREATE DATABASE IF NOT EXISTS predata_sports;
-CREATE DATABASE IF NOT EXISTS predata_blockchain;
+-- 데이터베이스 생성
+CREATE DATABASE IF NOT EXISTS predata
+  CHARACTER SET utf8mb4
+  COLLATE utf8mb4_unicode_ci;
 
--- 권한 설정
-GRANT ALL PRIVILEGES ON predata_member.* TO 'root'@'%';
-GRANT ALL PRIVILEGES ON predata_question.* TO 'root'@'%';
-GRANT ALL PRIVILEGES ON predata_betting.* TO 'root'@'%';
-GRANT ALL PRIVILEGES ON predata_settlement.* TO 'root'@'%';
-GRANT ALL PRIVILEGES ON predata_data.* TO 'root'@'%';
-GRANT ALL PRIVILEGES ON predata_sports.* TO 'root'@'%';
-GRANT ALL PRIVILEGES ON predata_blockchain.* TO 'root'@'%';
+-- 애플리케이션 전용 유저 생성 (prod 권장)
+-- CREATE USER IF NOT EXISTS 'predata'@'localhost' IDENTIFIED BY '<STRONG_PASSWORD>';
+-- GRANT ALL PRIVILEGES ON predata.* TO 'predata'@'localhost';
+-- FLUSH PRIVILEGES;
 
-FLUSH PRIVILEGES;
+-- 참고: 테이블 생성은 Flyway가 자동 처리합니다.
+-- 이 파일은 DB/유저 생성만 담당합니다.

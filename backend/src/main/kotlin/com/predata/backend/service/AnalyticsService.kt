@@ -2,13 +2,12 @@ package com.predata.backend.service
 
 import com.predata.backend.domain.ActivityType
 import com.predata.backend.domain.Choice
+import com.predata.backend.domain.policy.AnalyticsPolicy
 import com.predata.backend.repository.ActivityRepository
 import com.predata.backend.repository.MemberRepository
 import com.predata.backend.repository.QuestionRepository
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
-import java.math.BigDecimal
-import java.math.RoundingMode
 
 @Service
 class AnalyticsService(
@@ -93,20 +92,16 @@ class AnalyticsService(
         // 투표 분포
         val voteYesCount = votes.count { it.choice == Choice.YES }
         val voteNoCount = votes.size - voteYesCount
-        val voteYesPercentage = if (votes.isNotEmpty()) {
-            (voteYesCount.toDouble() / votes.size * 100)
-        } else 0.0
+        val voteYesPercentage = AnalyticsPolicy.percentage(voteYesCount, votes.size)
         
         // 베팅 분포 (금액 기준)
         val betYesAmount = bets.filter { it.choice == Choice.YES }.sumOf { it.amount }
         val betNoAmount = bets.filter { it.choice == Choice.NO }.sumOf { it.amount }
         val totalBetAmount = betYesAmount + betNoAmount
-        val betYesPercentage = if (totalBetAmount > 0) {
-            (betYesAmount.toDouble() / totalBetAmount * 100)
-        } else 0.0
-        
+        val betYesPercentage = AnalyticsPolicy.percentage(betYesAmount, totalBetAmount)
+
         // 괴리율 계산
-        val gapPercentage = Math.abs(voteYesPercentage - betYesPercentage)
+        val gapPercentage = AnalyticsPolicy.gapPercentage(voteYesPercentage, betYesPercentage)
         
         return VoteBetGapReport(
             questionId = questionId,
@@ -123,7 +118,7 @@ class AnalyticsService(
                 noPercentage = 100 - betYesPercentage
             ),
             gapPercentage = gapPercentage,
-            qualityScore = calculateQualityScore(gapPercentage)
+            qualityScore = AnalyticsPolicy.qualityScore(gapPercentage)
         )
     }
     
@@ -135,9 +130,8 @@ class AnalyticsService(
         val allVotes = activityRepository.findByQuestionIdAndActivityType(questionId, ActivityType.VOTE)
         
         // 필터링 기준 적용
-        val latencyThreshold = 2000 // 2초 이하는 의심
         val suspiciousVotes = allVotes.filter { vote ->
-            (vote.latencyMs ?: Int.MAX_VALUE) < latencyThreshold
+            AnalyticsPolicy.isSuspiciousLatency(vote.latencyMs)
         }
         
         val cleanVotes = allVotes - suspiciousVotes.toSet()
@@ -145,16 +139,12 @@ class AnalyticsService(
         // 필터링 전 분포
         val beforeYes = allVotes.count { it.choice == Choice.YES }
         val beforeTotal = allVotes.size
-        val beforeYesPercentage = if (beforeTotal > 0) {
-            (beforeYes.toDouble() / beforeTotal * 100)
-        } else 0.0
+        val beforeYesPercentage = AnalyticsPolicy.percentage(beforeYes, beforeTotal)
         
         // 필터링 후 분포
         val afterYes = cleanVotes.count { it.choice == Choice.YES }
         val afterTotal = cleanVotes.size
-        val afterYesPercentage = if (afterTotal > 0) {
-            (afterYes.toDouble() / afterTotal * 100)
-        } else 0.0
+        val afterYesPercentage = AnalyticsPolicy.percentage(afterYes, afterTotal)
         
         return FilteringEffectReport(
             questionId = questionId,
@@ -169,9 +159,7 @@ class AnalyticsService(
                 noPercentage = 100 - afterYesPercentage
             ),
             filteredCount = suspiciousVotes.size,
-            filteredPercentage = if (beforeTotal > 0) {
-                (suspiciousVotes.size.toDouble() / beforeTotal * 100)
-            } else 0.0
+            filteredPercentage = AnalyticsPolicy.percentage(suspiciousVotes.size, beforeTotal)
         )
     }
     
@@ -195,19 +183,6 @@ class AnalyticsService(
         )
     }
     
-    /**
-     * 품질 점수 계산 (괴리율 기반)
-     * 괴리율이 낮을수록 높은 점수
-     */
-    private fun calculateQualityScore(gapPercentage: Double): Double {
-        return when {
-            gapPercentage < 5.0 -> 95.0 + (5.0 - gapPercentage) // 95-100점
-            gapPercentage < 10.0 -> 85.0 + (10.0 - gapPercentage) // 85-95점
-            gapPercentage < 20.0 -> 70.0 + (20.0 - gapPercentage) * 0.75 // 70-85점
-            else -> Math.max(0.0, 70.0 - (gapPercentage - 20.0)) // 0-70점
-        }
-    }
-
     /**
      * 글로벌 통계 조회
      */

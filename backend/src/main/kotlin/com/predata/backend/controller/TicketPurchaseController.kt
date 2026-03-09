@@ -1,56 +1,26 @@
 package com.predata.backend.controller
 
-import com.predata.backend.config.JwtAuthInterceptor
+import io.swagger.v3.oas.annotations.tags.Tag
+
+import com.predata.backend.dto.ApiEnvelope
 import com.predata.backend.service.VotingPassPurchaseResponse
 import com.predata.backend.service.VotingPassService
+import com.predata.backend.util.authenticatedMemberId
 import jakarta.servlet.http.HttpServletRequest
-import org.springframework.http.HttpStatus
-import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.*
 
 @RestController
+@Tag(name = "voting", description = "Voting pass purchase APIs")
 @RequestMapping("/api/voting-pass")
-@CrossOrigin(originPatterns = ["http://localhost:*", "http://127.0.0.1:*", "https://predata.io", "https://www.predata.io", "https://*.vercel.app", "https://*.trycloudflare.com"])
 class VotingPassController(
-    private val votingPassService: VotingPassService
+    private val votingPassService: VotingPassService,
 ) {
-
-    /**
-     * 투표 패스 구매
-     * POST /api/voting-pass/purchase
-     */
     @PostMapping("/purchase")
     fun purchaseVotingPass(
         httpRequest: HttpServletRequest,
-        @RequestBody(required = false) request: VotingPassPurchaseRequest? = null // backward compatible; ignored
-    ): ResponseEntity<VotingPassPurchaseResponse> {
-        val authenticatedMemberId = httpRequest.getAttribute(JwtAuthInterceptor.ATTR_MEMBER_ID) as? Long
-            ?: return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(
-                VotingPassPurchaseResponse(
-                    success = false,
-                    hasVotingPass = false,
-                    remainingBalance = 0.0,
-                    message = "Authentication required."
-                )
-            )
-
-        return try {
-            // Never trust memberId in body; enforce JWT subject.
-            val response = votingPassService.purchaseVotingPass(authenticatedMemberId)
-            ResponseEntity.ok(response)
-        } catch (e: IllegalArgumentException) {
-            ResponseEntity.badRequest().body(
-                VotingPassPurchaseResponse(
-                    success = false,
-                    hasVotingPass = false,
-                    remainingBalance = 0.0,
-                    message = e.message ?: "Failed to purchase voting pass."
-                )
-            )
-        }
+    ): ApiEnvelope<VotingPassPurchaseResponse> {
+        val memberId = httpRequest.authenticatedMemberId()
+        val result = votingPassService.purchaseVotingPass(memberId)
+        return ApiEnvelope.ok(result)
     }
 }
-
-data class VotingPassPurchaseRequest(
-    val memberId: Long
-)

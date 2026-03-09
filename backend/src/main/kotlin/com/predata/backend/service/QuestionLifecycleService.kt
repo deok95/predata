@@ -1,6 +1,7 @@
 package com.predata.backend.service
 
 import com.predata.backend.domain.VotingPhase
+import com.predata.backend.domain.policy.QuestionPhaseTransitionPolicy
 import com.predata.backend.repository.QuestionRepository
 import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service
@@ -29,16 +30,8 @@ class QuestionLifecycleService(
 
         val currentPhase = question.votingPhase
 
-        // FSM 전환 검증
-        val allowed = when (currentPhase) {
-            VotingPhase.VOTING_COMMIT_OPEN -> newPhase == VotingPhase.VOTING_REVEAL_OPEN
-            VotingPhase.VOTING_REVEAL_OPEN -> newPhase == VotingPhase.VOTING_REVEAL_CLOSED || newPhase == VotingPhase.BETTING_OPEN
-            VotingPhase.VOTING_REVEAL_CLOSED -> newPhase == VotingPhase.BETTING_OPEN
-            VotingPhase.BETTING_OPEN -> newPhase == VotingPhase.SETTLEMENT_PENDING
-            VotingPhase.SETTLEMENT_PENDING -> newPhase == VotingPhase.SETTLED
-            VotingPhase.SETTLED -> newPhase == VotingPhase.REWARD_DISTRIBUTED
-            VotingPhase.REWARD_DISTRIBUTED -> false  // 종료 상태
-        }
+        // Domain FSM 정책으로 전환 검증
+        val allowed = QuestionPhaseTransitionPolicy.isAllowed(currentPhase, newPhase)
 
         if (!allowed) {
             logger.warn("Invalid phase transition: questionId=$questionId, $currentPhase -> $newPhase")

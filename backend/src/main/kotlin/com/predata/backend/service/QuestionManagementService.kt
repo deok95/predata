@@ -10,7 +10,9 @@ import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import jakarta.validation.constraints.NotBlank
 import java.math.BigDecimal
+import java.math.RoundingMode
 import java.time.LocalDateTime
+import java.time.ZoneOffset
 import java.time.format.DateTimeFormatter
 
 @Service
@@ -18,7 +20,9 @@ class QuestionManagementService(
     private val questionRepository: QuestionRepository,
     private val blockchainService: BlockchainService,
     private val jdbcTemplate: JdbcTemplate,
-    private val swapService: com.predata.backend.service.amm.SwapService
+    private val swapService: com.predata.backend.service.amm.SwapService,
+    private val categoryValidationService: CategoryValidationService,
+    private val questionContentValidationService: QuestionContentValidationService,
 ) {
 
     companion object {
@@ -30,7 +34,8 @@ class QuestionManagementService(
      */
     @Transactional
     fun createQuestion(request: CreateQuestionRequest): QuestionCreationResponse {
-        val now = LocalDateTime.now()
+        val now = LocalDateTime.now(ZoneOffset.UTC)
+        questionContentValidationService.validateTitle(request.title)
 
         // 1. 마감일 검증
         val expiredAt = LocalDateTime.parse(request.expiredAt, DateTimeFormatter.ISO_DATE_TIME)
@@ -49,7 +54,7 @@ class QuestionManagementService(
 
         val question = Question(
             title = request.title,
-            category = request.category,
+            category = categoryValidationService.normalizeAndValidate(request.category),
             categoryWeight = BigDecimal(request.categoryWeight ?: 1.0),
             status = QuestionStatus.VOTING,
             type = QuestionType.VERIFIABLE,
@@ -96,11 +101,14 @@ class QuestionManagementService(
         }
 
         // 수정 가능한 필드만 업데이트
-        request.title?.let { question.title = it }
-        request.category?.let { question.category = it }
+        request.title?.let {
+            questionContentValidationService.validateTitle(it)
+            question.title = it
+        }
+        request.category?.let { question.category = categoryValidationService.normalizeAndValidate(it) }
         request.expiredAt?.let {
             val newExpiredAt = LocalDateTime.parse(it, DateTimeFormatter.ISO_DATE_TIME)
-            if (newExpiredAt.isBefore(LocalDateTime.now())) {
+            if (newExpiredAt.isBefore(LocalDateTime.now(ZoneOffset.UTC))) {
                 throw IllegalArgumentException("Expiration date must be in the future.")
             }
             question.expiredAt = newExpiredAt
@@ -180,6 +188,8 @@ class QuestionManagementService(
      */
     @Transactional
     fun createQuestionWithDuration(request: com.predata.backend.dto.AdminCreateQuestionRequest): QuestionCreationResponse {
+        questionContentValidationService.validateTitle(request.title)
+        questionContentValidationService.validateResolutionRule(request.resolutionRule)
         // OPINION 타입 질문 템플릿 검증
         if (request.marketType == com.predata.backend.domain.MarketType.OPINION) {
             if (!request.title.startsWith("시장은 ") || !request.title.endsWith("라고 생각할까요?")) {
@@ -192,8 +202,12 @@ class QuestionManagementService(
         if (request.marketType == com.predata.backend.domain.MarketType.OPINION && !voteResultSettlement) {
             throw IllegalArgumentException("OPINION type questions must have voteResultSettlement=true")
         }
+        require(request.creatorSplitInPool in 0..100 && request.creatorSplitInPool % 10 == 0) {
+            "creatorSplitInPool must be between 0 and 100 in steps of 10."
+        }
 
-        val now = LocalDateTime.now()
+        validateVotingAndBettingWindow(request.votingDuration, request.bettingDuration)
+        val now = LocalDateTime.now(ZoneOffset.UTC)
 
         // 자동 시간 계산
         val votingEndAt = now.plusSeconds(request.votingDuration)
@@ -203,10 +217,16 @@ class QuestionManagementService(
         // resolveAt, disputeUntil 파싱
         val resolveAt = request.resolveAt?.let { LocalDateTime.parse(it, DateTimeFormatter.ISO_DATE_TIME) }
         val disputeUntil = request.disputeUntil?.let { LocalDateTime.parse(it, DateTimeFormatter.ISO_DATE_TIME) }
+        val creatorPoolRatio = BigDecimal.valueOf(request.creatorSplitInPool.toLong())
+            .divide(BigDecimal("100"), 4, RoundingMode.UNNECESSARY)
+        val platformFee = BigDecimal("0.2000")
+        val distributable = BigDecimal("0.8000")
+        val creatorFee = distributable.multiply(creatorPoolRatio).setScale(4, RoundingMode.UNNECESSARY)
+        val voterFee = distributable.subtract(creatorFee).setScale(4, RoundingMode.UNNECESSARY)
 
         val question = Question(
             title = request.title,
-            category = request.category,
+            category = request.category?.let { categoryValidationService.normalizeAndValidate(it) },
             categoryWeight = BigDecimal.ONE,
             status = QuestionStatus.VOTING,
             type = request.type,
@@ -229,31 +249,25 @@ class QuestionManagementService(
             expiredAt = bettingEndAt,
             createdAt = now,
             // executionModel 설정
-            executionModel = request.executionModel
+            executionModel = request.executionModel,
+            platformFeeShare = platformFee,
+            creatorFeeShare = creatorFee,
+            voterFeeShare = voterFee,
+            creatorSplitInPool = request.creatorSplitInPool
         )
 
         val savedQuestion = questionRepository.save(question)
 
-        // AMM_FPMM인 경우 자동으로 풀 시드
-        if (request.executionModel == com.predata.backend.domain.ExecutionModel.AMM_FPMM) {
-            try {
-                val seedRequest = com.predata.backend.dto.amm.SeedPoolRequest(
-                    questionId = savedQuestion.id!!,
-                    seedUsdc = request.seedUsdc,
-                    feeRate = request.feeRate
-                )
-                swapService.seedPool(seedRequest)
-            } catch (e: Exception) {
-                throw IllegalStateException("Question created but AMM pool seeding failed: ${e.message}")
-            }
-        } else {
-            // ORDERBOOK_LEGACY인 경우 기존 로직
-            savedQuestion.totalBetPool = INITIAL_LIQUIDITY * 2
-            savedQuestion.yesBetPool = INITIAL_LIQUIDITY
-            savedQuestion.noBetPool = INITIAL_LIQUIDITY
-            savedQuestion.initialYesPool = INITIAL_LIQUIDITY
-            savedQuestion.initialNoPool = INITIAL_LIQUIDITY
-            questionRepository.save(savedQuestion)
+        // AMM_FPMM 풀 시드
+        try {
+            val seedRequest = com.predata.backend.dto.amm.SeedPoolRequest(
+                questionId = savedQuestion.id!!,
+                seedUsdc = request.seedUsdc,
+                feeRate = request.feeRate
+            )
+            swapService.seedPool(seedRequest)
+        } catch (e: Exception) {
+            throw IllegalStateException("Question created but AMM pool seeding failed: ${e.message}")
         }
 
         // 온체인에 질문 생성 (비동기)
@@ -267,6 +281,19 @@ class QuestionManagementService(
             expiredAt = savedQuestion.expiredAt.toString(),
             message = "Question created successfully."
         )
+    }
+
+    private fun validateVotingAndBettingWindow(votingDuration: Long, bettingDuration: Long) {
+        val allowed = mapOf(
+            6 * 60 * 60L to 1 * 24 * 60 * 60L,   // 6H -> 1D
+            1 * 24 * 60 * 60L to 3 * 24 * 60 * 60L, // 1D -> 3D
+            3 * 24 * 60 * 60L to 7 * 24 * 60 * 60L, // 3D -> 7D
+        )
+        val mapped = allowed[votingDuration]
+            ?: throw IllegalArgumentException("Voting duration must be one of: 6H, 1D, 3D.")
+        require(bettingDuration == mapped) {
+            "Betting duration mismatch. Required mapping: 6H->1D, 1D->3D, 3D->7D."
+        }
     }
 
     /**

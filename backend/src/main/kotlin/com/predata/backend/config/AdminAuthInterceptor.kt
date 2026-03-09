@@ -1,10 +1,10 @@
 package com.predata.backend.config
 
 import com.fasterxml.jackson.databind.ObjectMapper
+import com.predata.backend.exception.ErrorCode
 import com.predata.backend.exception.ErrorResponse
 import jakarta.servlet.http.HttpServletRequest
 import jakarta.servlet.http.HttpServletResponse
-import org.springframework.http.HttpStatus
 import org.springframework.http.MediaType
 import org.springframework.stereotype.Component
 import org.springframework.web.servlet.HandlerInterceptor
@@ -37,14 +37,10 @@ class AdminAuthInterceptor(
                 ipAddress = ipAddress
             )
 
-            response.status = HttpStatus.FORBIDDEN.value()
+            response.status = ErrorCode.FORBIDDEN.status
             response.contentType = MediaType.APPLICATION_JSON_VALUE
             response.characterEncoding = "UTF-8"
-            val error = ErrorResponse(
-                code = "FORBIDDEN",
-                message = "Admin privileges required.",
-                status = 403
-            )
+            val error = ErrorResponse.of(ErrorCode.FORBIDDEN, customMessage = "Admin privileges required.")
             response.writer.write(objectMapper.writeValueAsString(error))
             return false
         }

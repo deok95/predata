@@ -1,8 +1,12 @@
 package com.predata.backend.controller
 
+import io.swagger.v3.oas.annotations.tags.Tag
+
+import com.predata.backend.dto.ApiEnvelope
 import com.predata.backend.repository.QuestionRepository
 import com.predata.backend.sports.domain.Match
 import com.predata.backend.sports.domain.MatchStatus
+import com.predata.backend.sports.provider.football.FootballLeagueCatalog
 import com.predata.backend.sports.repository.MatchRepository
 import com.predata.backend.sports.scheduler.LivePollResult
 import com.predata.backend.sports.scheduler.MatchSyncResult
@@ -16,8 +20,8 @@ import java.time.LocalDateTime
 import java.time.ZoneOffset
 
 @RestController
+@Tag(name = "ops-admin", description = "Sports admin APIs")
 @RequestMapping("/api/admin/sports")
-@CrossOrigin(originPatterns = ["http://localhost:*", "http://127.0.0.1:*", "https://predata.io", "https://www.predata.io", "https://*.vercel.app", "https://*.trycloudflare.com"])
 class SportsManagementController(
     private val matchSyncScheduler: MatchSyncScheduler,
     private val matchRepository: MatchRepository,
@@ -26,15 +30,32 @@ class SportsManagementController(
     @Value("\${sports.football-data.fetch-window-days:7}")
     private val fetchWindowDays: Long
 ) {
+    /**
+     * 우선 리그 세부 카테고리 목록 조회 (관리자용)
+     * GET /api/admin/sports/subcategories
+     */
+    @GetMapping("/subcategories")
+    fun getPrioritySubCategories(): ResponseEntity<ApiEnvelope<List<SportsSubCategoryInfo>>> {
+        val data = FootballLeagueCatalog.priorityLeagues.map {
+            SportsSubCategoryInfo(
+                subCategory = it.subCategory,
+                leagueCode = it.externalLeagueId,
+                leagueName = it.name,
+                countryCode = it.countryCode
+            )
+        }
+        return ResponseEntity.ok(ApiEnvelope.ok(data))
+    }
+
 
     /**
      * 수동으로 경기 동기화 + 질문 자동 생성 트리거
      * POST /api/admin/sports/generate
      */
     @PostMapping("/generate")
-    fun manualGenerate(): ResponseEntity<MatchSyncResult> {
+    fun manualGenerate(): ResponseEntity<ApiEnvelope<MatchSyncResult>> {
         val result = matchSyncScheduler.syncUpcomingMatches()
-        return ResponseEntity.ok(result)
+        return ResponseEntity.ok(ApiEnvelope.ok(result))
     }
 
     /**
@@ -42,9 +63,9 @@ class SportsManagementController(
      * POST /api/admin/sports/update-results
      */
     @PostMapping("/update-results")
-    fun manualUpdateResults(): ResponseEntity<LivePollResult> {
+    fun manualUpdateResults(): ResponseEntity<ApiEnvelope<LivePollResult>> {
         val result = matchSyncScheduler.pollLiveMatches()
-        return ResponseEntity.ok(result)
+        return ResponseEntity.ok(ApiEnvelope.ok(result))
     }
 
     /**
@@ -52,14 +73,14 @@ class SportsManagementController(
      * GET /api/admin/sports/live
      */
     @GetMapping("/live")
-    fun getLiveMatches(): ResponseEntity<List<LiveMatchInfo>> {
+    fun getLiveMatches(): ResponseEntity<ApiEnvelope<List<LiveMatchInfo>>> {
         val liveMatches = matchRepository.findByMatchStatus(MatchStatus.LIVE) +
             matchRepository.findByMatchStatus(MatchStatus.HALFTIME)
         val questionIdByMatch = buildQuestionIdByMatch()
         val liveMatchInfos = liveMatches
             .distinctBy { it.id }
             .map { match -> toLiveMatchInfo(match, questionIdByMatch[match.id]) }
-        return ResponseEntity.ok(liveMatchInfos)
+        return ResponseEntity.ok(ApiEnvelope.ok(liveMatchInfos))
     }
 
     /**
@@ -67,7 +88,7 @@ class SportsManagementController(
      * GET /api/admin/sports/upcoming
      */
     @GetMapping("/upcoming")
-    fun getUpcomingMatches(): ResponseEntity<List<UpcomingMatchInfo>> {
+    fun getUpcomingMatches(): ResponseEntity<ApiEnvelope<List<UpcomingMatchInfo>>> {
         val start = LocalDateTime.now(ZoneOffset.UTC)
         val end = start.plusDays(fetchWindowDays)
         val questionIdByMatch = buildQuestionIdByMatch()
@@ -77,17 +98,20 @@ class SportsManagementController(
             end
         ).sortedBy { it.matchTime }
             .map { match ->
+                val leagueCode = match.league.externalLeagueId
                 UpcomingMatchInfo(
                     matchId = match.id ?: 0,
                     questionId = questionIdByMatch[match.id],
                     leagueName = match.league.name,
+                    leagueCode = leagueCode,
+                    subCategory = FootballLeagueCatalog.subCategoryByCode(leagueCode),
                     homeTeam = match.homeTeam,
                     awayTeam = match.awayTeam,
                     matchTime = match.matchTime.toString(),
                     status = match.matchStatus.name
                 )
             }
-        return ResponseEntity.ok(upcomingMatches)
+        return ResponseEntity.ok(ApiEnvelope.ok(upcomingMatches))
     }
 
     /**
@@ -95,7 +119,7 @@ class SportsManagementController(
      * GET /api/admin/sports/questions
      */
     @GetMapping("/questions")
-    fun getMatchQuestions(): ResponseEntity<List<MatchQuestionView>> {
+    fun getMatchQuestions(): ResponseEntity<ApiEnvelope<List<MatchQuestionView>>> {
         val start = LocalDateTime.now(ZoneOffset.UTC)
         val end = start.plusDays(fetchWindowDays)
         val questions = questionRepository.findAllMatchQuestions()
@@ -108,6 +132,8 @@ class SportsManagementController(
                 questionId = q.id!!,
                 title = q.title,
                 category = q.category,
+                subCategory = FootballLeagueCatalog.subCategoryByCode(q.match?.league?.externalLeagueId),
+                leagueCode = q.match?.league?.externalLeagueId,
                 status = q.status.name,
                 phase = q.phase?.name,
                 matchId = q.match?.id,
@@ -115,7 +141,7 @@ class SportsManagementController(
                 createdAt = q.createdAt.toString()
             )
         }
-        return ResponseEntity.ok(views)
+        return ResponseEntity.ok(ApiEnvelope.ok(views))
     }
 
     /**
@@ -123,9 +149,9 @@ class SportsManagementController(
      * POST /api/admin/sports/generate-match-questions
      */
     @PostMapping("/generate-match-questions")
-    fun generateMatchQuestions(): ResponseEntity<MatchQuestionGenerateResult> {
+    fun generateMatchQuestions(): ResponseEntity<ApiEnvelope<MatchQuestionGenerateResult>> {
         val result = matchQuestionGeneratorService.generateQuestions()
-        return ResponseEntity.ok(result)
+        return ResponseEntity.ok(ApiEnvelope.ok(result))
     }
 
     private fun buildQuestionIdByMatch(): Map<Long, Long> {
@@ -145,6 +171,8 @@ class SportsManagementController(
             matchId = match.id ?: 0,
             questionId = questionId,
             leagueName = match.league.name,
+            leagueCode = match.league.externalLeagueId,
+            subCategory = FootballLeagueCatalog.subCategoryByCode(match.league.externalLeagueId),
             homeTeam = match.homeTeam,
             awayTeam = match.awayTeam,
             homeScore = match.homeScore ?: 0,
@@ -159,6 +187,8 @@ data class LiveMatchInfo(
     val matchId: Long,
     val questionId: Long?,
     val leagueName: String,
+    val leagueCode: String?,
+    val subCategory: String,
     val homeTeam: String,
     val awayTeam: String,
     val homeScore: Int,
@@ -171,6 +201,8 @@ data class MatchQuestionView(
     val questionId: Long,
     val title: String,
     val category: String?,
+    val subCategory: String,
+    val leagueCode: String?,
     val status: String,
     val phase: String?,
     val matchId: Long?,
@@ -182,8 +214,17 @@ data class UpcomingMatchInfo(
     val matchId: Long,
     val questionId: Long?,
     val leagueName: String,
+    val leagueCode: String?,
+    val subCategory: String,
     val homeTeam: String,
     val awayTeam: String,
     val matchTime: String,
     val status: String
+)
+
+data class SportsSubCategoryInfo(
+    val subCategory: String,
+    val leagueCode: String,
+    val leagueName: String,
+    val countryCode: String
 )

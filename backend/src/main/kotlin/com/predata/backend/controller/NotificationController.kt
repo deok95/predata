@@ -1,46 +1,48 @@
 package com.predata.backend.controller
 
-import com.predata.backend.config.JwtAuthInterceptor
-import com.predata.backend.exception.UnauthorizedException
+import io.swagger.v3.oas.annotations.tags.Tag
+
+import com.predata.backend.dto.ApiEnvelope
 import com.predata.backend.service.NotificationResponse
 import com.predata.backend.service.NotificationService
+import com.predata.backend.util.authenticatedMemberId
 import jakarta.servlet.http.HttpServletRequest
 import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.*
 
 @RestController
+@Tag(name = "member-social", description = "Notification APIs")
 @RequestMapping("/api/notifications")
 class NotificationController(
     private val notificationService: NotificationService
 ) {
 
     @GetMapping
-    fun getNotifications(httpRequest: HttpServletRequest): ResponseEntity<List<NotificationResponse>> {
-        return try {
-            val memberId = httpRequest.getAttribute(JwtAuthInterceptor.ATTR_MEMBER_ID) as? Long ?: throw UnauthorizedException()
-            ResponseEntity.ok(notificationService.getNotifications(memberId))
-        } catch (e: Exception) {
-            // Return empty list on any error
-            ResponseEntity.ok(emptyList())
-        }
+    fun getNotifications(httpRequest: HttpServletRequest): ResponseEntity<ApiEnvelope<List<NotificationResponse>>> {
+        val memberId = httpRequest.authenticatedMemberId()
+        return ResponseEntity.ok(ApiEnvelope.ok(notificationService.getNotifications(memberId)))
     }
 
     @GetMapping("/unread-count")
-    fun getUnreadCount(httpRequest: HttpServletRequest): ResponseEntity<Map<String, Long>> {
-        val memberId = httpRequest.getAttribute(JwtAuthInterceptor.ATTR_MEMBER_ID) as? Long ?: throw UnauthorizedException()
-        return ResponseEntity.ok(mapOf("count" to notificationService.getUnreadCount(memberId)))
+    fun getUnreadCount(httpRequest: HttpServletRequest): ResponseEntity<ApiEnvelope<UnreadCountResponse>> {
+        val memberId = httpRequest.authenticatedMemberId()
+        return ResponseEntity.ok(ApiEnvelope.ok(UnreadCountResponse(count = notificationService.getUnreadCount(memberId))))
     }
 
     @PostMapping("/{id}/read")
-    fun markAsRead(@PathVariable id: Long): ResponseEntity<Map<String, Boolean>> {
+    fun markAsRead(@PathVariable id: Long): ResponseEntity<ApiEnvelope<MarkReadResponse>> {
         notificationService.markAsRead(id)
-        return ResponseEntity.ok(mapOf("success" to true))
+        return ResponseEntity.ok(ApiEnvelope.ok(MarkReadResponse(success = true)))
     }
 
     @PostMapping("/read-all")
-    fun markAllAsRead(httpRequest: HttpServletRequest): ResponseEntity<Map<String, Any>> {
-        val memberId = httpRequest.getAttribute(JwtAuthInterceptor.ATTR_MEMBER_ID) as? Long ?: throw UnauthorizedException()
+    fun markAllAsRead(httpRequest: HttpServletRequest): ResponseEntity<ApiEnvelope<MarkAllReadResponse>> {
+        val memberId = httpRequest.authenticatedMemberId()
         val count = notificationService.markAllAsRead(memberId)
-        return ResponseEntity.ok(mapOf("success" to true, "updated" to count))
+        return ResponseEntity.ok(ApiEnvelope.ok(MarkAllReadResponse(success = true, updated = count)))
     }
 }
+
+data class UnreadCountResponse(val count: Long)
+data class MarkReadResponse(val success: Boolean)
+data class MarkAllReadResponse(val success: Boolean, val updated: Int)

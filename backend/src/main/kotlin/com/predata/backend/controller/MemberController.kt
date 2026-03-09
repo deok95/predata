@@ -1,27 +1,48 @@
 package com.predata.backend.controller
 
+import io.swagger.v3.oas.annotations.tags.Tag
+
+import com.predata.backend.dto.ApiEnvelope
+import com.predata.backend.domain.ActivityType
 import com.predata.backend.domain.Member
+import com.predata.backend.exception.ConflictException
+import com.predata.backend.exception.NotFoundException
+import com.predata.backend.repository.ActivityRepository
+import com.predata.backend.repository.FollowRepository
 import com.predata.backend.repository.MemberRepository
+import com.predata.backend.repository.QuestionRepository
+import com.predata.backend.repository.TransactionHistoryRepository
 import com.predata.backend.service.ClientIpService
 import com.predata.backend.service.IpTrackingService
+import com.predata.backend.service.TicketService
+import com.predata.backend.service.WalletAuthService
+import com.predata.backend.service.WalletBalanceService
+import com.predata.backend.util.authenticatedMemberId
 import jakarta.servlet.http.HttpServletRequest
 import jakarta.validation.Valid
 import jakarta.validation.constraints.Email
 import jakarta.validation.constraints.NotBlank
 import jakarta.validation.constraints.Size
 import org.slf4j.LoggerFactory
-import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.*
 import java.math.BigDecimal
+import java.time.format.DateTimeFormatter
 
 @RestController
+@Tag(name = "member-social", description = "Member APIs")
 @RequestMapping("/api/members")
-@CrossOrigin(originPatterns = ["http://localhost:*", "http://127.0.0.1:*", "https://predata.io", "https://www.predata.io", "https://*.vercel.app", "https://*.trycloudflare.com"])
 class MemberController(
     private val memberRepository: MemberRepository,
     private val ipTrackingService: IpTrackingService,
-    private val clientIpService: ClientIpService
+    private val clientIpService: ClientIpService,
+    private val walletBalanceService: WalletBalanceService,
+    private val followRepository: FollowRepository,
+    private val questionRepository: QuestionRepository,
+    private val activityRepository: ActivityRepository,
+    private val ticketService: TicketService,
+    private val transactionHistoryRepository: TransactionHistoryRepository,
+    private val walletAuthService: WalletAuthService,
 ) {
     private val logger = LoggerFactory.getLogger(MemberController::class.java)
 
@@ -44,13 +65,13 @@ class MemberController(
      * GET /api/members/by-wallet?address=0x1234...
      */
     @GetMapping("/by-wallet")
-    fun getMemberByWallet(@RequestParam address: String): ResponseEntity<PublicMemberResponse> {
+    fun getMemberByWallet(@RequestParam address: String): ResponseEntity<ApiEnvelope<PublicMemberResponse>> {
         val member = memberRepository.findByWalletAddress(address)
 
         return if (member.isPresent) {
-            ResponseEntity.ok(PublicMemberResponse.from(member.get()))
+            ResponseEntity.ok(ApiEnvelope.ok(PublicMemberResponse.from(member.get())))
         } else {
-            ResponseEntity.notFound().build()
+            throw NotFoundException("Member not found.")
         }
     }
 
@@ -62,10 +83,10 @@ class MemberController(
     fun createMember(
         @Valid @RequestBody request: CreateMemberRequest,
         httpRequest: HttpServletRequest
-    ): ResponseEntity<MemberResponse> {
+    ): ResponseEntity<ApiEnvelope<MemberResponse>> {
         // 이메일 중복 체크
         if (memberRepository.existsByEmail(request.email)) {
-            return ResponseEntity.status(HttpStatus.CONFLICT).build()
+            throw ConflictException("Email already in use.")
         }
 
         // IP 추출
@@ -91,7 +112,8 @@ class MemberController(
         )
 
         val savedMember = memberRepository.save(member)
-        return ResponseEntity.ok(MemberResponse.from(savedMember))
+        val balance = walletBalanceService.getAvailableBalance(savedMember.id!!)
+        return ResponseEntity.ok(ApiEnvelope.ok(MemberResponse.from(savedMember, balance)))
     }
 
     /**
@@ -99,17 +121,51 @@ class MemberController(
      * GET /api/members/me
      */
     @GetMapping("/me")
-    fun getMyInfo(httpRequest: HttpServletRequest): ResponseEntity<MemberResponse> {
-        val memberId = httpRequest.getAttribute("authenticatedMemberId") as? Long
-            ?: return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build()
+    fun getMyInfo(httpRequest: HttpServletRequest): ResponseEntity<ApiEnvelope<MemberResponse>> {
+        val memberId = httpRequest.authenticatedMemberId()
 
         val member = memberRepository.findById(memberId)
 
         return if (member.isPresent) {
-            ResponseEntity.ok(MemberResponse.from(member.get()))
+            val found = member.get()
+            val balance = walletBalanceService.getAvailableBalance(found.id!!)
+            ResponseEntity.ok(ApiEnvelope.ok(MemberResponse.from(found, balance)))
         } else {
-            ResponseEntity.notFound().build()
+            throw NotFoundException("Member not found.")
         }
+    }
+
+    /**
+     * 마이페이지 요약 통계 (프론트 대시보드용)
+     * GET /api/members/me/dashboard
+     */
+    @GetMapping("/me/dashboard")
+    fun getMyDashboard(httpRequest: HttpServletRequest): ResponseEntity<ApiEnvelope<MyDashboardResponse>> {
+        val memberId = httpRequest.authenticatedMemberId()
+        val member = memberRepository.findById(memberId)
+            .orElseThrow { NotFoundException("Member not found.") }
+
+        val followerCount = followRepository.countByFollowingId(memberId)
+        val followingCount = followRepository.countByFollowerId(memberId)
+        val questionsCreated = questionRepository.countByCreatorMemberId(memberId)
+        val totalVotes = activityRepository.findByMemberIdAndActivityType(memberId, ActivityType.VOTE).size.toLong()
+        val voteCredits = ticketService.getRemainingTickets(memberId)
+        val creatorEarnings = transactionHistoryRepository.sumAmountByMemberIdAndType(memberId, "CREATOR_FEE_DISTRIBUTION")
+
+        return ResponseEntity.ok(
+            ApiEnvelope.ok(
+                MyDashboardResponse(
+                    memberId = memberId,
+                    followers = followerCount,
+                    following = followingCount,
+                    questionsCreated = questionsCreated,
+                    totalVotes = totalVotes,
+                    voteCredits = voteCredits,
+                    creatorEarnings = creatorEarnings,
+                    memberSince = member.createdAt.format(DateTimeFormatter.ISO_DATE_TIME),
+                )
+            )
+        )
     }
 
     /**
@@ -119,52 +175,74 @@ class MemberController(
      * ⚠️ 보안: 이메일, 잔액, 역할 등 민감 정보는 제외됨
      */
     @GetMapping("/{id}")
-    fun getMember(@PathVariable id: Long): ResponseEntity<PublicMemberResponse> {
+    fun getMember(@PathVariable id: Long): ResponseEntity<ApiEnvelope<PublicMemberResponse>> {
         val member = memberRepository.findById(id)
-
-        return if (member.isPresent) {
-            ResponseEntity.ok(PublicMemberResponse.from(member.get()))
-        } else {
-            ResponseEntity.notFound().build()
-        }
+            .orElseThrow { NotFoundException("Member not found.") }
+        return ResponseEntity.ok(ApiEnvelope.ok(PublicMemberResponse.from(member)))
     }
 
     /**
      * 지갑 주소 연결/변경
      * PUT /api/members/wallet
      */
+    @PostMapping("/wallet/nonce")
+    fun issueWalletLinkNonce(
+        @Valid @RequestBody request: WalletNonceIssueRequest,
+        httpRequest: HttpServletRequest
+    ): ResponseEntity<ApiEnvelope<Map<String, Any>>> {
+        val memberId = httpRequest.authenticatedMemberId()
+        val result = walletAuthService.issueNonce(
+            walletAddress = request.walletAddress,
+            purpose = WalletAuthService.WalletAuthPurpose.LINK,
+            memberId = memberId,
+        )
+        return ResponseEntity.ok(ApiEnvelope.ok(result))
+    }
+
+    /**
+     * 지갑 주소 연결/해제
+     * PUT /api/members/wallet
+     */
     @PutMapping("/wallet")
     fun updateWalletAddress(
         @Valid @RequestBody request: UpdateWalletRequest,
         httpRequest: HttpServletRequest
-    ): ResponseEntity<Any> {
-        val memberId = httpRequest.getAttribute("authenticatedMemberId") as? Long
-            ?: return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(mapOf("message" to "Login required."))
+    ): ResponseEntity<ApiEnvelope<MemberResponse>> {
+        val memberId = httpRequest.authenticatedMemberId()
 
         val member = memberRepository.findById(memberId)
             .orElseThrow { IllegalArgumentException("회원을 찾을 수 없습니다.") }
 
-        // 지갑 주소 형식 검증
-        if (request.walletAddress != null && !request.walletAddress.matches(Regex("^0x[a-fA-F0-9]{40}$"))) {
-            return ResponseEntity.badRequest().body(mapOf("message" to "Invalid wallet address."))
-        }
-
-        // 이미 다른 유저가 사용 중인 지갑인지 확인
         if (request.walletAddress != null) {
-            val existingMember = memberRepository.findByWalletAddress(request.walletAddress)
+            if (!request.walletAddress.matches(Regex("^0x[a-fA-F0-9]{40}$"))) {
+                throw IllegalArgumentException("Invalid wallet address.")
+            }
+            if (request.nonce.isNullOrBlank() || request.message.isNullOrBlank() || request.signature.isNullOrBlank()) {
+                throw IllegalArgumentException("Wallet signature payload is required.")
+            }
+
+            walletAuthService.verifyAndConsumeNonce(
+                walletAddress = request.walletAddress,
+                nonce = request.nonce,
+                message = request.message,
+                signature = request.signature,
+                expectedPurpose = WalletAuthService.WalletAuthPurpose.LINK,
+                expectedMemberId = memberId,
+            )
+
+            val existingMember = memberRepository.findByWalletAddressIgnoreCase(request.walletAddress)
             if (existingMember.isPresent && existingMember.get().id != memberId) {
-                return ResponseEntity.status(HttpStatus.CONFLICT)
-                    .body(mapOf("message" to "Wallet already in use by another user."))
+                throw ConflictException("Wallet already in use by another user.")
             }
         }
 
-        // 지갑 주소 업데이트
         member.walletAddress = request.walletAddress
         val updated = memberRepository.save(member)
 
         logger.info("지갑 주소 업데이트: memberId=$memberId, walletAddress=${request.walletAddress}")
 
-        return ResponseEntity.ok(MemberResponse.from(updated))
+        val balance = walletBalanceService.getAvailableBalance(updated.id!!)
+        return ResponseEntity.ok(ApiEnvelope.ok(MemberResponse.from(updated, balance)))
     }
 }
 
@@ -191,7 +269,15 @@ data class CreateMemberRequest(
  * DTO: 지갑 주소 업데이트 요청
  */
 data class UpdateWalletRequest(
-    val walletAddress: String?
+    val walletAddress: String?,
+    val nonce: String? = null,
+    val message: String? = null,
+    val signature: String? = null
+)
+
+data class WalletNonceIssueRequest(
+    @field:NotBlank(message = "Wallet address is required.")
+    val walletAddress: String
 )
 
 /**
@@ -200,6 +286,10 @@ data class UpdateWalletRequest(
  */
 data class PublicMemberResponse(
     val memberId: Long,
+    val username: String?,
+    val displayName: String?,
+    val bio: String?,
+    val avatarUrl: String?,
     val walletAddress: String?,
     val countryCode: String,
     val tier: String,
@@ -214,6 +304,10 @@ data class PublicMemberResponse(
         fun from(member: Member): PublicMemberResponse {
             return PublicMemberResponse(
                 memberId = member.id ?: 0,
+                username = member.username,
+                displayName = member.displayName,
+                bio = member.bio,
+                avatarUrl = member.avatarUrl,
                 walletAddress = member.walletAddress,
                 countryCode = member.countryCode,
                 tier = member.tier,
@@ -231,6 +325,10 @@ data class PublicMemberResponse(
 data class MemberResponse(
     val memberId: Long,
     val email: String,
+    val username: String?,
+    val displayName: String?,
+    val bio: String?,
+    val avatarUrl: String?,
     val walletAddress: String?,
     val countryCode: String,
     val jobCategory: String,
@@ -243,19 +341,38 @@ data class MemberResponse(
 ) {
     companion object {
         fun from(member: Member): MemberResponse {
+            return from(member, member.usdcBalance)
+        }
+
+        fun from(member: Member, walletBalance: BigDecimal): MemberResponse {
             return MemberResponse(
                 memberId = member.id ?: 0,
                 email = member.email,
+                username = member.username,
+                displayName = member.displayName,
+                bio = member.bio,
+                avatarUrl = member.avatarUrl,
                 walletAddress = member.walletAddress,
                 countryCode = member.countryCode,
                 jobCategory = member.jobCategory ?: "",
                 ageGroup = member.ageGroup ?: 0,
                 tier = member.tier,
                 tierWeight = member.tierWeight.toDouble(),
-                usdcBalance = member.usdcBalance,
+                usdcBalance = walletBalance,
                 role = member.role,
                 hasVotingPass = member.hasVotingPass
             )
         }
     }
 }
+
+data class MyDashboardResponse(
+    val memberId: Long,
+    val followers: Long,
+    val following: Long,
+    val questionsCreated: Long,
+    val totalVotes: Long,
+    val voteCredits: Int,
+    val creatorEarnings: BigDecimal,
+    val memberSince: String,
+)

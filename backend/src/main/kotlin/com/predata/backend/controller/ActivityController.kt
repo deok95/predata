@@ -1,5 +1,7 @@
 package com.predata.backend.controller
 
+import io.swagger.v3.oas.annotations.tags.Tag
+
 import com.predata.backend.dto.*
 import com.predata.backend.domain.ActivityType
 import com.predata.backend.service.VoteService
@@ -10,15 +12,18 @@ import com.predata.backend.service.OddsService
 import com.predata.backend.service.ClientIpService
 import com.predata.backend.domain.FinalResult
 import com.predata.backend.repository.ActivityRepository
+import com.predata.backend.util.authenticatedMemberId
 import jakarta.servlet.http.HttpServletRequest
 import jakarta.validation.Valid
+import org.slf4j.LoggerFactory
 import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.*
+import java.time.LocalDateTime
 
 @RestController
+@Tag(name = "voting", description = "Legacy voting/activity APIs")
 @RequestMapping("/api")
-@CrossOrigin(originPatterns = ["http://localhost:*", "http://127.0.0.1:*", "https://predata.io", "https://www.predata.io", "https://*.vercel.app", "https://*.trycloudflare.com"])
 class ActivityController(
     private val voteService: VoteService,
     private val betService: BetService,
@@ -28,77 +33,39 @@ class ActivityController(
     private val oddsService: OddsService,
     private val clientIpService: ClientIpService,
     private val bettingSuspensionService: com.predata.backend.service.BettingSuspensionService,
-    private val activityRepository: ActivityRepository,
-    private val orderMatchingService: com.predata.backend.service.OrderMatchingService
+    private val activityRepository: ActivityRepository
 ) {
+    private val logger = LoggerFactory.getLogger(ActivityController::class.java)
+    enum class SortDir { ASC, DESC }
 
     /**
-     * 투표 실행
+     * @deprecated POST /api/votes 로 마이그레이션하세요.
      */
+    @Deprecated("레거시 투표 경로 폐기. POST /api/votes 를 사용하세요.")
     @PostMapping("/vote")
-    fun vote(@Valid @RequestBody request: VoteRequest, httpRequest: HttpServletRequest): ResponseEntity<ActivityResponse> {
-        // JWT에서 인증된 memberId 가져오기 (IDOR 방지)
-        val authenticatedMemberId = httpRequest.getAttribute(com.predata.backend.config.JwtAuthInterceptor.ATTR_MEMBER_ID) as? Long
-            ?: return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(
-                ActivityResponse(success = false, message = "Authentication required.")
-            )
-
-        val clientIp = clientIpService.extractClientIp(httpRequest)
-        val response = voteService.vote(authenticatedMemberId, request, clientIp)
-
-        // IP 업데이트
-        if (response.success) clientIpService.updateMemberLastIp(authenticatedMemberId, clientIp)
-
-        return if (response.success) {
-            ResponseEntity.ok(response)
-        } else {
-            ResponseEntity.status(HttpStatus.BAD_REQUEST).body(response)
-        }
+    fun vote(@Valid @RequestBody request: VoteRequest, httpRequest: HttpServletRequest): ResponseEntity<Any> {
+        logger.warn("LEGACY_ENDPOINT_CALLED path=/api/vote memberId=${runCatching { httpRequest.authenticatedMemberId() }.getOrNull()}")
+        return ResponseEntity.status(HttpStatus.GONE).body(
+            ApiEnvelope<Nothing>(success = false, data = null, message = "This endpoint is no longer supported. Use POST /api/votes.")
+        )
     }
 
     /**
-     * 베팅 실행 (시장가 IOC 주문으로 전환)
-     * 기존 BetService 대신 OrderMatchingService 사용
+     * 베팅 실행 (AMM_FPMM)
      */
     @PostMapping("/bet")
-    fun bet(@Valid @RequestBody request: BetRequest, httpRequest: HttpServletRequest): ResponseEntity<ActivityResponse> {
-        // JWT에서 인증된 memberId 가져오기 (IDOR 방지)
-        val authenticatedMemberId = httpRequest.getAttribute(com.predata.backend.config.JwtAuthInterceptor.ATTR_MEMBER_ID) as? Long
-            ?: return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(
-                ActivityResponse(success = false, message = "Authentication required.")
-            )
-
+    fun bet(@Valid @RequestBody request: BetRequest, httpRequest: HttpServletRequest): ResponseEntity<Any> {
+        val authenticatedMemberId = httpRequest.authenticatedMemberId()
         val clientIp = clientIpService.extractClientIp(httpRequest)
 
-        // BetRequest를 CreateOrderRequest로 변환 (시장가 IOC 주문)
-        val orderRequest = CreateOrderRequest(
-            questionId = request.questionId,
-            side = when (request.choice) {
-                com.predata.backend.domain.Choice.YES -> com.predata.backend.domain.OrderSide.YES
-                com.predata.backend.domain.Choice.NO -> com.predata.backend.domain.OrderSide.NO
-            },
-            price = java.math.BigDecimal.ZERO,  // MARKET 주문은 가격 무시됨 (OrderMatchingService에서 호가로 결정)
-            amount = request.amount,
-            orderType = com.predata.backend.domain.OrderType.MARKET  // 시장가 IOC
-        )
+        val response = betService.bet(authenticatedMemberId, request, clientIp)
 
-        // OrderMatchingService로 주문 실행
-        val orderResponse = orderMatchingService.createOrder(authenticatedMemberId, orderRequest)
+        if (response.success) clientIpService.updateMemberLastIp(authenticatedMemberId, clientIp)
 
-        // IP 업데이트
-        if (orderResponse.success) clientIpService.updateMemberLastIp(authenticatedMemberId, clientIp)
-
-        // ActivityResponse로 변환
-        val activityResponse = ActivityResponse(
-            success = orderResponse.success,
-            message = orderResponse.message,
-            activityId = orderResponse.orderId
-        )
-
-        return if (orderResponse.success) {
-            ResponseEntity.ok(activityResponse)
+        return if (response.success) {
+            ResponseEntity.ok(ApiEnvelope.ok(response))
         } else {
-            ResponseEntity.status(HttpStatus.BAD_REQUEST).body(activityResponse)
+            ResponseEntity.status(HttpStatus.BAD_REQUEST).body(response)
         }
     }
 
@@ -125,9 +92,15 @@ class ActivityController(
      * 모든 질문 조회
      */
     @GetMapping("/questions")
-    fun getAllQuestions(): ResponseEntity<ApiEnvelope<List<QuestionResponse>>> {
+    fun getAllQuestions(
+        @RequestParam(defaultValue = "0") page: Int,
+        @RequestParam(defaultValue = "50") size: Int,
+        @RequestParam(defaultValue = "createdAt") sortBy: String,
+        @RequestParam(defaultValue = "desc") sortDir: String,
+    ): ResponseEntity<ApiEnvelope<PageResponse<QuestionResponse>>> {
         val questions = questionService.getAllQuestions()
-        return ResponseEntity.ok(ApiEnvelope(success = true, data = questions))
+        val sorted = sortQuestions(questions, sortBy, parseSortDir(sortDir))
+        return ResponseEntity.ok(ApiEnvelope.ok(toPageResponse(sorted, page, size)))
     }
 
     /**
@@ -138,7 +111,7 @@ class ActivityController(
         val question = questionService.getQuestion(id)
 
         return if (question != null) {
-            ResponseEntity.ok(ApiEnvelope(success = true, data = question))
+            ResponseEntity.ok(ApiEnvelope.ok(question))
         } else {
             ResponseEntity.status(HttpStatus.NOT_FOUND).body(
                 ApiEnvelope(success = false, data = null, message = "Question not found.")
@@ -153,7 +126,7 @@ class ActivityController(
     fun incrementViewCount(@PathVariable id: Long): ResponseEntity<ApiEnvelope<Boolean>> {
         val success = questionService.incrementViewCount(id)
         return if (success) {
-            ResponseEntity.ok(ApiEnvelope(success = true, data = true))
+            ResponseEntity.ok(ApiEnvelope.ok(true))
         } else {
             ResponseEntity.status(HttpStatus.NOT_FOUND).body(
                 ApiEnvelope(success = false, data = null, message = "Question not found.")
@@ -165,24 +138,33 @@ class ActivityController(
      * 상태별 질문 조회
      */
     @GetMapping("/questions/status/{status}")
-    fun getQuestionsByStatus(@PathVariable status: String): ResponseEntity<ApiEnvelope<List<QuestionResponse>>> {
+    fun getQuestionsByStatus(
+        @PathVariable status: String,
+        @RequestParam(defaultValue = "0") page: Int,
+        @RequestParam(defaultValue = "50") size: Int,
+        @RequestParam(defaultValue = "createdAt") sortBy: String,
+        @RequestParam(defaultValue = "desc") sortDir: String,
+    ): ResponseEntity<ApiEnvelope<PageResponse<QuestionResponse>>> {
         val questionStatus = com.predata.backend.domain.QuestionStatus.valueOf(status.uppercase())
         val questions = questionService.getQuestionsByStatus(questionStatus)
-        return ResponseEntity.ok(ApiEnvelope(success = true, data = questions))
+        val sorted = sortQuestions(questions, sortBy, parseSortDir(sortDir))
+        return ResponseEntity.ok(ApiEnvelope.ok(toPageResponse(sorted, page, size)))
     }
 
     /**
      * 본인의 투표/베팅 내역 조회 (JWT 인증 사용)
-     * GET /api/activities/me?type=VOTE
+     * GET /api/activities/me?type=VOTE&page=0&size=50
      */
     @GetMapping("/activities/me")
     fun getMyActivities(
         @RequestParam(required = false) type: String?,
+        @RequestParam(defaultValue = "0") page: Int,
+        @RequestParam(defaultValue = "50") size: Int,
+        @RequestParam(defaultValue = "createdAt") sortBy: String,
+        @RequestParam(defaultValue = "desc") sortDir: String,
         httpRequest: HttpServletRequest
-    ): ResponseEntity<List<MemberActivityView>> {
-        // JWT에서 인증된 memberId 가져오기 (IDOR 방지)
-        val authenticatedMemberId = httpRequest.getAttribute(com.predata.backend.config.JwtAuthInterceptor.ATTR_MEMBER_ID) as? Long
-            ?: return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(emptyList())
+    ): ResponseEntity<ApiEnvelope<PageResponse<MemberActivityView>>> {
+        val authenticatedMemberId = httpRequest.authenticatedMemberId()
 
         val activities = if (type != null) {
             val activityType = ActivityType.valueOf(type.uppercase())
@@ -191,9 +173,8 @@ class ActivityController(
             activityRepository.findByMemberId(authenticatedMemberId)
         }
 
-        val result = activities.map(ActivityViewAssembler::toMemberActivityView)
-
-        return ResponseEntity.ok(result)
+        val sorted = sortMemberActivities(activities.map(ActivityViewAssembler::toMemberActivityView), sortBy, parseSortDir(sortDir))
+        return ResponseEntity.ok(ApiEnvelope.ok(toPageResponse(sorted, page, size)))
     }
 
     /**
@@ -203,8 +184,12 @@ class ActivityController(
     @GetMapping("/activities/question/{questionId}")
     fun getActivitiesByQuestion(
         @PathVariable questionId: Long,
-        @RequestParam(required = false) type: String?
-    ): ResponseEntity<List<QuestionActivityView>> {
+        @RequestParam(required = false) type: String?,
+        @RequestParam(defaultValue = "0") page: Int,
+        @RequestParam(defaultValue = "50") size: Int,
+        @RequestParam(defaultValue = "createdAt") sortBy: String,
+        @RequestParam(defaultValue = "desc") sortDir: String,
+    ): ResponseEntity<ApiEnvelope<PageResponse<QuestionActivityView>>> {
         val activities = if (type != null) {
             val activityType = ActivityType.valueOf(type.uppercase())
             activityRepository.findByQuestionIdAndActivityType(questionId, activityType)
@@ -212,9 +197,8 @@ class ActivityController(
             activityRepository.findByQuestionId(questionId)
         }
 
-        val result = activities.map(ActivityViewAssembler::toQuestionActivityView)
-
-        return ResponseEntity.ok(result)
+        val sorted = sortQuestionActivities(activities.map(ActivityViewAssembler::toQuestionActivityView), sortBy, parseSortDir(sortDir))
+        return ResponseEntity.ok(ApiEnvelope.ok(toPageResponse(sorted, page, size)))
     }
 
     /**
@@ -225,11 +209,13 @@ class ActivityController(
     fun getMyActivitiesByQuestion(
         @PathVariable questionId: Long,
         @RequestParam(required = false) type: String?,
+        @RequestParam(defaultValue = "0") page: Int,
+        @RequestParam(defaultValue = "50") size: Int,
+        @RequestParam(defaultValue = "createdAt") sortBy: String,
+        @RequestParam(defaultValue = "desc") sortDir: String,
         httpRequest: HttpServletRequest
-    ): ResponseEntity<List<MemberQuestionActivityView>> {
-        // JWT에서 인증된 memberId 가져오기 (IDOR 방지)
-        val authenticatedMemberId = httpRequest.getAttribute(com.predata.backend.config.JwtAuthInterceptor.ATTR_MEMBER_ID) as? Long
-            ?: return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(emptyList())
+    ): ResponseEntity<ApiEnvelope<PageResponse<MemberQuestionActivityView>>> {
+        val authenticatedMemberId = httpRequest.authenticatedMemberId()
 
         val activities = activityRepository.findByMemberIdAndQuestionId(authenticatedMemberId, questionId)
 
@@ -240,9 +226,8 @@ class ActivityController(
             activities
         }
 
-        val result = filtered.map(ActivityViewAssembler::toMemberQuestionActivityView)
-
-        return ResponseEntity.ok(result)
+        val sorted = sortMemberQuestionActivities(filtered.map(ActivityViewAssembler::toMemberQuestionActivityView), sortBy, parseSortDir(sortDir))
+        return ResponseEntity.ok(ApiEnvelope.ok(toPageResponse(sorted, page, size)))
     }
 
     /**
@@ -276,21 +261,17 @@ class ActivityController(
             subsidy = 0.0 // 브랜드 지원금은 Question 엔티티에 추가 필요
         )
 
-        return ResponseEntity.ok(
-            ApiEnvelope(
-                success = true,
-                data = OddsResponse(
-                    questionId = id,
-                    yesOdds = odds.yesOdds,
-                    noOdds = odds.noOdds,
-                    yesPrice = odds.yesPrice,
-                    noPrice = odds.noPrice,
-                    poolYes = question.yesBetPool,
-                    poolNo = question.noBetPool,
-                    totalPool = question.totalBetPool
-                )
-            )
+        val response = OddsResponse(
+            questionId = id,
+            yesOdds = odds.yesOdds,
+            noOdds = odds.noOdds,
+            yesPrice = odds.yesPrice,
+            noPrice = odds.noPrice,
+            poolYes = question.yesBetPool,
+            poolNo = question.noBetPool,
+            totalPool = question.totalBetPool
         )
+        return ResponseEntity.ok(ApiEnvelope.ok(response))
     }
 
     /**
@@ -298,15 +279,85 @@ class ActivityController(
      */
     @GetMapping("/health")
     fun health(): ResponseEntity<ApiEnvelope<HealthStatusResponse>> {
-        return ResponseEntity.ok(
-            ApiEnvelope(
-                success = true,
-                data = HealthStatusResponse(
-                    status = "OK",
-                    service = "predata-backend",
-                    version = "1.0.0"
-                )
-            )
+        val response = HealthStatusResponse(
+            status = "OK",
+            service = "predata-backend",
+            version = "1.0.0"
+        )
+        return ResponseEntity.ok(ApiEnvelope.ok(response))
+    }
+
+    private fun parseSortDir(raw: String): SortDir = if (raw.equals("asc", true)) SortDir.ASC else SortDir.DESC
+
+    private fun sortQuestions(
+        list: List<QuestionResponse>,
+        sortByRaw: String,
+        dir: SortDir,
+    ): List<QuestionResponse> {
+        val sortBy = when (sortByRaw.lowercase()) {
+            "viewcount", "view_count" -> "viewCount"
+            "totalbetpool", "total_bet_pool" -> "totalBetPool"
+            else -> "createdAt"
+        }
+        val comparator = when (sortBy) {
+            "viewCount" -> compareBy<QuestionResponse> { it.viewCount }
+            "totalBetPool" -> compareBy<QuestionResponse> { it.totalBetPool }
+            else -> compareBy<QuestionResponse> { LocalDateTime.parse(it.createdAt) }
+        }
+        return if (dir == SortDir.ASC) list.sortedWith(comparator) else list.sortedWith(comparator.reversed())
+    }
+
+    private fun sortMemberActivities(
+        list: List<MemberActivityView>,
+        sortByRaw: String,
+        dir: SortDir,
+    ): List<MemberActivityView> {
+        val sortBy = if (sortByRaw.equals("amount", true)) "amount" else "createdAt"
+        val comparator = when (sortBy) {
+            "amount" -> compareBy<MemberActivityView> { it.amount }
+            else -> compareBy<MemberActivityView> { LocalDateTime.parse(it.createdAt) }
+        }
+        return if (dir == SortDir.ASC) list.sortedWith(comparator) else list.sortedWith(comparator.reversed())
+    }
+
+    private fun sortQuestionActivities(
+        list: List<QuestionActivityView>,
+        sortByRaw: String,
+        dir: SortDir,
+    ): List<QuestionActivityView> {
+        val sortBy = if (sortByRaw.equals("amount", true)) "amount" else "createdAt"
+        val comparator = when (sortBy) {
+            "amount" -> compareBy<QuestionActivityView> { it.amount }
+            else -> compareBy<QuestionActivityView> { LocalDateTime.parse(it.createdAt) }
+        }
+        return if (dir == SortDir.ASC) list.sortedWith(comparator) else list.sortedWith(comparator.reversed())
+    }
+
+    private fun sortMemberQuestionActivities(
+        list: List<MemberQuestionActivityView>,
+        sortByRaw: String,
+        dir: SortDir,
+    ): List<MemberQuestionActivityView> {
+        val sortBy = if (sortByRaw.equals("amount", true)) "amount" else "createdAt"
+        val comparator = when (sortBy) {
+            "amount" -> compareBy<MemberQuestionActivityView> { it.amount }
+            else -> compareBy<MemberQuestionActivityView> { LocalDateTime.parse(it.createdAt) }
+        }
+        return if (dir == SortDir.ASC) list.sortedWith(comparator) else list.sortedWith(comparator.reversed())
+    }
+
+    private fun <T> toPageResponse(list: List<T>, page: Int, size: Int): PageResponse<T> {
+        val p = page.coerceAtLeast(0)
+        val s = size.coerceIn(1, 200)
+        val from = (p * s).coerceAtMost(list.size)
+        val to = (from + s).coerceAtMost(list.size)
+        val totalPages = if (list.isEmpty()) 0 else (list.size + s - 1) / s
+        return PageResponse(
+            items = list.subList(from, to),
+            page = p,
+            size = s,
+            totalElements = list.size.toLong(),
+            totalPages = totalPages,
         )
     }
 

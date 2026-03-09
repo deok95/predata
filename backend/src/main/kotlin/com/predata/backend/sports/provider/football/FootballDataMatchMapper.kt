@@ -10,15 +10,15 @@ import java.time.format.DateTimeFormatter
 object FootballDataMatchMapper {
 
     fun toMatch(node: JsonNode, league: League): Match {
-        val id = node.get("id").asLong()
-        val utcDate = node.get("utcDate").asText()
-        val status = node.get("status").asText()
-        val homeTeamName = node.path("homeTeam").path("name").asText("Unknown")
-        val awayTeamName = node.path("awayTeam").path("name").asText("Unknown")
-        val homeScore = node.path("score").path("fullTime").path("home").let {
+        val id = node.path("fixture").path("id").asLong(0L)
+        val utcDate = node.path("fixture").path("date").asText("")
+        val status = node.path("fixture").path("status").path("short").asText("")
+        val homeTeamName = node.path("teams").path("home").path("name").asText("Unknown")
+        val awayTeamName = node.path("teams").path("away").path("name").asText("Unknown")
+        val homeScore = node.path("goals").path("home").let {
             if (it.isNull || it.isMissingNode) null else it.asInt()
         }
-        val awayScore = node.path("score").path("fullTime").path("away").let {
+        val awayScore = node.path("goals").path("away").let {
             if (it.isNull || it.isMissingNode) null else it.asInt()
         }
 
@@ -38,12 +38,12 @@ object FootballDataMatchMapper {
     }
 
     fun mapStatus(externalStatus: String): MatchStatus = when (externalStatus) {
-        "SCHEDULED", "TIMED" -> MatchStatus.SCHEDULED
-        "IN_PLAY" -> MatchStatus.LIVE
-        "PAUSED" -> MatchStatus.HALFTIME
-        "FINISHED" -> MatchStatus.FINISHED
-        "POSTPONED" -> MatchStatus.POSTPONED
-        "CANCELLED", "SUSPENDED" -> MatchStatus.CANCELLED
+        "NS", "TBD", "PST" -> MatchStatus.SCHEDULED
+        "1H", "2H", "ET", "P", "BT", "LIVE" -> MatchStatus.LIVE
+        "HT" -> MatchStatus.HALFTIME
+        "FT", "AET", "PEN" -> MatchStatus.FINISHED
+        "POST" -> MatchStatus.POSTPONED
+        "CANC", "ABD", "AWD", "WO", "INT", "SUSP" -> MatchStatus.CANCELLED
         else -> MatchStatus.SCHEDULED
     }
 }

@@ -1,5 +1,8 @@
 package com.predata.backend.controller
 
+import io.swagger.v3.oas.annotations.tags.Tag
+
+import com.predata.backend.dto.ApiEnvelope
 import com.predata.backend.service.VoteRewardDistributionService
 import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.*
@@ -10,6 +13,7 @@ import org.springframework.web.bind.annotation.*
  * - 실패분 재시도
  */
 @RestController
+@Tag(name = "settlement-reward", description = "Reward admin APIs")
 @RequestMapping("/api/admin/rewards")
 class RewardAdminController(
     private val voteRewardDistributionService: VoteRewardDistributionService
@@ -20,9 +24,9 @@ class RewardAdminController(
      * POST /api/admin/rewards/distribute/{questionId}
      */
     @PostMapping("/distribute/{questionId}")
-    fun distributeRewards(@PathVariable questionId: Long): ResponseEntity<Map<String, Any>> {
+    fun distributeRewards(@PathVariable questionId: Long): ResponseEntity<ApiEnvelope<Map<String, Any>>> {
         val result = voteRewardDistributionService.distributeRewards(questionId)
-        return ResponseEntity.ok(result)
+        return ResponseEntity.ok(ApiEnvelope.ok(result))
     }
 
     /**
@@ -30,8 +34,8 @@ class RewardAdminController(
      * POST /api/admin/rewards/retry/{questionId}
      */
     @PostMapping("/retry/{questionId}")
-    fun retryFailedDistributions(@PathVariable questionId: Long): ResponseEntity<Map<String, Any>> {
+    fun retryFailedDistributions(@PathVariable questionId: Long): ResponseEntity<ApiEnvelope<Map<String, Any>>> {
         val result = voteRewardDistributionService.retryFailedDistributions(questionId)
-        return ResponseEntity.ok(result)
+        return ResponseEntity.ok(ApiEnvelope.ok(result))
     }
 }

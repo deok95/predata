@@ -3,6 +3,6 @@
 
 spring:
   datasource:
-    url: jdbc:mariadb://localhost:3306/predata
+    url: jdbc:mariadb://localhost:3306/predata?useUnicode=true&characterEncoding=utf8&connectionCollation=utf8mb4_unicode_ci
     username: root
     password: your-actual-password-here

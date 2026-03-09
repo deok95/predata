@@ -1,5 +1,5 @@
 -- 수수료 풀 테이블
-CREATE TABLE fee_pools (
+CREATE TABLE IF NOT EXISTS fee_pools (
     fee_pool_id BIGINT AUTO_INCREMENT PRIMARY KEY,
     question_id BIGINT NOT NULL UNIQUE,
     total_fees DECIMAL(18, 6) NOT NULL DEFAULT 0.000000,
@@ -12,7 +12,7 @@ CREATE TABLE fee_pools (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- 수수료 풀 원장 테이블
-CREATE TABLE fee_pool_ledgers (
+CREATE TABLE IF NOT EXISTS fee_pool_ledgers (
     ledger_id BIGINT AUTO_INCREMENT PRIMARY KEY,
     fee_pool_id BIGINT NOT NULL,
     action VARCHAR(50) NOT NULL,

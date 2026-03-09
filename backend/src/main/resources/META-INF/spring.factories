@@ -1,0 +1,3 @@
+org.springframework.boot.env.EnvironmentPostProcessor=\
+com.predata.backend.config.ProfileGuard,\
+com.predata.backend.config.ProdSecretsValidator

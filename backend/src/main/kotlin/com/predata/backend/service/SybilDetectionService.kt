@@ -1,6 +1,7 @@
 package com.predata.backend.service
 
 import com.predata.backend.domain.Choice
+import com.predata.backend.domain.policy.SybilDetectionPolicy
 import com.predata.backend.repository.MemberRepository
 import com.predata.backend.repository.VoteCommitRepository
 import org.springframework.stereotype.Service
@@ -25,11 +26,6 @@ class SybilDetectionService(
     private val voteCommitRepository: VoteCommitRepository,
     private val memberRepository: MemberRepository
 ) {
-    companion object {
-        const val SUSPICIOUS_IP_THRESHOLD = 5  // 동일 IP에서 5개 이상 계정
-        const val MIN_VOTES_FOR_PATTERN_CHECK = 5  // 패턴 체크 최소 투표 수
-    }
-
     /**
      * 특정 질문에 대한 의심스러운 패턴 탐지
      *
@@ -57,12 +53,13 @@ class SybilDetectionService(
         // 동일 IP에서 5개 이상 계정이 투표한 경우 조회
         val suspiciousIps = voteCommitRepository.findSuspiciousIpsByQuestionId(
             questionId,
-            SUSPICIOUS_IP_THRESHOLD
+            SybilDetectionPolicy.suspiciousIpThreshold
         )
 
         for (row in suspiciousIps) {
             val ip = row[0] as String
             val count = (row[1] as Number).toInt()
+            if (!SybilDetectionPolicy.shouldFlagSuspiciousIp(count)) continue
 
             // 해당 IP를 사용하는 회원들 조회
             val members = memberRepository.findByLastIp(ip)
@@ -72,10 +69,10 @@ class SybilDetectionService(
                 if (hasVoted) {
                     suspicious.add(
                         SybilSuspiciousAccount(
-                            memberId = member.id!!,
+                            memberId = member.id,
                             email = member.email,
-                            reason = "동일 IP에서 다수 계정 투표",
-                            detail = "IP $ip 에서 ${count}개 계정이 투표"
+                            reason = SybilDetectionPolicy.ipReason(),
+                            detail = SybilDetectionPolicy.ipDetail(ip, count)
                         )
                     )
                 }
@@ -102,22 +99,19 @@ class SybilDetectionService(
             val allChoices = voteCommitRepository.findRevealedChoicesByMemberId(vote.memberId)
 
             // 최소 투표 수 이상이고, 모든 선택이 동일한 경우
-            if (allChoices.size >= MIN_VOTES_FOR_PATTERN_CHECK) {
-                val uniqueChoices = allChoices.toSet()
-                if (uniqueChoices.size == 1) {
-                    val member = memberRepository.findById(vote.memberId).orElse(null) ?: continue
-                    val choice = uniqueChoices.first()
+            val uniqueChoices = allChoices.toSet()
+            if (!SybilDetectionPolicy.isUniformChoicePattern(allChoices.size, uniqueChoices.size)) continue
 
-                    suspicious.add(
-                        SybilSuspiciousAccount(
-                            memberId = member.id!!,
-                            email = member.email,
-                            reason = "동일 선택 패턴 (${choice.name}만 선택)",
-                            detail = "총 ${allChoices.size}개 투표가 모두 ${choice.name}"
-                        )
-                    )
-                }
-            }
+            val member = memberRepository.findById(vote.memberId).orElse(null) ?: continue
+            val choice = uniqueChoices.first()
+            suspicious.add(
+                SybilSuspiciousAccount(
+                    memberId = vote.memberId,
+                    email = member.email,
+                    reason = SybilDetectionPolicy.uniformChoiceReason(choice.name),
+                    detail = SybilDetectionPolicy.uniformChoiceDetail(allChoices.size, choice.name)
+                )
+            )
         }
 
         return suspicious

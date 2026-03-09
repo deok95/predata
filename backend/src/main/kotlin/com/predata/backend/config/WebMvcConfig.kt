@@ -1,8 +1,10 @@
 package com.predata.backend.config
 
+import com.predata.backend.config.properties.SystemProperties
 import org.springframework.context.annotation.Configuration
 import org.springframework.web.servlet.config.annotation.CorsRegistry
 import org.springframework.web.servlet.config.annotation.InterceptorRegistry
+import org.springframework.web.servlet.config.annotation.ResourceHandlerRegistry
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer
 
 @Configuration
@@ -10,8 +12,16 @@ class WebMvcConfig(
     private val rateLimitInterceptor: RateLimitInterceptor,
     private val banCheckInterceptor: BanCheckInterceptor,
     private val jwtAuthInterceptor: JwtAuthInterceptor,
-    private val adminAuthInterceptor: AdminAuthInterceptor
+    private val adminAuthInterceptor: AdminAuthInterceptor,
+    private val systemProperties: SystemProperties,
 ) : WebMvcConfigurer {
+
+    override fun addResourceHandlers(registry: ResourceHandlerRegistry) {
+        // 업로드 파일(아바타 등) 정적 서빙: GET /uploads/** → {uploadDir}/
+        val uploadLocation = "file:${systemProperties.uploadDir}/"
+        registry.addResourceHandler("/uploads/**")
+            .addResourceLocations(uploadLocation)
+    }
 
     override fun addInterceptors(registry: InterceptorRegistry) {
         // 1. Rate limiting (모든 API)
@@ -57,7 +67,7 @@ class WebMvcConfig(
 
     override fun addCorsMappings(registry: CorsRegistry) {
         registry.addMapping("/**")  // 모든 경로에 대해 CORS 허용
-            .allowedOriginPatterns("http://localhost:*", "http://127.0.0.1:*", "https://predata.vercel.app", "https://*.vercel.app", "https://*.trycloudflare.com", "https://api.predata.io", "https://predata.io")  // 모든 로컬호스트 포트 허용
+            .allowedOriginPatterns("http://localhost:*", "http://127.0.0.1:*", "https://predata.vercel.app", "https://*.vercel.app", "https://*.trycloudflare.com", "https://api.predata.io", "https://predata.io", "https://www.predata.io")  // 모든 로컬호스트 포트 허용
             .allowedMethods("GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS", "HEAD")  // 모든 HTTP 메서드 허용
             .allowedHeaders("*")  // 모든 헤더 허용
             .exposedHeaders("X-RateLimit-Limit", "X-RateLimit-Remaining", "Retry-After")  // Rate limit 헤더 노출

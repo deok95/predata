@@ -3,6 +3,8 @@ package com.predata.backend.service
 import com.predata.backend.domain.Activity
 import com.predata.backend.domain.QuestionStatus
 import com.predata.backend.domain.ActivityType
+import com.predata.backend.sports.domain.MatchStatus
+import com.predata.backend.sports.domain.QuestionPhase
 import com.predata.backend.dto.ActivityResponse
 import com.predata.backend.dto.BetRequest
 import com.predata.backend.repository.ActivityRepository
@@ -12,8 +14,8 @@ import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import java.math.BigDecimal
 import java.time.LocalDateTime
+import java.time.ZoneOffset
 
-@Deprecated("OrderMatchingService를 사용하세요. 이 서비스는 다음 스프린트에서 제거됩니다.")
 @Service
 class BetService(
     private val activityRepository: ActivityRepository,
@@ -21,7 +23,8 @@ class BetService(
     private val memberRepository: MemberRepository,
     private val bettingBatchService: BettingBatchService,
     private val betRecordService: BetRecordService,
-    private val transactionHistoryService: TransactionHistoryService
+    private val transactionHistoryService: TransactionHistoryService,
+    private val walletBalanceService: WalletBalanceService,
 ) {
 
     companion object {
@@ -61,10 +64,11 @@ class BetService(
             )
         }
 
-        if (member.usdcBalance < betAmount) {
+        val availableBalance = walletBalanceService.getAvailableBalance(memberId)
+        if (availableBalance < betAmount) {
             return ActivityResponse(
                 success = false,
-                message = "Insufficient USDC balance. (Current: ${member.usdcBalance}, Required: $betAmount)"
+                message = "Insufficient USDC balance. (Current: $availableBalance, Required: $betAmount)"
             )
         }
 
@@ -82,22 +86,49 @@ class BetService(
             )
         }
 
-        if (question.expiredAt.isBefore(LocalDateTime.now())) {
+        val now = LocalDateTime.now(ZoneOffset.UTC)
+        val linkedMatch = question.match
+        val isLiveMatch = linkedMatch != null && (
+            linkedMatch.matchStatus == MatchStatus.LIVE || linkedMatch.matchStatus == MatchStatus.HALFTIME
+        )
+        val isClosedMatch = linkedMatch != null && (
+            linkedMatch.matchStatus == MatchStatus.FINISHED ||
+                linkedMatch.matchStatus == MatchStatus.CANCELLED ||
+                linkedMatch.matchStatus == MatchStatus.POSTPONED ||
+                question.phase == QuestionPhase.FINISHED ||
+                question.phase == QuestionPhase.SETTLED
+        )
+
+        if (isClosedMatch) {
+            return ActivityResponse(
+                success = false,
+                message = "This match has ended."
+            )
+        }
+
+        // 라이브/연장(ET) 경기에서는 expiredAt보다 실제 경기 종료 이벤트를 우선한다.
+        if (!isLiveMatch && question.expiredAt.isBefore(now)) {
             return ActivityResponse(
                 success = false,
                 message = "Betting period has expired."
             )
         }
 
-        // 3. USDC 잔액 차감
-        member.usdcBalance = member.usdcBalance.subtract(betAmount)
-        memberRepository.save(member)
+        // 3. USDC 잔액 차감 (wallet ledger + member 잔액 동기화)
+        val wallet = walletBalanceService.debit(
+            memberId = memberId,
+            amount = betAmount,
+            txType = "BET",
+            referenceType = "QUESTION",
+            referenceId = request.questionId,
+            description = "레거시 베팅 차감",
+        )
 
         transactionHistoryService.record(
             memberId = memberId,
             type = "BET",
             amount = betAmount.negate(),
-            balanceAfter = member.usdcBalance,
+            balanceAfter = wallet.availableBalance,
             description = "베팅 - Question #${request.questionId} ${request.choice}",
             questionId = request.questionId
         )

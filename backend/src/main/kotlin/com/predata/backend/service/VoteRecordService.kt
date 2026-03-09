@@ -7,6 +7,7 @@ import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service
 import java.security.MessageDigest
 import java.time.LocalDateTime
+import java.time.ZoneOffset
 
 @Service
 class VoteRecordService(
@@ -20,7 +21,7 @@ class VoteRecordService(
      * - vote_records 테이블에 저장
      */
     fun recordVote(activity: Activity): VoteRecord {
-        val timestamp = LocalDateTime.now()
+        val timestamp = LocalDateTime.now(ZoneOffset.UTC)
         val txHash = generateTxHash(
             memberId = activity.memberId,
             questionId = activity.questionId,

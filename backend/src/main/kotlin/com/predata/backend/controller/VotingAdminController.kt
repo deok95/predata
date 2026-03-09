@@ -1,5 +1,8 @@
 package com.predata.backend.controller
 
+import io.swagger.v3.oas.annotations.tags.Tag
+
+import com.predata.backend.dto.ApiEnvelope
 import com.predata.backend.service.PauseService
 import com.predata.backend.service.VotingCircuitBreaker
 import org.springframework.http.ResponseEntity
@@ -11,6 +14,7 @@ import org.springframework.web.bind.annotation.*
  * - 서킷브레이커 상태 조회
  */
 @RestController
+@Tag(name = "voting", description = "Voting admin APIs")
 @RequestMapping("/api/admin/voting")
 class VotingAdminController(
     private val pauseService: PauseService,
@@ -22,13 +26,10 @@ class VotingAdminController(
      * POST /api/admin/voting/pause/{questionId}
      */
     @PostMapping("/pause/{questionId}")
-    fun pauseVoting(@PathVariable questionId: Long): ResponseEntity<Map<String, Any>> {
+    fun pauseVoting(@PathVariable questionId: Long): ResponseEntity<ApiEnvelope<VotingPauseResponse>> {
         pauseService.pauseVoting(questionId)
         return ResponseEntity.ok(
-            mapOf(
-                "message" to "Voting has been paused.",
-                "questionId" to questionId
-            )
+            ApiEnvelope.ok(VotingPauseResponse(message = "Voting has been paused.", questionId = questionId))
         )
     }
 
@@ -37,13 +38,10 @@ class VotingAdminController(
      * POST /api/admin/voting/resume/{questionId}
      */
     @PostMapping("/resume/{questionId}")
-    fun resumeVoting(@PathVariable questionId: Long): ResponseEntity<Map<String, Any>> {
+    fun resumeVoting(@PathVariable questionId: Long): ResponseEntity<ApiEnvelope<VotingPauseResponse>> {
         pauseService.resumeVoting(questionId)
         return ResponseEntity.ok(
-            mapOf(
-                "message" to "Voting has been resumed.",
-                "questionId" to questionId
-            )
+            ApiEnvelope.ok(VotingPauseResponse(message = "Voting has been resumed.", questionId = questionId))
         )
     }
 
@@ -52,12 +50,10 @@ class VotingAdminController(
      * POST /api/admin/voting/pause-all
      */
     @PostMapping("/pause-all")
-    fun pauseAll(): ResponseEntity<Map<String, Any>> {
+    fun pauseAll(): ResponseEntity<ApiEnvelope<VotingPauseResponse>> {
         pauseService.pauseAll()
         return ResponseEntity.ok(
-            mapOf(
-                "message" to "All voting has been paused."
-            )
+            ApiEnvelope.ok(VotingPauseResponse(message = "All voting has been paused."))
         )
     }
 
@@ -66,12 +62,10 @@ class VotingAdminController(
      * POST /api/admin/voting/resume-all
      */
     @PostMapping("/resume-all")
-    fun resumeAll(): ResponseEntity<Map<String, Any>> {
+    fun resumeAll(): ResponseEntity<ApiEnvelope<VotingPauseResponse>> {
         pauseService.resumeAll()
         return ResponseEntity.ok(
-            mapOf(
-                "message" to "All voting has been resumed."
-            )
+            ApiEnvelope.ok(VotingPauseResponse(message = "All voting has been resumed."))
         )
     }
 
@@ -80,15 +74,12 @@ class VotingAdminController(
      * GET /api/admin/voting/status
      */
     @GetMapping("/status")
-    fun getStatus(): ResponseEntity<Map<String, Any>> {
+    fun getStatus(): ResponseEntity<ApiEnvelope<VotingSystemStatusResponse>> {
         val pauseStatus = pauseService.getAllPauseStatus()
         val circuitBreakerStats = circuitBreaker.getStats()
 
         return ResponseEntity.ok(
-            mapOf(
-                "pauseStatus" to pauseStatus,
-                "circuitBreaker" to circuitBreakerStats
-            )
+            ApiEnvelope.ok(VotingSystemStatusResponse(pauseStatus = pauseStatus, circuitBreaker = circuitBreakerStats))
         )
     }
 
@@ -97,12 +88,20 @@ class VotingAdminController(
      * POST /api/admin/voting/circuit-breaker/reset
      */
     @PostMapping("/circuit-breaker/reset")
-    fun resetCircuitBreaker(): ResponseEntity<Map<String, Any>> {
+    fun resetCircuitBreaker(): ResponseEntity<ApiEnvelope<VotingPauseResponse>> {
         circuitBreaker.reset()
         return ResponseEntity.ok(
-            mapOf(
-                "message" to "Circuit breaker has been reset."
-            )
+            ApiEnvelope.ok(VotingPauseResponse(message = "Circuit breaker has been reset."))
         )
     }
 }
+
+data class VotingPauseResponse(
+    val message: String,
+    val questionId: Long? = null
+)
+
+data class VotingSystemStatusResponse(
+    val pauseStatus: Map<String, Any>,
+    val circuitBreaker: Map<String, Any>
+)

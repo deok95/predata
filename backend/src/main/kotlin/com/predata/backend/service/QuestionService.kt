@@ -10,6 +10,7 @@ import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import java.math.BigDecimal
 import java.math.RoundingMode
+import java.time.ZoneOffset
 import java.time.format.DateTimeFormatter
 
 @Service
@@ -101,7 +102,7 @@ class QuestionService(
                 title = question.title,
                 category = question.category,
                 status = question.status.name,
-                type = question.type.name,
+                type = question.marketType.name,
                 executionModel = question.executionModel.name,
                 finalResult = question.finalResult.name,
                 totalBetPool = totalBetPool,
@@ -117,7 +118,21 @@ class QuestionService(
                 expiredAt = question.expiredAt.format(formatter),
                 createdAt = question.createdAt.format(formatter),
                 viewCount = question.viewCount,
-                matchId = question.match?.id
+                matchId = question.match?.id,
+                phase = question.phase?.name,
+                matchTime = question.match?.matchTime?.format(formatter),
+                platformFeeShare = question.platformFeeShare.stripTrailingZeros().toPlainString(),
+                creatorFeeShare = question.creatorFeeShare.stripTrailingZeros().toPlainString(),
+                voterFeeShare = question.voterFeeShare.stripTrailingZeros().toPlainString(),
+                creatorSplitInPool = question.creatorSplitInPool,
+                description = question.description,
+                thumbnailUrl = question.thumbnailUrl,
+                tagsJson = question.tagsJson,
+                sourceLinksJson = question.sourceLinksJson,
+                boostEnabled = question.boostEnabled,
+                settlementMode = question.settlementMode,
+                voteVisibility = question.voteVisibility,
+                revealWindowEndAt = question.revealWindowEndAt?.toInstant(ZoneOffset.UTC)?.toString(),
             )
         }
     }
@@ -154,7 +169,7 @@ class QuestionService(
             title = question.title,
             category = question.category,
             status = question.status.name,
-            type = question.type.name,
+            type = question.marketType.name,
             executionModel = question.executionModel.name,
             finalResult = question.finalResult.name,
             totalBetPool = totalBetPool,
@@ -170,7 +185,21 @@ class QuestionService(
             expiredAt = question.expiredAt.format(formatter),
             createdAt = question.createdAt.format(formatter),
             viewCount = question.viewCount,
-            matchId = question.match?.id
+            matchId = question.match?.id,
+            phase = question.phase?.name,
+            matchTime = question.match?.matchTime?.format(formatter),
+            platformFeeShare = question.platformFeeShare.stripTrailingZeros().toPlainString(),
+            creatorFeeShare = question.creatorFeeShare.stripTrailingZeros().toPlainString(),
+            voterFeeShare = question.voterFeeShare.stripTrailingZeros().toPlainString(),
+            creatorSplitInPool = question.creatorSplitInPool,
+            description = question.description,
+            thumbnailUrl = question.thumbnailUrl,
+            tagsJson = question.tagsJson,
+            sourceLinksJson = question.sourceLinksJson,
+            boostEnabled = question.boostEnabled,
+            settlementMode = question.settlementMode,
+            voteVisibility = question.voteVisibility,
+            revealWindowEndAt = question.revealWindowEndAt?.toInstant(ZoneOffset.UTC)?.toString(),
         )
     }
 
@@ -216,7 +245,7 @@ class QuestionService(
                 title = question.title,
                 category = question.category,
                 status = question.status.name,
-                type = question.type.name,
+                type = question.marketType.name,
                 executionModel = question.executionModel.name,
                 finalResult = question.finalResult.name,
                 totalBetPool = totalBetPool,
@@ -232,7 +261,21 @@ class QuestionService(
                 expiredAt = question.expiredAt.format(formatter),
                 createdAt = question.createdAt.format(formatter),
                 viewCount = question.viewCount,
-                matchId = question.match?.id
+                matchId = question.match?.id,
+                phase = question.phase?.name,
+                matchTime = question.match?.matchTime?.format(formatter),
+                platformFeeShare = question.platformFeeShare.stripTrailingZeros().toPlainString(),
+                creatorFeeShare = question.creatorFeeShare.stripTrailingZeros().toPlainString(),
+                voterFeeShare = question.voterFeeShare.stripTrailingZeros().toPlainString(),
+                creatorSplitInPool = question.creatorSplitInPool,
+                description = question.description,
+                thumbnailUrl = question.thumbnailUrl,
+                tagsJson = question.tagsJson,
+                sourceLinksJson = question.sourceLinksJson,
+                boostEnabled = question.boostEnabled,
+                settlementMode = question.settlementMode,
+                voteVisibility = question.voteVisibility,
+                revealWindowEndAt = question.revealWindowEndAt?.toInstant(ZoneOffset.UTC)?.toString(),
             )
         }
     }

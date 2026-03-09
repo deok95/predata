@@ -550,7 +550,10 @@ class AmmE2ETest {
         val ex = Assertions.assertThrows(IllegalStateException::class.java) {
             settlementService.finalizeSettlement(questionId, skipDeadlineCheck = true)
         }
-        assertTrue(ex.message?.contains("이미 정산 확정") == true)
+        assertTrue(
+            (ex.message ?: "").contains("already finalized", ignoreCase = true),
+            "Error message should indicate settlement was already finalized"
+        )
     }
 
     @Test
@@ -632,4 +635,3 @@ class AmmE2ETest {
         assertTrue(diff <= tolerance, "expected=$expected actual=$actual diff=$diff tol=$tolerance")
     }
 }
-

@@ -3,6 +3,7 @@ package com.predata.backend.service
 import com.predata.backend.config.JwtUtil
 import com.predata.backend.domain.EmailVerification
 import com.predata.backend.domain.Member
+import com.predata.backend.dto.WalletLoginRequest
 import com.predata.backend.repository.EmailVerificationRepository
 import com.predata.backend.repository.MemberRepository
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder
@@ -15,7 +16,8 @@ class AuthService(
     private val emailVerificationRepository: EmailVerificationRepository,
     private val memberRepository: MemberRepository,
     private val jwtUtil: JwtUtil,
-    private val emailService: EmailService
+    private val emailService: EmailService,
+    private val walletAuthService: WalletAuthService
 ) {
     private val passwordEncoder = BCryptPasswordEncoder()
 
@@ -52,13 +54,25 @@ class AuthService(
         emailVerificationRepository.save(verification)
 
         // Send email
-        emailService.sendVerificationCode(normalizedEmail, code)
+        try {
+            emailService.sendVerificationCode(normalizedEmail, code)
+        } catch (_: Exception) {
+            return mapOf(
+                "success" to false,
+                "message" to "Failed to send verification email. Check SMTP account/app password."
+            )
+        }
 
-        return mapOf(
+        val response = mutableMapOf<String, Any>(
             "success" to true,
             "message" to "Verification code sent to email. (Enter within ${CODE_EXPIRY_MINUTES} minutes)",
             "expiresInSeconds" to CODE_EXPIRY_MINUTES * 60
         )
+        if (emailService.demoMode) {
+            response["debugCode"] = code
+            response["message"] = "Demo mode: use the verification code shown on UI."
+        }
+        return response
     }
 
     /**
@@ -266,6 +280,86 @@ class AuthService(
             "success" to true,
             "message" to "Login successful",
             "token" to token,
+            "memberId" to member.id
+        )
+    }
+
+    /**
+     * Wallet address login
+     */
+    @Transactional(readOnly = true)
+    fun loginWithWallet(request: WalletLoginRequest): Map<String, Any> {
+        val verification = walletAuthService.verifyAndConsumeNonce(
+            walletAddress = request.walletAddress,
+            nonce = request.nonce,
+            message = request.message,
+            signature = request.signature,
+            expectedPurpose = WalletAuthService.WalletAuthPurpose.LOGIN,
+        )
+
+        val member = memberRepository.findByWalletAddressIgnoreCase(verification.walletAddress).orElse(null)
+            ?: return mapOf(
+                "success" to false,
+                "message" to "No account linked to this wallet."
+            )
+
+        if (member.isBanned) {
+            return mapOf(
+                "success" to false,
+                "message" to "Account suspended. Reason: ${member.banReason ?: "Please contact administrator."}"
+            )
+        }
+
+        val token = jwtUtil.generateToken(member.id!!, member.email, member.role)
+        return mapOf(
+            "success" to true,
+            "message" to "Wallet login successful",
+            "token" to token,
+            "memberId" to member.id
+        )
+    }
+
+    fun issueWalletLoginNonce(walletAddress: String): Map<String, Any> =
+        walletAuthService.issueNonce(
+            walletAddress = walletAddress,
+            purpose = WalletAuthService.WalletAuthPurpose.LOGIN,
+        )
+
+    /**
+     * Refresh JWT token
+     */
+    @Transactional(readOnly = true)
+    fun refreshToken(currentToken: String): Map<String, Any> {
+        val claims = jwtUtil.validateAndParse(currentToken)
+            ?: return mapOf(
+                "success" to false,
+                "message" to "Invalid or expired token."
+            )
+
+        val memberId = runCatching { jwtUtil.getMemberId(claims) }.getOrNull()
+            ?: return mapOf(
+                "success" to false,
+                "message" to "Invalid token payload."
+            )
+
+        val member = memberRepository.findById(memberId).orElse(null)
+            ?: return mapOf(
+                "success" to false,
+                "message" to "Member not found."
+            )
+
+        if (member.isBanned) {
+            return mapOf(
+                "success" to false,
+                "message" to "Account suspended. Reason: ${member.banReason ?: "Please contact administrator."}"
+            )
+        }
+
+        val refreshedToken = jwtUtil.generateToken(member.id!!, member.email, member.role)
+        return mapOf(
+            "success" to true,
+            "message" to "Token refreshed.",
+            "token" to refreshedToken,
             "memberId" to member.id
         )
     }

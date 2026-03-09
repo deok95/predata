@@ -2,6 +2,8 @@ package com.predata.backend.service
 
 import com.predata.backend.domain.AuditAction
 import com.predata.backend.domain.AuditLog
+import com.predata.backend.domain.policy.AuditQueryPolicy
+import com.predata.backend.domain.policy.AuditQueryRoute
 import com.predata.backend.repository.AuditLogRepository
 import org.springframework.data.domain.Page
 import org.springframework.data.domain.Pageable
@@ -67,24 +69,22 @@ class AuditService(
         to: LocalDateTime? = null,
         pageable: Pageable
     ): Page<AuditLog> {
-        // 조건에 따라 다른 쿼리 실행
-        return when {
-            memberId != null && action != null && from != null && to != null -> {
+        return when (AuditQueryPolicy.route(memberId, action, from, to)) {
+            AuditQueryRoute.MEMBER_ACTION_TIME_RANGE -> {
                 auditLogRepository.findByMemberIdAndActionAndCreatedAtBetweenOrderByCreatedAtDesc(
-                    memberId, action, from, to, pageable
+                    memberId, action, from!!, to!!, pageable
                 )
             }
-            memberId != null -> {
-                auditLogRepository.findByMemberIdOrderByCreatedAtDesc(memberId, pageable)
+            AuditQueryRoute.MEMBER_ONLY -> {
+                auditLogRepository.findByMemberIdOrderByCreatedAtDesc(memberId!!, pageable)
             }
-            action != null -> {
-                auditLogRepository.findByActionOrderByCreatedAtDesc(action, pageable)
+            AuditQueryRoute.ACTION_ONLY -> {
+                auditLogRepository.findByActionOrderByCreatedAtDesc(action!!, pageable)
             }
-            from != null && to != null -> {
-                auditLogRepository.findByCreatedAtBetweenOrderByCreatedAtDesc(from, to, pageable)
+            AuditQueryRoute.TIME_RANGE_ONLY -> {
+                auditLogRepository.findByCreatedAtBetweenOrderByCreatedAtDesc(from!!, to!!, pageable)
             }
-            else -> {
-                // 모든 로그 조회
+            AuditQueryRoute.ALL -> {
                 auditLogRepository.findAll(pageable)
             }
         }

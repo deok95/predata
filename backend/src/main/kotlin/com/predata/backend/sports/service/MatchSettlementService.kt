@@ -34,6 +34,7 @@ class MatchSettlementService(
     fun markPhaseFinished(questionId: Long) {
         val question = questionRepository.findById(questionId).orElse(null) ?: return
         question.phase = QuestionPhase.FINISHED
+        question.category = "SPORTS"
         questionRepository.save(question)
         logger.info("[MatchSettlement] phase=FINISHED set - questionId={}", questionId)
     }
@@ -53,6 +54,7 @@ class MatchSettlementService(
         val question = questionRepository.findById(questionId).orElse(null)
         if (question != null) {
             question.phase = QuestionPhase.SETTLED
+            question.category = "SPORTS"
             questionRepository.save(question)
         }
 
@@ -112,6 +114,7 @@ class MatchSettlementService(
 
         question.status = QuestionStatus.SETTLED
         question.phase = QuestionPhase.SETTLED
+        question.category = "SPORTS"
         questionRepository.save(question)
 
         logger.info(
@@ -146,6 +149,7 @@ class MatchSettlementService(
                 settlementService.initiateSettlement(questionId, FinalResult.YES, "ADMIN_MANUAL")
                 settlementService.finalizeSettlement(questionId, skipDeadlineCheck = true)
                 question.phase = QuestionPhase.SETTLED
+                question.category = "SPORTS"
                 questionRepository.save(question)
                 "Manual settlement completed (YES win)"
             }
@@ -153,6 +157,7 @@ class MatchSettlementService(
                 settlementService.initiateSettlement(questionId, FinalResult.NO, "ADMIN_MANUAL")
                 settlementService.finalizeSettlement(questionId, skipDeadlineCheck = true)
                 question.phase = QuestionPhase.SETTLED
+                question.category = "SPORTS"
                 questionRepository.save(question)
                 "Manual settlement completed (NO win)"
             }

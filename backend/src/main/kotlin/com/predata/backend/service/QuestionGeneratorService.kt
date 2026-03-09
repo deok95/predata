@@ -57,35 +57,35 @@ class QuestionGeneratorService(
 
         val VALID_CATEGORIES = listOf("ECONOMY", "TECH", "SPORTS", "POLITICS", "CULTURE", "CRYPTO")
 
-        // 데모 모드용 샘플 질문
+        // Demo-mode sample questions
         val DEMO_QUESTIONS = mapOf(
             "ECONOMY" to listOf(
-                "2026년 하반기에 미국 금리가 인하될까?",
-                "비트코인이 연말까지 15만 달러를 돌파할까?",
-                "한국 코스피가 3000을 넘길까?"
+                "Will the Fed cut rates in the second half of 2026?",
+                "Will Bitcoin break $150,000 by year-end?",
+                "Will KOSPI exceed 3,000?"
             ),
             "TECH" to listOf(
-                "애플이 2026년 안에 폴더블 아이폰을 출시할까?",
-                "OpenAI가 GPT-5를 올해 출시할까?",
-                "테슬라 로보택시가 2026년에 상용화될까?"
+                "Will Apple launch a foldable iPhone by 2026?",
+                "Will OpenAI release GPT-5 this year?",
+                "Will Tesla Robotaxi be commercially deployed in 2026?"
             ),
             "SPORTS" to listOf(
-                "손흥민이 이번 시즌 20골 이상 넣을까?",
-                "한국이 2026 월드컵 16강에 진출할까?",
-                "LA 다저스가 2026년 월드시리즈 우승할까?"
+                "Will Son Heung-min score 20+ goals this season?",
+                "Will Korea reach the Round of 16 in the 2026 World Cup?",
+                "Will the LA Dodgers win the 2026 World Series?"
             ),
             "POLITICS" to listOf(
-                "2026년 한국 지방선거에서 여당이 승리할까?",
-                "미국이 2026년에 새로운 대중국 관세를 부과할까?"
+                "Will the ruling party win Korea's 2026 local elections?",
+                "Will the U.S. impose new tariffs on China in 2026?"
             ),
             "CULTURE" to listOf(
-                "넷플릭스 오징어게임3이 글로벌 1위를 할까?",
-                "BTS가 2026년에 완전체 컴백할까?"
+                "Will Netflix's Squid Game Season 3 rank #1 globally?",
+                "Will BTS return as a full group in 2026?"
             ),
             "CRYPTO" to listOf(
-                "비트코인이 이번 주 안에 150,000달러를 돌파할까?",
-                "이더리움이 이번 라운드 마감 전 5% 이상 상승할까?",
-                "솔라나 네트워크 일일 활성 지갑 수가 이번 주 최고치를 경신할까?"
+                "Will Bitcoin break $150,000 this week?",
+                "Will Ethereum rise more than 5% before this round closes?",
+                "Will Solana daily active wallets hit a new weekly high?"
             )
         )
     }

@@ -17,7 +17,7 @@ describe("PredataMarket", function () {
 
   describe("질문 생성", function () {
     it("관리자가 질문을 생성할 수 있어야 함", async function () {
-      const { predata, admin } = await loadFixture(deployPredataFixture);
+      const { predata } = await loadFixture(deployPredataFixture);
       
       const expiredAt = (await time.latest()) + 3600n;
       
@@ -44,7 +44,7 @@ describe("PredataMarket", function () {
 
   describe("베팅", function () {
     it("배치로 베팅을 처리할 수 있어야 함", async function () {
-      const { predata, admin, user1, user2 } = await loadFixture(deployPredataFixture);
+      const { predata, user1, user2 } = await loadFixture(deployPredataFixture);
       
       const expiredAt = (await time.latest()) + 3600n;
       await predata.createQuestion(1, "Test Question", "SPORTS", expiredAt);
@@ -70,7 +70,7 @@ describe("PredataMarket", function () {
     });
 
     it("만료된 질문에는 베팅할 수 없어야 함", async function () {
-      const { predata, admin, user1 } = await loadFixture(deployPredataFixture);
+      const { predata, user1 } = await loadFixture(deployPredataFixture);
       
       const expiredAt = (await time.latest()) + 3600n;
       await predata.createQuestion(1, "Test", "SPORTS", expiredAt);
@@ -85,7 +85,7 @@ describe("PredataMarket", function () {
 
   describe("정산", function () {
     it("질문을 정산할 수 있어야 함", async function () {
-      const { predata, admin, user1, user2 } = await loadFixture(deployPredataFixture);
+      const { predata, user1, user2 } = await loadFixture(deployPredataFixture);
       
       const expiredAt = (await time.latest()) + 3600n;
       await predata.createQuestion(1, "Test", "SPORTS", expiredAt);
@@ -106,7 +106,7 @@ describe("PredataMarket", function () {
     });
 
     it("승자가 당첨금을 청구할 수 있어야 함", async function () {
-      const { predata, admin, user1, user2 } = await loadFixture(deployPredataFixture);
+      const { predata, user1, user2 } = await loadFixture(deployPredataFixture);
       
       const expiredAt = (await time.latest()) + 3600n;
       await predata.createQuestion(1, "Test", "SPORTS", expiredAt);
@@ -132,7 +132,7 @@ describe("PredataMarket", function () {
 
   describe("배당률 계산", function () {
     it("배당률을 올바르게 계산해야 함", async function () {
-      const { predata, admin, user1, user2 } = await loadFixture(deployPredataFixture);
+      const { predata, user1, user2 } = await loadFixture(deployPredataFixture);
       
       const expiredAt = (await time.latest()) + 3600n;
       await predata.createQuestion(1, "Test", "SPORTS", expiredAt);

@@ -10,6 +10,7 @@ jobs:
   # === Frontend ===
   frontend:
     name: Frontend Build & Lint
+    if: ${{ hashFiles('package.json') != '' }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -61,4 +62,16 @@ jobs:
 
       - name: Run tests
         run: ./gradlew test
-        continue-on-error: true
+
+  api-contract:
+    name: API Contract Check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Check OpenAPI contract mismatch
+        run: node scripts/qa/check-openapi-contract-match.mjs

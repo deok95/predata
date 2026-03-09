@@ -1,20 +1,25 @@
 package com.predata.backend.controller
 
-import com.predata.backend.dto.SendCodeRequest
-import com.predata.backend.dto.VerifyCodeRequest
+import io.swagger.v3.oas.annotations.tags.Tag
+
+import com.predata.backend.dto.ApiEnvelope
+import com.predata.backend.dto.CompleteGoogleRegistrationRequest
 import com.predata.backend.dto.CompleteSignupRequest
-import com.predata.backend.dto.LoginRequest
 import com.predata.backend.dto.GoogleAuthRequest
 import com.predata.backend.dto.GoogleAuthResponse
-import com.predata.backend.dto.CompleteGoogleRegistrationRequest
+import com.predata.backend.dto.LoginRequest
+import com.predata.backend.dto.SendCodeRequest
+import com.predata.backend.dto.VerifyCodeRequest
+import com.predata.backend.dto.WalletLoginRequest
+import com.predata.backend.dto.WalletNonceRequest
 import com.predata.backend.service.AuthService
 import com.predata.backend.service.GoogleOAuthService
 import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.*
 
 @RestController
+@Tag(name = "auth", description = "Authentication APIs")
 @RequestMapping("/api/auth")
-@CrossOrigin(originPatterns = ["http://localhost:*", "http://127.0.0.1:*", "https://predata.io", "https://www.predata.io", "https://*.vercel.app", "https://*.trycloudflare.com"])
 class AuthController(
     private val authService: AuthService,
     private val googleOAuthService: GoogleOAuthService
@@ -25,14 +30,15 @@ class AuthController(
      * POST /api/auth/send-code
      */
     @PostMapping("/send-code")
-    fun sendCode(@RequestBody request: SendCodeRequest): ResponseEntity<Any> {
+    fun sendCode(@RequestBody request: SendCodeRequest): ResponseEntity<ApiEnvelope<Map<String, Any>>> {
         if (request.email.isBlank() || !request.email.contains("@")) {
-            return ResponseEntity.badRequest().body(
-                mapOf("success" to false, "message" to "Please enter a valid email address.")
-            )
+            throw IllegalArgumentException("Please enter a valid email address.")
         }
         val result = authService.sendVerificationCode(request.email)
-        return ResponseEntity.ok(result)
+        if (result["success"] != true) {
+            throw IllegalArgumentException(result["message"] as? String ?: "Failed to send verification code.")
+        }
+        return ResponseEntity.ok(ApiEnvelope.ok(result))
     }
 
     /**
@@ -40,18 +46,15 @@ class AuthController(
      * POST /api/auth/verify-code
      */
     @PostMapping("/verify-code")
-    fun verifyCode(@RequestBody request: VerifyCodeRequest): ResponseEntity<Any> {
+    fun verifyCode(@RequestBody request: VerifyCodeRequest): ResponseEntity<ApiEnvelope<Map<String, Any>>> {
         if (request.email.isBlank() || request.code.isBlank()) {
-            return ResponseEntity.badRequest().body(
-                mapOf("success" to false, "message" to "Please enter email and verification code.")
-            )
+            throw IllegalArgumentException("Please enter email and verification code.")
         }
         val result = authService.verifyCode(request.email, request.code)
-        return if (result["success"] == true) {
-            ResponseEntity.ok(result)
-        } else {
-            ResponseEntity.badRequest().body(result)
+        if (result["success"] != true) {
+            throw IllegalArgumentException(result["message"] as? String ?: "Verification failed.")
         }
+        return ResponseEntity.ok(ApiEnvelope.ok(result))
     }
 
     /**
@@ -59,21 +62,15 @@ class AuthController(
      * POST /api/auth/complete-signup
      */
     @PostMapping("/complete-signup")
-    fun completeSignup(@RequestBody request: CompleteSignupRequest): ResponseEntity<Any> {
+    fun completeSignup(@RequestBody request: CompleteSignupRequest): ResponseEntity<ApiEnvelope<Map<String, Any>>> {
         if (request.email.isBlank() || request.code.isBlank()) {
-            return ResponseEntity.badRequest().body(
-                mapOf("success" to false, "message" to "Please enter email and verification code.")
-            )
+            throw IllegalArgumentException("Please enter email and verification code.")
         }
         if (request.password.isBlank() || request.password.length < 6) {
-            return ResponseEntity.badRequest().body(
-                mapOf("success" to false, "message" to "Password must be at least 6 characters.")
-            )
+            throw IllegalArgumentException("Password must be at least 6 characters.")
         }
         if (request.password != request.passwordConfirm) {
-            return ResponseEntity.badRequest().body(
-                mapOf("success" to false, "message" to "Passwords do not match.")
-            )
+            throw IllegalArgumentException("Passwords do not match.")
         }
         val result = authService.completeSignup(
             request.email,
@@ -85,11 +82,10 @@ class AuthController(
             request.jobCategory,
             request.ageGroup
         )
-        return if (result["success"] == true) {
-            ResponseEntity.ok(result)
-        } else {
-            ResponseEntity.badRequest().body(result)
+        if (result["success"] != true) {
+            throw IllegalArgumentException(result["message"] as? String ?: "Signup failed.")
         }
+        return ResponseEntity.ok(ApiEnvelope.ok(result))
     }
 
     /**
@@ -97,18 +93,60 @@ class AuthController(
      * POST /api/auth/login
      */
     @PostMapping("/login")
-    fun login(@RequestBody request: LoginRequest): ResponseEntity<Any> {
+    fun login(@RequestBody request: LoginRequest): ResponseEntity<ApiEnvelope<Map<String, Any>>> {
         if (request.email.isBlank() || request.password.isBlank()) {
-            return ResponseEntity.badRequest().body(
-                mapOf("success" to false, "message" to "Please enter email and password.")
-            )
+            throw IllegalArgumentException("Please enter email and password.")
         }
         val result = authService.login(request.email, request.password)
-        return if (result["success"] == true) {
-            ResponseEntity.ok(result)
-        } else {
-            ResponseEntity.badRequest().body(result)
+        if (result["success"] != true) {
+            throw IllegalArgumentException(result["message"] as? String ?: "Login failed.")
         }
+        return ResponseEntity.ok(ApiEnvelope.ok(result))
+    }
+
+    /**
+     * JWT refresh
+     * POST /api/auth/refresh
+     */
+    @PostMapping("/refresh")
+    fun refresh(@RequestHeader("Authorization", required = false) authHeader: String?): ResponseEntity<ApiEnvelope<Map<String, Any>>> {
+        if (authHeader == null || !authHeader.startsWith("Bearer ")) {
+            throw IllegalArgumentException("Authorization Bearer token is required.")
+        }
+        val result = authService.refreshToken(authHeader.substring(7))
+        if (result["success"] != true) {
+            throw IllegalArgumentException(result["message"] as? String ?: "Token refresh failed.")
+        }
+        return ResponseEntity.ok(ApiEnvelope.ok(result))
+    }
+
+    /**
+     * Wallet login nonce
+     * POST /api/auth/wallet/nonce
+     */
+    @PostMapping("/wallet/nonce")
+    fun walletLoginNonce(@RequestBody request: WalletNonceRequest): ResponseEntity<ApiEnvelope<Map<String, Any>>> {
+        if (request.walletAddress.isBlank()) {
+            throw IllegalArgumentException("Wallet address is required.")
+        }
+        val result = authService.issueWalletLoginNonce(request.walletAddress)
+        return ResponseEntity.ok(ApiEnvelope.ok(result))
+    }
+
+    /**
+     * Wallet login
+     * POST /api/auth/wallet
+     */
+    @PostMapping("/wallet")
+    fun walletLogin(@RequestBody request: WalletLoginRequest): ResponseEntity<ApiEnvelope<Map<String, Any>>> {
+        if (request.walletAddress.isBlank() || request.nonce.isBlank() || request.message.isBlank() || request.signature.isBlank()) {
+            throw IllegalArgumentException("Wallet login signature payload is required.")
+        }
+        val result = authService.loginWithWallet(request)
+        if (result["success"] != true) {
+            throw IllegalArgumentException(result["message"] as? String ?: "Wallet login failed.")
+        }
+        return ResponseEntity.ok(ApiEnvelope.ok(result))
     }
 
     /**
@@ -116,22 +154,15 @@ class AuthController(
      * POST /api/auth/google
      */
     @PostMapping("/google")
-    fun googleLogin(@RequestBody request: GoogleAuthRequest): ResponseEntity<GoogleAuthResponse> {
+    fun googleLogin(@RequestBody request: GoogleAuthRequest): ResponseEntity<ApiEnvelope<GoogleAuthResponse>> {
         if (request.googleToken.isBlank()) {
-            return ResponseEntity.badRequest().body(
-                GoogleAuthResponse(
-                    success = false,
-                    message = "Google token is required"
-                )
-            )
+            throw IllegalArgumentException("Google token is required")
         }
-
         val response = googleOAuthService.authenticate(request)
-        return if (response.success) {
-            ResponseEntity.ok(response)
-        } else {
-            ResponseEntity.badRequest().body(response)
+        if (!response.success) {
+            throw IllegalArgumentException(response.message ?: "Google authentication failed.")
         }
+        return ResponseEntity.ok(ApiEnvelope.ok(response))
     }
 
     /**
@@ -139,21 +170,14 @@ class AuthController(
      * POST /api/auth/google/complete-registration
      */
     @PostMapping("/google/complete-registration")
-    fun completeGoogleRegistration(@RequestBody request: CompleteGoogleRegistrationRequest): ResponseEntity<GoogleAuthResponse> {
+    fun completeGoogleRegistration(@RequestBody request: CompleteGoogleRegistrationRequest): ResponseEntity<ApiEnvelope<GoogleAuthResponse>> {
         if (request.googleId.isBlank() || request.email.isBlank() || request.countryCode.isBlank()) {
-            return ResponseEntity.badRequest().body(
-                GoogleAuthResponse(
-                    success = false,
-                    message = "Required fields are missing"
-                )
-            )
+            throw IllegalArgumentException("Required fields are missing")
         }
-
         val response = googleOAuthService.completeRegistration(request)
-        return if (response.success) {
-            ResponseEntity.ok(response)
-        } else {
-            ResponseEntity.badRequest().body(response)
+        if (!response.success) {
+            throw IllegalArgumentException(response.message ?: "Registration failed.")
         }
+        return ResponseEntity.ok(ApiEnvelope.ok(response))
     }
 }

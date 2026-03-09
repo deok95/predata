@@ -2,11 +2,25 @@ package com.predata.backend.dto
 
 import com.predata.backend.domain.ActivityType
 import com.predata.backend.domain.Choice
+import com.predata.backend.domain.SettlementMode
+import com.predata.backend.domain.VoteVisibility
 import jakarta.validation.constraints.Max
 import jakarta.validation.constraints.Min
 import jakarta.validation.constraints.NotNull
 import jakarta.validation.constraints.NotBlank
 import jakarta.validation.constraints.Size
+
+/**
+ * 페이지네이션 응답 표준 래퍼
+ * 모든 목록 API는 이 타입을 통해 페이지 메타데이터를 함께 반환한다.
+ */
+data class PageResponse<T>(
+    val items: List<T>,
+    val page: Int,
+    val size: Int,
+    val totalElements: Long,
+    val totalPages: Int,
+)
 
 // Vote request
 data class VoteRequest(
@@ -87,7 +101,24 @@ data class QuestionResponse(
     val expiredAt: String,
     val createdAt: String,
     val viewCount: Long = 0,
-    val matchId: Long? = null
+    val matchId: Long? = null,
+    val phase: String? = null,
+    val matchTime: String? = null,
+    val platformFeeShare: String? = null,
+    val creatorFeeShare: String? = null,
+    val voterFeeShare: String? = null,
+    val creatorSplitInPool: Int? = null,
+    val description: String? = null,
+    val thumbnailUrl: String? = null,
+    val tagsJson: String? = null,
+    val sourceLinksJson: String? = null,
+    val boostEnabled: Boolean = false,
+    /** 정산 모드: VOTE_RESULT (커밋-리빌 다수결) / OBJECTIVE_RULE (외부 판정) */
+    val settlementMode: SettlementMode = SettlementMode.OBJECTIVE_RULE,
+    /** 투표 결과 공개 여부 */
+    val voteVisibility: VoteVisibility = VoteVisibility.OPEN,
+    /** VOTE_RESULT 질문의 reveal 마감 시각 (ISO-8601 UTC, OBJECTIVE_RULE이면 null) */
+    val revealWindowEndAt: String? = null,
 )
 
 // Ticket status response
@@ -131,6 +162,17 @@ data class LoginRequest(
     val password: String
 )
 
+data class WalletLoginRequest(
+    val walletAddress: String,
+    val nonce: String,
+    val message: String,
+    val signature: String
+)
+
+data class WalletNonceRequest(
+    val walletAddress: String
+)
+
 // === Admin question creation DTO ===
 
 @com.fasterxml.jackson.annotation.JsonIgnoreProperties(ignoreUnknown = true)
@@ -170,7 +212,10 @@ data class AdminCreateQuestionRequest(
     // AMM seed configuration (used when executionModel is AMM_FPMM)
     val seedUsdc: java.math.BigDecimal = java.math.BigDecimal("1000"),
 
-    val feeRate: java.math.BigDecimal = java.math.BigDecimal("0.01") // Default 1%
+    val feeRate: java.math.BigDecimal = java.math.BigDecimal("0.01"), // Default 1%
+
+    // 80% 풀 내부에서 생성자 비율 (0~100, 10단위)
+    val creatorSplitInPool: Int = 50
 )
 
 // Admin result input request
@@ -204,7 +249,9 @@ data class GoogleAuthResponse(
     val message: String,
     val token: String? = null,           // JWT token
     val memberId: Long? = null,
-    val needsAdditionalInfo: Boolean = false  // Whether additional information is needed
+    val needsAdditionalInfo: Boolean = false,  // Whether additional information is needed
+    val googleId: String? = null,
+    val email: String? = null
 )
 
 // Google OAuth registration completion request (additional information)

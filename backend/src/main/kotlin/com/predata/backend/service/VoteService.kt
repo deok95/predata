@@ -12,6 +12,12 @@ import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import java.time.LocalDateTime
 
+/**
+ * @deprecated 레거시 투표 서비스. hasVotingPass 의존 로직 포함.
+ * 신규 투표 플로우는 POST /api/votes (VoteController) 를 사용하세요.
+ * 기존 코드 삭제 금지 — 비활성 경로 유지.
+ */
+@Deprecated("레거시 투표 서비스. 신규 투표 플로우에서 이 서비스를 호출하지 마세요.")
 @Service
 class VoteService(
     private val activityRepository: ActivityRepository,
@@ -21,11 +27,10 @@ class VoteService(
 ) {
 
     /**
-     * 투표 실행
-     * - 밴 유저 차단
-     * - 투표 패스 확인
-     * - 중복 투표 방지
+     * @deprecated 레거시 투표 실행. hasVotingPass 확인 로직 포함.
+     * 신규 투표 플로우는 VoteController.vote() 를 사용하세요.
      */
+    @Deprecated("레거시 투표 실행. VoteController.vote() 를 사용하세요.")
     @Transactional
     fun vote(memberId: Long, request: VoteRequest, clientIp: String? = null): ActivityResponse {
 
@@ -38,7 +43,7 @@ class VoteService(
             )
         }
 
-        // 1. 투표 패스 확인
+        // [LEGACY] 투표 패스 확인 — hasVotingPass 의존 레거시 로직
         if (member == null || !member.hasVotingPass) {
             return ActivityResponse(
                 success = false,

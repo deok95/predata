@@ -1,9 +1,11 @@
 package com.predata.backend.controller
 
-import com.predata.backend.config.JwtAuthInterceptor
+import com.predata.backend.dto.ApiEnvelope
 import com.predata.backend.service.PaymentVerificationService
 import com.predata.backend.service.WithdrawalService
 import com.predata.backend.service.WithdrawResponse
+import com.predata.backend.util.authenticatedMemberId
+import io.swagger.v3.oas.annotations.tags.Tag
 import jakarta.servlet.http.HttpServletRequest
 import org.slf4j.LoggerFactory
 import org.springframework.http.ResponseEntity
@@ -12,12 +14,27 @@ import java.math.BigDecimal
 
 @RestController
 @RequestMapping("/api/payments")
-@CrossOrigin(originPatterns = ["http://localhost:*", "http://127.0.0.1:*", "https://predata.io", "https://www.predata.io", "https://*.vercel.app", "https://*.trycloudflare.com"])
+@Tag(name = "finance-wallet", description = "Deposit/withdraw wallet APIs")
 class PaymentController(
     private val paymentVerificationService: PaymentVerificationService,
-    private val withdrawalService: WithdrawalService
+    private val withdrawalService: WithdrawalService,
+    @org.springframework.beans.factory.annotation.Value("\${polygon.receiver-wallet}") private val receiverWallet: String,
+    @org.springframework.beans.factory.annotation.Value("\${polygon.usdc-contract}") private val usdcContract: String,
+    @org.springframework.beans.factory.annotation.Value("\${polygon.chain-id}") private val chainId: Int,
 ) {
     private val log = LoggerFactory.getLogger(javaClass)
+
+    /**
+     * 프론트엔드에서 USDC 입금 시 필요한 체인 설정 반환 (인증 불필요)
+     * GET /api/payments/config
+     */
+    @GetMapping("/config")
+    fun getPaymentConfig(): ResponseEntity<ApiEnvelope<Map<String, Any>>> =
+        ResponseEntity.ok(ApiEnvelope.ok(mapOf(
+            "receiverWallet" to receiverWallet,
+            "usdcContract" to usdcContract,
+            "chainId" to chainId,
+        )))
 
     /**
      * $ 잔액 충전 — USDC 트랜잭션 검증 후 잔액 반영
@@ -28,25 +45,16 @@ class PaymentController(
         @RequestBody request: VerifyDepositRequest,
         httpRequest: HttpServletRequest
     ): ResponseEntity<Any> {
-        return try {
-            val authenticatedMemberId = httpRequest.getAttribute(JwtAuthInterceptor.ATTR_MEMBER_ID) as? Long
-                ?: throw IllegalArgumentException("Authentication information not found.")
+        val authenticatedMemberId = httpRequest.authenticatedMemberId()
 
-            log.info("충전 검증 요청: memberId=$authenticatedMemberId, txHash=${request.txHash}, amount=${request.amount}, fromAddress=${request.fromAddress}")
-            val result = paymentVerificationService.verifyDeposit(
-                memberId = authenticatedMemberId,
-                txHash = request.txHash,
-                amount = BigDecimal(request.amount.toString()),
-                fromAddress = request.fromAddress
-            )
-            ResponseEntity.ok(result)
-        } catch (e: IllegalArgumentException) {
-            log.warn("Deposit verification failed: ${e.message}")
-            ResponseEntity.badRequest().body(mapOf("success" to false, "message" to e.message))
-        } catch (e: Exception) {
-            log.error("충전 검증 오류", e)
-            ResponseEntity.internalServerError().body(mapOf("success" to false, "message" to "Server error occurred."))
-        }
+        log.info("충전 검증 요청: memberId=$authenticatedMemberId, txHash=${request.txHash}, amount=${request.amount}, fromAddress=${request.fromAddress}")
+        val result = paymentVerificationService.verifyDeposit(
+            memberId = authenticatedMemberId,
+            txHash = request.txHash,
+            amount = BigDecimal(request.amount.toString()),
+            fromAddress = request.fromAddress
+        )
+        return ResponseEntity.ok(ApiEnvelope.ok(result))
     }
 
     /**
@@ -57,35 +65,16 @@ class PaymentController(
     fun withdraw(
         @RequestBody request: WithdrawRequest,
         httpRequest: HttpServletRequest
-    ): ResponseEntity<Any> {
-        return try {
-            val authenticatedMemberId = httpRequest.getAttribute(JwtAuthInterceptor.ATTR_MEMBER_ID) as? Long
-                ?: throw IllegalArgumentException("Authentication information not found.")
+    ): ResponseEntity<ApiEnvelope<WithdrawResponse>> {
+        val authenticatedMemberId = httpRequest.authenticatedMemberId()
 
-            log.info("출금 요청: memberId=$authenticatedMemberId, amount=${request.amount}, wallet=${request.walletAddress}")
-            val result = withdrawalService.withdraw(
-                memberId = authenticatedMemberId,
-                amount = BigDecimal(request.amount.toString()),
-                walletAddress = request.walletAddress
-            )
-            ResponseEntity.ok(result)
-        } catch (e: IllegalArgumentException) {
-            log.warn("Withdrawal failed: ${e.message}")
-            ResponseEntity.badRequest().body(
-                WithdrawResponse(
-                    success = false,
-                    message = e.message ?: "Withdrawal failed."
-                )
-            )
-        } catch (e: Exception) {
-            log.error("출금 오류", e)
-            ResponseEntity.internalServerError().body(
-                WithdrawResponse(
-                    success = false,
-                    message = "Server error occurred."
-                )
-            )
-        }
+        log.info("출금 요청: memberId=$authenticatedMemberId, amount=${request.amount}, wallet=${request.walletAddress}")
+        val result = withdrawalService.withdraw(
+            memberId = authenticatedMemberId,
+            amount = BigDecimal(request.amount.toString()),
+            walletAddress = request.walletAddress
+        )
+        return ResponseEntity.ok(ApiEnvelope.ok(result))
     }
 }
 

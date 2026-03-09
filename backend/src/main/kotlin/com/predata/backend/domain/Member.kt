@@ -19,6 +19,18 @@ data class Member(
     @Column(nullable = false, unique = true)
     val email: String,
 
+    @Column(name = "username", unique = true, length = 30)
+    var username: String? = null,
+
+    @Column(name = "display_name", length = 50)
+    var displayName: String? = null,
+
+    @Column(name = "bio", length = 300)
+    var bio: String? = null,
+
+    @Column(name = "avatar_url", length = 500)
+    var avatarUrl: String? = null,
+
     @Column(name = "google_id", unique = true, length = 255)
     var googleId: String? = null, // Google OAuth User ID (sub claim)
 

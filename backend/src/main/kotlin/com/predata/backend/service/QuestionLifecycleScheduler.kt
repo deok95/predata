@@ -6,6 +6,7 @@ import com.predata.backend.dto.ClaudeApiRequest
 import com.predata.backend.dto.ClaudeMessage
 import com.predata.backend.repository.QuestionRepository
 import com.predata.backend.repository.ActivityRepository
+import com.predata.backend.repository.amm.MarketPoolRepository
 import org.slf4j.LoggerFactory
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
@@ -19,6 +20,9 @@ import org.springframework.transaction.annotation.Transactional
 import org.springframework.web.client.RestTemplate
 import java.time.LocalDate
 import java.time.LocalDateTime
+import java.time.ZoneOffset
+import java.math.BigDecimal
+
 
 @Service
 @ConditionalOnProperty(
@@ -30,7 +34,10 @@ class QuestionLifecycleScheduler(
     private val questionRepository: QuestionRepository,
     private val activityRepository: ActivityRepository,
     private val settlementService: SettlementService,
-    private val marketMakerService: MarketMakerService,
+    private val settlementAutomationService: SettlementAutomationService,
+    private val reviewQueueService: SettlementReviewQueueService,
+    private val marketPoolRepository: MarketPoolRepository,
+    private val swapService: com.predata.backend.service.amm.SwapService,
     @Value("\${anthropic.api.key:}") private val apiKey: String
 ) {
     private val logger = LoggerFactory.getLogger(QuestionLifecycleScheduler::class.java)
@@ -53,31 +60,66 @@ class QuestionLifecycleScheduler(
     /**
      * 1분마다 실행:
      * - VOTING → BREAK (votingEndAt 지남)
-     * - BREAK → BETTING (bettingStartAt 도달)
+     * - BREAK → BETTING (비활성: Phase3 Top3 오픈 경로에서만 전환)
      * - BETTING → SETTLED (bettingEndAt 지남, 정산 트리거)
      * - disputeDeadline 지난 PENDING_SETTLEMENT → 자동 정산 확정
      */
-    @Scheduled(cron = "0 * * * * *")
+    @Scheduled(cron = "\${app.lifecycle.cron:0 * * * * *}")
     @Transactional
     fun processQuestionLifecycle() {
-        val now = LocalDateTime.now()
+        val now = LocalDateTime.now(ZoneOffset.UTC)
         logger.info("========================================")
         logger.info("[Lifecycle] 스케줄러 실행 시각: $now")
         logger.info("========================================")
 
         transitionVotingToBreak()
-        transitionBreakToBetting()
+        // VOTE_RESULT 질문 전용: 베팅 종료 시 REVEAL_OPEN → REVEAL_CLOSED (정산 전 먼저 실행)
+        transitionRevealOpenToClosed()
+        // BREAK -> BETTING은 Phase3 마켓 배치 오픈 경로에서만 처리한다.
         transitionBettingToSettled()
+        ensurePoolsForBettingQuestions()
         finalizePastDueSettlements()
 
         logger.info("[Lifecycle] 스케줄러 실행 완료")
     }
 
     /**
+     * 안전장치:
+     * - status=BETTING 인데 market_pools가 없는 질문을 자동 복구(seed)
+     */
+    fun ensurePoolsForBettingQuestions() {
+        val bettingQuestions = questionRepository.findByStatus(QuestionStatus.BETTING)
+        if (bettingQuestions.isEmpty()) return
+
+        var fixed = 0
+        bettingQuestions.forEach { question ->
+            val qid = question.id ?: return@forEach
+            val exists = marketPoolRepository.existsById(qid)
+            if (exists) return@forEach
+            try {
+                swapService.seedPool(
+                    com.predata.backend.dto.amm.SeedPoolRequest(
+                        questionId = qid,
+                        seedUsdc = BigDecimal("1000"),
+                        feeRate = BigDecimal("0.01"),
+                    )
+                )
+                fixed++
+                logger.warn("[Lifecycle] BETTING question #{} had no pool; seeded automatically.", qid)
+            } catch (e: Exception) {
+                logger.error("[Lifecycle] Failed to auto-seed pool for BETTING question #{}: {}", qid, e.message)
+            }
+        }
+        if (fixed > 0) {
+            logger.info("[Lifecycle] Auto-seeded {} missing pools for BETTING questions", fixed)
+        }
+    }
+
+    /**
      * VOTING → BREAK: 투표 마감 시간이 지난 질문
      */
     fun transitionVotingToBreak() {
-        val now = LocalDateTime.now()
+        val now = LocalDateTime.now(ZoneOffset.UTC)
         val votingExpired = questionRepository.findVotingExpiredBefore(now)
 
         logger.info("[Lifecycle] VOTING → BREAK 체크: 만료된 질문 {}건", votingExpired.size)
@@ -90,10 +132,11 @@ class QuestionLifecycleScheduler(
         votingExpired.forEach { question ->
             try {
                 val locked = questionRepository.findByIdWithLock(question.id!!)
-                if (locked != null && locked.status == QuestionStatus.VOTING && locked.votingEndAt.isBefore(now)) {
+                if (locked != null && locked.status == QuestionStatus.VOTING && !locked.votingEndAt.isAfter(now)) {
                     locked.status = QuestionStatus.BREAK
-                    questionRepository.save(locked)
+                    // votingPhase는 변경하지 않음: 베팅 오픈 시점에 REVEAL_OPEN으로 전환
                     logger.info("[Lifecycle] 질문 #{} '{}' → BREAK (투표 마감)", locked.id, locked.title)
+                    questionRepository.save(locked)
                 }
             } catch (e: Exception) {
                 logger.error("[Lifecycle] Question #{} BREAK transition failed: {}", question.id, e.message)
@@ -105,7 +148,7 @@ class QuestionLifecycleScheduler(
      * BREAK → BETTING: 베팅 시작 시간이 도달한 질문 (투표 마감 후 5분)
      */
     fun transitionBreakToBetting() {
-        val now = LocalDateTime.now()
+        val now = LocalDateTime.now(ZoneOffset.UTC)
         val breakExpired = questionRepository.findBreakExpiredBefore(now)
 
         logger.info("[Lifecycle] BREAK → BETTING 체크: 만료된 질문 {}건", breakExpired.size)
@@ -119,22 +162,16 @@ class QuestionLifecycleScheduler(
             try {
                 val locked = questionRepository.findByIdWithLock(question.id!!)
                 if (locked != null && locked.status == QuestionStatus.BREAK && locked.bettingStartAt.isBefore(now)) {
-                    // 투표 데이터 기반 조건부 초기 풀 설정
                     seedInitialPools(locked)
                     locked.status = QuestionStatus.BETTING
-                    questionRepository.save(locked)
-                    logger.info(
-                        "[Lifecycle] 질문 #{} '{}' → BETTING (초기 풀: YES={}, NO={})",
-                        locked.id, locked.title, locked.initialYesPool, locked.initialNoPool
-                    )
-
-                    // 마켓메이커 오더북 시딩 (실패해도 전환은 성공해야 함)
-                    try {
-                        marketMakerService.seedOrderBookIfNeeded(locked.id!!)
-                        logger.info("[Lifecycle] 질문 #{} 마켓메이커 시딩 완료", locked.id)
-                    } catch (seedError: Exception) {
-                        logger.error("[Lifecycle] Question #{} market maker seeding failed (continuing): {}", locked.id, seedError.message)
+                    // VOTE_RESULT: 베팅 오픈과 동시에 reveal 오픈 (베팅 기간 = reveal 기간)
+                    if (locked.voteResultSettlement) {
+                        locked.votingPhase = VotingPhase.VOTING_REVEAL_OPEN
+                        logger.info("[Lifecycle] 질문 #{} '{}' → BETTING + VOTING_REVEAL_OPEN (베팅·reveal 동시 시작)", locked.id, locked.title)
+                    } else {
+                        logger.info("[Lifecycle] 질문 #{} '{}' → BETTING (초기 풀: YES={}, NO={})", locked.id, locked.title, locked.initialYesPool, locked.initialNoPool)
                     }
+                    questionRepository.save(locked)
                 }
             } catch (e: Exception) {
                 logger.error("[Lifecycle] Question #{} BETTING transition failed: {}", question.id, e.message)
@@ -148,7 +185,7 @@ class QuestionLifecycleScheduler(
      * - VERIFIABLE 타입: 관리자 입력 대기 (자동 정산 안 함)
      */
     fun transitionBettingToSettled() {
-        val now = LocalDateTime.now()
+        val now = LocalDateTime.now(ZoneOffset.UTC)
         val bettingExpired = questionRepository.findBettingExpiredBefore(now)
 
         logger.info("[Lifecycle] BETTING → SETTLED 체크: 만료된 질문 {}건", bettingExpired.size)
@@ -161,13 +198,12 @@ class QuestionLifecycleScheduler(
         bettingExpired.forEach { question ->
             try {
                 val locked = questionRepository.findByIdWithLock(question.id!!)
-                if (locked != null && locked.status == QuestionStatus.BETTING && locked.bettingEndAt.isBefore(now)) {
+                if (locked != null && locked.status == QuestionStatus.BETTING && !locked.bettingEndAt.isAfter(now)) {
 
                     // Auto-first + Fail-safe 자동 정산 시도
                     try {
-                        val settlementResult = settlementService.autoSettleWithVerification(locked.id!!)
+                        val settlementResult = settlementAutomationService.autoSettleWithVerification(locked.id!!)
                         if (settlementResult != null) {
-                            // 자동 정산 성공
                             logger.info(
                                 "[Lifecycle] 질문 #{} '{}' → Auto-first 자동 정산 완료 (결과: {})",
                                 locked.id,
@@ -176,23 +212,35 @@ class QuestionLifecycleScheduler(
                             )
                             logger.info("[Lifecycle] 배당금 지급 완료: 승자 {}명, 총 배당금 {}P", settlementResult.totalWinners, settlementResult.totalPayout)
                         } else {
-                            // 자동 정산 조건 미충족 → 수동 정산 대기
-                            logger.info(
-                                "[Lifecycle] 질문 #{} '{}' → 자동 정산 조건 미충족, 수동 정산 대기 (재시도 예정)",
-                                locked.id,
-                                locked.title
-                            )
-                            // TODO: 재시도 큐에 등록 (최대 3회, 간격 5분)
+                            // VOTE_RESULT reveal 미완료, 또는 VERIFIABLE이 아닌 경우: 큐 등록 불필요
+                            val shouldEnqueue = when {
+                                locked.voteResultSettlement && locked.votingPhase != VotingPhase.VOTING_REVEAL_CLOSED -> false
+                                !locked.voteResultSettlement && locked.marketType != MarketType.VERIFIABLE -> false
+                                else -> true
+                            }
+                            if (shouldEnqueue) {
+                                reviewQueueService.enqueueOrUpdate(
+                                    questionId = locked.id!!,
+                                    reasonCode = SettlementReviewReasonCode.SOURCE_UNAVAILABLE,
+                                    reasonDetail = "autoSettle returned null (phase=${locked.votingPhase})",
+                                )
+                                logger.info("[Lifecycle] 질문 #{} 재시도 큐 등록", locked.id)
+                            } else {
+                                logger.info("[Lifecycle] 질문 #{} 정산 조건 미충족, 다음 사이클 대기", locked.id)
+                            }
                         }
                     } catch (settlementError: Exception) {
                         logger.error(
-                            "[Lifecycle] 질문 #{} 자동 정산 실패: {}",
+                            "[Lifecycle] 질문 #{} 자동 정산 예외: {}",
                             locked.id,
                             settlementError.message
                         )
-                        // 실패 시 수동 정산 대기 (SETTLED 강제 마킹 제거)
-                        logger.warn("[Lifecycle] 질문 #{} 수동 정산 필요 - 관리자 확인 요망", locked.id)
-                        // TODO: 관리자 알림 로직 추가
+                        reviewQueueService.enqueueOrUpdate(
+                            questionId = locked.id!!,
+                            reasonCode = SettlementReviewReasonCode.EXCEPTION,
+                            reasonDetail = settlementError.message?.take(500),
+                        )
+                        logger.warn("[Lifecycle] 질문 #{} 예외 발생 → 재시도 큐 등록", locked.id)
                     }
                 }
             } catch (e: Exception) {
@@ -202,7 +250,7 @@ class QuestionLifecycleScheduler(
     }
 
     fun finalizePastDueSettlements() {
-        val now = LocalDateTime.now()
+        val now = LocalDateTime.now(ZoneOffset.UTC)
         val pendingQuestions = questionRepository.findPendingSettlementPastDeadline(now)
         if (pendingQuestions.isEmpty()) return
 
@@ -213,6 +261,35 @@ class QuestionLifecycleScheduler(
                 logger.info("[Lifecycle] 질문 #{} 자동 정산 확정 (배당: {}P)", question.id, result.totalPayout)
             } catch (e: Exception) {
                 logger.error("[Lifecycle] Question #{} auto-settlement failed: {}", question.id, e.message)
+            }
+        }
+    }
+
+    /**
+     * VOTE_RESULT 질문 전용: REVEAL_OPEN → REVEAL_CLOSED
+     * 베팅 종료(bettingEndAt = revealWindowEndAt)가 지난 BETTING 상태 질문을 VOTING_REVEAL_CLOSED로 전환.
+     * transitionBettingToSettled() 앞에 실행되어 자동 정산이 즉시 가능하도록 함.
+     */
+    fun transitionRevealOpenToClosed() {
+        val now = LocalDateTime.now(ZoneOffset.UTC)
+        val revealExpired = questionRepository.findVoteResultQuestionsRevealExpired(now)
+        if (revealExpired.isEmpty()) return
+
+        logger.info("[Lifecycle] REVEAL_OPEN → REVEAL_CLOSED 체크: {}건", revealExpired.size)
+        revealExpired.forEach { question ->
+            try {
+                val locked = questionRepository.findByIdWithLock(question.id!!)
+                if (locked != null
+                    && locked.voteResultSettlement
+                    && locked.votingPhase == VotingPhase.VOTING_REVEAL_OPEN
+                    && locked.revealWindowEndAt != null
+                    && !locked.revealWindowEndAt!!.isAfter(now)) {
+                    locked.votingPhase = VotingPhase.VOTING_REVEAL_CLOSED
+                    questionRepository.save(locked)
+                    logger.info("[Lifecycle] 질문 #{} '{}' → VOTING_REVEAL_CLOSED (베팅·reveal 동시 마감)", locked.id, locked.title)
+                }
+            } catch (e: Exception) {
+                logger.error("[Lifecycle] Question #{} REVEAL_CLOSED transition failed: {}", question.id, e.message)
             }
         }
     }
@@ -383,7 +460,7 @@ class QuestionLifecycleScheduler(
      * 결과 판정용 프롬프트 생성
      */
     private fun buildJudgmentPrompt(question: Question): String {
-        val today = LocalDate.now()
+        val today = LocalDate.now(ZoneOffset.UTC)
         return """
 질문: ${question.title}
 현재 날짜: $today

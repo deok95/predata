@@ -18,6 +18,12 @@ interface MatchRepository : JpaRepository<Match, Long> {
         end: LocalDateTime
     ): List<Match>
 
+    fun findByMatchStatusInAndMatchTimeBetween(
+        matchStatuses: Collection<MatchStatus>,
+        start: LocalDateTime,
+        end: LocalDateTime
+    ): List<Match>
+
     fun findByLeagueIdAndMatchTimeBetween(
         leagueId: Long,
         start: LocalDateTime,
