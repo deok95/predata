@@ -34,11 +34,9 @@ h1{font-weight:800;font-size:clamp(32px,5vw,62px);line-height:1.1;margin-bottom:
 .sol-step{display:flex;align-items:flex-start;gap:12px}
 .sn{font-family:'JetBrains Mono',monospace;font-weight:700;font-size:18px;color:var(--accent);flex-shrink:0;width:28px}
 .st{font-size:14px;color:var(--light);line-height:1.5}
-.mock-mobile{width:240px;height:440px;background:var(--card);border:2px solid var(--cb);border-radius:24px;display:flex;align-items:center;justify-content:center;justify-self:center;box-shadow:0 0 60px rgba(124,58,237,.08);flex-direction:column;gap:8px;overflow:hidden}
-.mock-mobile-inner{display:flex;flex-direction:column;align-items:center;gap:12px;padding:24px}
-.mock-bar{width:80px;height:5px;background:var(--cb);border-radius:3px}
-.mock-row{width:100%;height:32px;background:var(--cb);border-radius:8px}
-.mock-row.accent{background:rgba(124,58,237,.2);border:1px solid rgba(124,58,237,.3)}
+.mock-mobile{width:200px;height:400px;border:2px solid var(--cb);border-radius:36px;overflow:hidden;box-shadow:0 0 40px rgba(124,58,237,.15);flex-shrink:0}
+.mock-mobile img{width:100%;height:100%;object-fit:cover;object-position:top}
+.screenshots{display:flex;gap:20px;margin-top:32px;align-items:flex-start;justify-content:center}
 .mock-desktop{width:100%;max-width:680px;height:360px;background:var(--card);border:2px solid var(--cb);border-radius:14px;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:8px;overflow:hidden}
 .prod-grid{display:grid;grid-template-columns:2fr 1fr;gap:24px;margin-top:32px;align-items:center}
 .prod-links{display:flex;flex-direction:column;gap:14px}
@@ -114,28 +112,19 @@ h1{font-weight:800;font-size:clamp(32px,5vw,62px);line-height:1.1;margin-bottom:
 </div>
 
 <!-- 04 PRODUCT -->
-<div class="slide" data-i="3">
+<div class="slide" data-i="3" style="justify-content:flex-start;padding-top:8vh">
 <div class="label">04 — Product</div>
 <h1>Vote, trade, settle, compete.<br><span class="a2">One app.</span></h1>
-<div class="sol-grid">
-<div class="sol-steps">
+<div class="sol-steps" style="max-width:340px;margin-bottom:28px">
 <div class="sol-step"><div class="sn">01</div><div class="st">Browse trending questions and vote on what matters to you.</div></div>
 <div class="sol-step"><div class="sn">02</div><div class="st">Top questions become live markets — place your bet.</div></div>
 <div class="sol-step"><div class="sn">03</div><div class="st">Results come in. Payouts settle automatically.</div></div>
 <div class="sol-step"><div class="sn">04</div><div class="st">Track your record on the leaderboard. Climb the ranks.</div></div>
 </div>
-<div class="mock-mobile">
-<div class="mock-mobile-inner" style="width:100%">
-<div class="mock-bar"></div>
-<div class="mock-row accent"></div>
-<div class="mock-row"></div>
-<div class="mock-row accent"></div>
-<div class="mock-row"></div>
-<div class="mock-row"></div>
-<div class="mock-row accent"></div>
-<div class="mock-row"></div>
-</div>
-</div>
+<div class="screenshots">
+<div class="mock-mobile"><img src="/screenshots/vote.png" alt="Vote"></div>
+<div class="mock-mobile"><img src="/screenshots/home.png" alt="Home"></div>
+<div class="mock-mobile"><img src="/screenshots/market.png" alt="Market"></div>
 </div>
 </div>
 
