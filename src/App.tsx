@@ -194,6 +194,11 @@ export default function PredataHome({ initialPage = "home" }: { initialPage?: st
     if (page === "mypage") {
       setShowMyPage(true);
       setPage("home");
+      window.history.replaceState(
+        { __predata: true, page: "home", betView: null, voteView: null, showMyPage: true, exploreLiveOnly: false },
+        "",
+        "/mypage"
+      );
     }
   }, [page]);
 
@@ -307,7 +312,7 @@ export default function PredataHome({ initialPage = "home" }: { initialPage?: st
   };
 
   const pushBrowserState = (snapshot: NavSnapshot) => {
-    const path = buildPath(snapshot.page, snapshot.exploreLiveOnly);
+    const path = snapshot.showMyPage ? "/mypage" : buildPath(snapshot.page, snapshot.exploreLiveOnly);
     window.history.pushState({ __predata: true, ...snapshot }, "", path);
   };
 
@@ -368,6 +373,13 @@ export default function PredataHome({ initialPage = "home" }: { initialPage?: st
   };
 
   const closeMyPageModal = () => {
+    if (window.location.pathname === "/mypage") {
+      window.history.replaceState(
+        { __predata: true, page: "home", betView: null, voteView: null, showMyPage: false, exploreLiveOnly: false },
+        "",
+        "/"
+      );
+    }
     setShowMyPage(false);
   };
 

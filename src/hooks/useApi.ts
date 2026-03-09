@@ -158,12 +158,20 @@ export function useMarkets(category = "trending", options: UseMarketsOptions = {
     fetch();
     // Subscribe to any pool update and refresh market list
     let cancelled = false;
+    const controller = new AbortController();
     let sub: { unsubscribe: () => void } | null = null;
     getWsManager()?.subscribe("/topic/markets", () => {
       if (!cancelled) fetch();
-    }).then(s => { sub = s; });
+    }, controller.signal).then(s => {
+      if (cancelled) {
+        s.unsubscribe();
+        return;
+      }
+      sub = s;
+    }).catch(() => {});
     return () => {
       cancelled = true;
+      controller.abort();
       sub?.unsubscribe();
     };
   }, [fetch]);

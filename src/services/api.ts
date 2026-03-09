@@ -492,7 +492,25 @@ export const portfolioApi = {
   accuracyTrend: () => get("/api/portfolio/accuracy-trend"),
   settlementHistory: async () => {
     const data = await get("/api/settlements/history/me");
-    return unwrapPaginated<SettlementHistoryItem>(data);
+    const rows = unwrapPaginated<Record<string, unknown>>(data);
+    return rows.map((row, index) => {
+      const questionId = asNumber(row.questionId, 0);
+      const betAmount = asNumber(row.betAmount, 0);
+      const payout = asNumber(row.payout, 0);
+      const isWinner = Boolean(row.isWinner);
+      return {
+        id: `${questionId}-${index}`,
+        title: asString(row.questionTitle, questionId > 0 ? `Question #${questionId}` : "Untitled"),
+        side: asString(row.myChoice, "YES").toUpperCase() === "NO" ? "NO" : "YES",
+        result: isWinner ? "WON" : "LOST",
+        // Backend returns amount/payout, not share/price fields.
+        // Use normalized values so existing UI math (returned-invested) stays correct.
+        shares: 1,
+        priceBought: betAmount,
+        priceSold: payout,
+        date: asString(row.settledAt ?? row.createdAt ?? ""),
+      } as SettlementHistoryItem;
+    });
   },
 };
 

@@ -52,6 +52,7 @@ function BetDetailView({ market, initialChoice, onBack, onRequireAuth = (_messag
   // Subscribe to pool WebSocket updates for live prices
   useEffect(() => {
     let cancelled = false;
+    const controller = new AbortController();
     let sub: { unsubscribe: () => void } | null = null;
     getWsManager()?.subscribe(`/topic/pool/${market.id}`, (msg) => {
       if (cancelled) return;
@@ -65,9 +66,16 @@ function BetDetailView({ market, initialChoice, onBack, onRequireAuth = (_messag
           noShares: update.noShares,
         } as typeof prev;
       });
-    }).then(s => { sub = s; });
+    }, controller.signal).then(s => {
+      if (cancelled) {
+        s.unsubscribe();
+        return;
+      }
+      sub = s;
+    }).catch(() => {});
     return () => {
       cancelled = true;
+      controller.abort();
       sub?.unsubscribe();
     };
   }, [market.id, setPoolData]);

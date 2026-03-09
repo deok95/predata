@@ -732,12 +732,13 @@ function MyPageView({ onBack = () => {}, onBet, onNavigate, isDark, toggleTheme 
         {/* History */}
         {tab === "history" && (
           <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-            {historyList.map((h: SettlementHistoryItem) => {
+            {historyList.map((h: SettlementHistoryItem, i: number) => {
               const invested = h.shares * h.priceBought;
               const returned = h.result === "WON" ? h.shares * h.priceSold : 0;
               const profit = returned - invested;
+              const historyKey = `${String(h.id ?? "history")}-${String(h.date ?? "")}-${i}`;
               return (
-                <div key={h.id} style={{
+                <div key={historyKey} style={{
                   background: COLORS.surface, border: `1px solid ${COLORS.border}`,
                   borderRadius: 12, padding: 16,
                 }}>

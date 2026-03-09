@@ -12,6 +12,8 @@ interface PendingEntry {
   topic: string;
   callback: SubscribeCallback;
   resolve: (sub: StompSubscription) => void;
+  reject: (reason?: unknown) => void;
+  cleanup?: () => void;
 }
 
 class WsManager {
@@ -31,7 +33,8 @@ class WsManager {
   private flush() {
     const queued = [...this.pending];
     this.pending = [];
-    queued.forEach(({ topic, callback, resolve }) => {
+    queued.forEach(({ topic, callback, resolve, cleanup }) => {
+      cleanup?.();
       const sub = this.client.subscribe(topic, (msg) => {
         try { callback(JSON.parse(msg.body)); } catch { /* ignore */ }
       });
@@ -39,15 +42,28 @@ class WsManager {
     });
   }
 
-  subscribe(topic: string, callback: SubscribeCallback): Promise<StompSubscription> {
-    return new Promise((resolve) => {
+  subscribe(topic: string, callback: SubscribeCallback, signal?: AbortSignal): Promise<StompSubscription> {
+    return new Promise((resolve, reject) => {
+      if (signal?.aborted) {
+        reject(new DOMException("Subscription aborted", "AbortError"));
+        return;
+      }
       if (this.client.connected) {
         const sub = this.client.subscribe(topic, (msg) => {
           try { callback(JSON.parse(msg.body)); } catch { /* ignore */ }
         });
         resolve(sub);
       } else {
-        this.pending.push({ topic, callback, resolve });
+        const entry: PendingEntry = { topic, callback, resolve, reject };
+        if (signal) {
+          const onAbort = () => {
+            this.pending = this.pending.filter((pending) => pending !== entry);
+            reject(new DOMException("Subscription aborted", "AbortError"));
+          };
+          signal.addEventListener("abort", onAbort, { once: true });
+          entry.cleanup = () => signal.removeEventListener("abort", onAbort);
+        }
+        this.pending.push(entry);
       }
     });
   }
