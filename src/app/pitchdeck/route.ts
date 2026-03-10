@@ -67,7 +67,24 @@ h1{font-weight:800;font-size:clamp(28px,4.5vw,56px);line-height:1.1;margin-botto
 .cover-meta{font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:3px;color:var(--dim);text-transform:uppercase}
 .hint{position:fixed;bottom:28px;left:50%;transform:translateX(-50%);font-family:'JetBrains Mono',monospace;font-size:11px;color:#FFF;z-index:100;opacity:.55}
 .gtm-card{border:1px solid var(--cb);background:var(--card);transition:border-color .3s,box-shadow .3s,background .3s}.gtm-card:hover,.gtm-card.active{border-color:rgba(124,58,237,0.55);box-shadow:0 0 30px rgba(124,58,237,0.12);background:rgba(124,58,237,0.08)}
-@media(max-width:768px){.slide{padding:0 6vw}.c2,.c3{grid-template-columns:1fr}.sol-grid{grid-template-columns:1fr}.prod-grid{grid-template-columns:1fr}.nav{display:none}.team-card{flex-direction:column;text-align:center}.rm-grid{grid-template-columns:1fr}.flywheel{flex-direction:column}.rev-flow{flex-direction:column}}
+@media(max-width:768px){
+.slide{padding:24px 5vw 80px;justify-content:flex-start;overflow-y:auto;-webkit-overflow-scrolling:touch}
+.c2,.c3{grid-template-columns:1fr}.sol-grid{grid-template-columns:1fr}.prod-grid{grid-template-columns:1fr}.nav{display:none}.team-card{flex-direction:column;text-align:center}.rm-grid{grid-template-columns:1fr}.flywheel{flex-direction:column}.rev-flow{flex-direction:column}
+.cover h1{font-size:clamp(32px,8vw,44px)!important}
+.mock-mobile{width:min(42vw,180px)!important;height:min(84vw,360px)!important}
+.screenshots{gap:8px!important}
+.s03-grid{grid-template-columns:1fr 1fr!important;grid-template-rows:auto!important}
+.s03-arrow{display:none!important}
+.s05-outer{flex-direction:column!important;gap:20px!important}
+.s05-left{width:100%!important}
+.s06-outer{flex-direction:column!important;gap:16px!important}
+.s06-bridge{display:none!important}
+.s07-outer{flex-direction:column!important;gap:12px!important}
+.s07-arrow{display:none!important}
+.s09-outer{flex-direction:column!important;gap:12px!important}
+.s09-cta{flex-direction:column!important;align-items:flex-start!important;gap:16px!important}
+.s09-contacts{flex-wrap:wrap!important}
+}
 </style>
 </head>
 <body>
@@ -107,15 +124,15 @@ h1{font-weight:800;font-size:clamp(28px,4.5vw,56px);line-height:1.1;margin-botto
 <div class="slide" data-i="2">
 <div class="label">03 — Solution</div>
 <h1>A Permissionless,<br><span class="a2">User-Driven Market Engine.</span></h1>
-<div style="display:grid;grid-template-columns:1fr 44px 1fr;grid-template-rows:auto 44px auto;gap:10px;margin-top:28px;max-width:680px">
+<div class="s03-grid" style="display:grid;grid-template-columns:1fr 44px 1fr;grid-template-rows:auto 44px auto;gap:10px;margin-top:28px;max-width:680px">
 <div class="card" style="border-color:var(--accent);margin:0"><h3><span style="color:var(--accent2);margin-right:6px">01</span>Create</h3><p>Anyone can launch a market. No approval needed. No gatekeepers.</p></div>
-<div style="display:flex;align-items:center;justify-content:center;color:var(--accent2);font-size:22px">→</div>
+<div class="s03-arrow" style="display:flex;align-items:center;justify-content:center;color:var(--accent2);font-size:22px">→</div>
 <div class="card" style="margin:0"><h3><span style="color:var(--accent2);margin-right:6px">02</span>Vote</h3><p>The community filters the best. Crowd intelligence picks what trades.</p></div>
-<div style="display:flex;align-items:center;justify-content:center;color:var(--accent2);font-size:22px">↑</div>
-<div style="display:flex;align-items:center;justify-content:center;color:var(--accent);font-size:28px;opacity:0.5">↺</div>
-<div style="display:flex;align-items:center;justify-content:center;color:var(--accent2);font-size:22px">↓</div>
+<div class="s03-arrow" style="display:flex;align-items:center;justify-content:center;color:var(--accent2);font-size:22px">↑</div>
+<div class="s03-arrow" style="display:flex;align-items:center;justify-content:center;color:var(--accent);font-size:28px;opacity:0.5">↺</div>
+<div class="s03-arrow" style="display:flex;align-items:center;justify-content:center;color:var(--accent2);font-size:22px">↓</div>
 <div class="card" style="margin:0"><h3><span style="color:var(--accent2);margin-right:6px">04</span>Earn</h3><p>Platform fees redistributed to Creators and Voters. Value returns to the builders.</p></div>
-<div style="display:flex;align-items:center;justify-content:center;color:var(--accent2);font-size:22px">←</div>
+<div class="s03-arrow" style="display:flex;align-items:center;justify-content:center;color:var(--accent2);font-size:22px">←</div>
 <div class="card" style="margin:0"><h3><span style="color:var(--accent2);margin-right:6px">03</span>Trade</h3><p>Instant Listing for Top-Voted Markets. Liquidity flows from real demand.</p></div>
 </div>
 <div style="margin-top:28px;border-top:1px solid var(--cb);padding-top:20px">
@@ -153,9 +170,9 @@ h1{font-weight:800;font-size:clamp(28px,4.5vw,56px);line-height:1.1;margin-botto
 <div class="slide" data-i="4">
 <div class="label">05 — Market Opportunity</div>
 <h1>A <span class="a2">$4B Wedge</span> Inside<br>a $150B Economy.</h1>
-<div style="display:flex;gap:40px;align-items:flex-start;margin-top:22px;max-width:920px">
+<div class="s05-outer" style="display:flex;gap:40px;align-items:flex-start;margin-top:22px;max-width:920px">
   <!-- LEFT: Nested TAM/SAM + 90/10 bar visual -->
-  <div style="flex-shrink:0;padding:18px;border:1px dashed rgba(107,114,128,0.3);border-radius:18px;background:rgba(107,114,128,0.04);width:310px">
+  <div class="s05-left" style="flex-shrink:0;padding:18px;border:1px dashed rgba(107,114,128,0.3);border-radius:18px;background:rgba(107,114,128,0.04);width:310px">
     <div style="font-family:'JetBrains Mono',monospace;font-size:9px;color:#444;letter-spacing:2px;margin-bottom:3px">TAM</div>
     <div style="font-size:24px;font-weight:900;color:#4B5563;line-height:1">$150B+</div>
     <div style="font-size:10px;color:#3D4451;margin-top:2px;margin-bottom:14px">The Global Insight Economy</div>
@@ -215,7 +232,7 @@ h1{font-weight:800;font-size:clamp(28px,4.5vw,56px);line-height:1.1;margin-botto
 <div class="slide" data-i="5">
 <div class="label">06 — Business Model</div>
 <h1>From Transaction Fees<br>to <span class="a2">Data Intelligence.</span></h1>
-<div style="display:flex;gap:16px;align-items:stretch;margin-top:16px;max-width:900px">
+<div class="s06-outer" style="display:flex;gap:16px;align-items:stretch;margin-top:16px;max-width:900px">
   <!-- Phase 1 -->
   <div style="flex:1;padding:22px 24px;border:1px solid rgba(124,58,237,0.45);border-radius:14px;background:rgba(20,14,36,0.9)">
     <div style="font-family:'JetBrains Mono',monospace;font-size:9px;color:rgba(167,139,250,0.6);letter-spacing:3px;margin-bottom:8px">PHASE 01 — NOW</div>
@@ -234,7 +251,7 @@ h1{font-weight:800;font-size:clamp(28px,4.5vw,56px);line-height:1.1;margin-botto
     </div>
   </div>
   <!-- Bridge arrow -->
-  <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;padding:0 6px">
+  <div class="s06-bridge" style="display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;padding:0 6px">
     <div style="font-family:'JetBrains Mono',monospace;font-size:8px;color:var(--accent2);text-align:center;line-height:1.6;max-width:72px;opacity:0.7">After Critical<br>Mass of Data</div>
     <div style="color:var(--accent2);font-size:32px;line-height:1;text-shadow:0 0 12px rgba(167,139,250,0.6)">→</div>
   </div>
@@ -283,7 +300,7 @@ h1{font-weight:800;font-size:clamp(28px,4.5vw,56px);line-height:1.1;margin-botto
 <div class="label">07 — Go-To-Market</div>
 <h1>Viral Expansion<br><span class="a2">by Nature.</span></h1>
 <p class="sub" style="margin-top:-4px;margin-bottom:16px">Capturing global niche communities where engagement is highest.</p>
-<div style="display:flex;align-items:stretch;gap:10px;max-width:920px">
+<div class="s07-outer" style="display:flex;align-items:stretch;gap:10px;max-width:920px">
   <!-- Phase 1 — always active -->
   <div class="gtm-card active" style="flex:1;padding:20px;border-radius:14px">
     <div style="font-family:'JetBrains Mono',monospace;font-size:9px;color:var(--accent2);letter-spacing:3px;margin-bottom:8px">PHASE 01 — INSERT</div>
@@ -297,7 +314,7 @@ h1{font-weight:800;font-size:clamp(28px,4.5vw,56px);line-height:1.1;margin-botto
     </div>
   </div>
   <!-- arrow -->
-  <div style="display:flex;align-items:center;justify-content:center;flex-shrink:0;padding:0 2px">
+  <div class="s07-arrow" style="display:flex;align-items:center;justify-content:center;flex-shrink:0;padding:0 2px">
     <span style="color:var(--accent2);font-size:20px;opacity:0.6">→</span>
   </div>
   <!-- Phase 2 -->
@@ -312,7 +329,7 @@ h1{font-weight:800;font-size:clamp(28px,4.5vw,56px);line-height:1.1;margin-botto
     </div>
   </div>
   <!-- arrow -->
-  <div style="display:flex;align-items:center;justify-content:center;flex-shrink:0;padding:0 2px">
+  <div class="s07-arrow" style="display:flex;align-items:center;justify-content:center;flex-shrink:0;padding:0 2px">
     <span style="color:var(--accent2);font-size:20px;opacity:0.6">→</span>
   </div>
   <!-- Phase 3 -->
@@ -353,7 +370,7 @@ h1{font-weight:800;font-size:clamp(28px,4.5vw,56px);line-height:1.1;margin-botto
 <div class="slide" data-i="8">
 <div class="label">09 — Investment</div>
 <h1>Seed Round.<br><span class="a2">$500K.</span></h1>
-<div style="display:flex;gap:16px;margin-top:14px;max-width:880px;align-items:stretch">
+<div class="s09-outer" style="display:flex;gap:16px;margin-top:14px;max-width:880px;align-items:stretch">
   <!-- Left: Use of Funds -->
   <div style="flex:1;background:var(--card);border:1px solid rgba(124,58,237,0.4);border-radius:14px;padding:26px">
     <div style="font-family:'JetBrains Mono',monospace;font-size:9px;color:var(--accent2);letter-spacing:3px;margin-bottom:18px">USE OF FUNDS — 12-MONTH RUNWAY</div>
@@ -428,9 +445,9 @@ h1{font-weight:800;font-size:clamp(28px,4.5vw,56px);line-height:1.1;margin-botto
     </div>
   </div>
 </div>
-<div style="margin-top:16px;border-top:1px solid var(--cb);padding-top:16px;max-width:880px;display:flex;justify-content:space-between;align-items:center;gap:20px">
+<div class="s09-cta" style="margin-top:16px;border-top:1px solid var(--cb);padding-top:16px;max-width:880px;display:flex;justify-content:space-between;align-items:center;gap:20px">
   <div style="font-size:clamp(12px,1.3vw,14px);color:var(--gray)">Ready to unlock <span style="color:#FFF;font-weight:700">the 99% of human insight.</span></div>
-  <div style="flex-shrink:0;display:flex;align-items:center;gap:12px">
+  <div class="s09-contacts" style="flex-shrink:0;display:flex;align-items:center;gap:12px">
     <div style="text-align:right">
       <div style="font-size:13px;font-weight:700;color:#FFF">Deokjung Kim</div>
       <a href="mailto:deokjung95@gmail.com" style="font-size:13px;color:var(--light);text-decoration:none;font-weight:600">deokjung95@gmail.com</a>
@@ -460,6 +477,7 @@ h1{font-weight:800;font-size:clamp(28px,4.5vw,56px);line-height:1.1;margin-botto
     if(idx < 0 || idx >= total) return;
     slides[cur].classList.remove('active');
     nav.children[cur].classList.remove('active');
+    slides[cur].scrollTop = 0;
     cur = idx;
     slides[cur].classList.add('active');
     nav.children[cur].classList.add('active');
@@ -484,7 +502,13 @@ h1{font-weight:800;font-size:clamp(28px,4.5vw,56px);line-height:1.1;margin-botto
   document.addEventListener('touchstart', function(e){ touchY = e.touches[0].clientY; }, { passive: true });
   document.addEventListener('touchend', function(e){
     var diff = touchY - e.changedTouches[0].clientY;
-    if(Math.abs(diff) > 40) go(diff > 0 ? cur + 1 : cur - 1);
+    if(Math.abs(diff) < 40) return;
+    var s = slides[cur];
+    if(s.scrollHeight > s.clientHeight){
+      if(diff > 0 && s.scrollTop + s.clientHeight < s.scrollHeight - 5) return;
+      if(diff < 0 && s.scrollTop > 5) return;
+    }
+    go(diff > 0 ? cur + 1 : cur - 1);
   });
 })();
 </script>
